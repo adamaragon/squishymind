@@ -1,0 +1,1940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SquishyMind — 2D Mind Map</title>
+<style>
+  :root {
+    /* aurora palette (default) */
+    --bg-1: #0a0b16;
+    --bg-2: #0f1124;
+    --grid: rgba(139, 92, 246, 0.07);
+    --grid-strong: rgba(139, 92, 246, 0.14);
+    --node-bg: #1a1d35;
+    --node-bg-2: #232649;
+    --node-border: rgba(255, 255, 255, 0.08);
+    --node-text: #e8eaff;
+    --node-shadow: rgba(0, 0, 0, 0.45);
+    --accent-1: #8b5cf6;
+    --accent-2: #06b6d4;
+    --accent-3: #ec4899;
+    --accent-4: #f59e0b;
+    --accent-5: #10b981;
+    --edge: rgba(139, 92, 246, 0.55);
+    --selection: #a78bfa;
+    --ui-bg: rgba(15, 17, 36, 0.78);
+    --ui-border: rgba(255, 255, 255, 0.08);
+    --ui-text: rgba(232, 234, 255, 0.92);
+    --ui-text-dim: rgba(232, 234, 255, 0.55);
+  }
+  [data-theme="sunrise"] {
+    --bg-1: #fff5ef;
+    --bg-2: #ffe9da;
+    --grid: rgba(217, 119, 87, 0.08);
+    --grid-strong: rgba(217, 119, 87, 0.16);
+    --node-bg: #ffffff;
+    --node-bg-2: #fff7f1;
+    --node-border: rgba(60, 30, 10, 0.08);
+    --node-text: #2a1a0e;
+    --node-shadow: rgba(180, 80, 30, 0.18);
+    --accent-1: #ff6b6b;
+    --accent-2: #f59e0b;
+    --accent-3: #ec4899;
+    --accent-4: #14b8a6;
+    --accent-5: #6366f1;
+    --edge: rgba(217, 119, 87, 0.55);
+    --selection: #ff6b6b;
+    --ui-bg: rgba(255, 245, 235, 0.85);
+    --ui-border: rgba(60, 30, 10, 0.1);
+    --ui-text: #2a1a0e;
+    --ui-text-dim: rgba(42, 26, 14, 0.55);
+  }
+  [data-theme="forest"] {
+    --bg-1: #0e1612;
+    --bg-2: #14201b;
+    --grid: rgba(74, 222, 128, 0.07);
+    --grid-strong: rgba(74, 222, 128, 0.14);
+    --node-bg: #1a2620;
+    --node-bg-2: #233029;
+    --node-border: rgba(255, 255, 255, 0.08);
+    --node-text: #e8f3ec;
+    --node-shadow: rgba(0, 0, 0, 0.45);
+    --accent-1: #4ade80;
+    --accent-2: #22d3ee;
+    --accent-3: #facc15;
+    --accent-4: #fb7185;
+    --accent-5: #a78bfa;
+    --edge: rgba(74, 222, 128, 0.55);
+    --selection: #4ade80;
+    --ui-bg: rgba(20, 32, 27, 0.78);
+    --ui-border: rgba(255, 255, 255, 0.08);
+    --ui-text: rgba(232, 243, 236, 0.92);
+    --ui-text-dim: rgba(232, 243, 236, 0.55);
+  }
+  [data-theme="mono"] {
+    --bg-1: #f7f7f8;
+    --bg-2: #ececef;
+    --grid: rgba(0, 0, 0, 0.05);
+    --grid-strong: rgba(0, 0, 0, 0.1);
+    --node-bg: #ffffff;
+    --node-bg-2: #fafafa;
+    --node-border: rgba(0, 0, 0, 0.08);
+    --node-text: #18181b;
+    --node-shadow: rgba(0, 0, 0, 0.12);
+    --accent-1: #18181b;
+    --accent-2: #52525b;
+    --accent-3: #a1a1aa;
+    --accent-4: #71717a;
+    --accent-5: #3f3f46;
+    --edge: rgba(0, 0, 0, 0.35);
+    --selection: #18181b;
+    --ui-bg: rgba(255, 255, 255, 0.85);
+    --ui-border: rgba(0, 0, 0, 0.08);
+    --ui-text: #18181b;
+    --ui-text-dim: rgba(24, 24, 27, 0.55);
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%; width: 100%;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+    color: var(--node-text);
+    background: var(--bg-1);
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  body {
+    background:
+      radial-gradient(circle at 20% 0%, var(--bg-2) 0%, var(--bg-1) 50%),
+      radial-gradient(circle at 80% 100%, var(--bg-2) 0%, var(--bg-1) 50%);
+  }
+
+  #stage {
+    position: absolute; inset: 0;
+    overflow: hidden;
+    cursor: grab;
+  }
+  #stage.panning { cursor: grabbing; }
+
+  #grid {
+    position: absolute;
+    width: 200vw; height: 200vh;
+    left: -50vw; top: -50vh;
+    background-image:
+      radial-gradient(circle, var(--grid) 1px, transparent 1.5px),
+      radial-gradient(circle, var(--grid-strong) 1px, transparent 2px);
+    background-size: 30px 30px, 150px 150px;
+    background-position: 0 0, 0 0;
+    pointer-events: none;
+    transition: background-image 0.4s ease;
+  }
+
+  #world {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform-origin: 0 0;
+    will-change: transform;
+  }
+
+  #edges {
+    position: absolute;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .node {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    /* Tinted background — per-node colour visible at the top, fading to dark */
+    background:
+      linear-gradient(180deg,
+        color-mix(in srgb, var(--accent-c1, var(--accent-1)) 32%, var(--node-bg)) 0%,
+        var(--node-bg-2) 70%);
+    color: var(--node-text);
+    padding: 12px 18px;
+    border-radius: 14px;
+    border: 1px solid color-mix(in srgb, var(--accent-c1, var(--accent-1)) 40%, var(--node-border));
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.06) inset,
+      0 0 0 1px rgba(255,255,255,0.02) inset,
+      0 12px 28px var(--node-shadow),
+      0 2px 6px var(--node-shadow),
+      0 0 18px color-mix(in srgb, var(--accent-c1, var(--accent-1)) 22%, transparent);
+    cursor: pointer;
+    transition: transform 0.18s cubic-bezier(.2,.7,.3,1.4), box-shadow 0.2s ease, border-color 0.2s ease;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.35;
+    max-width: 220px;
+    min-width: 80px;
+    text-align: center;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .node::before {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--accent-c1, var(--accent-1)), var(--accent-c2, var(--accent-2)));
+    opacity: 0;
+    z-index: -1;
+    filter: blur(14px);
+    transition: opacity 0.25s ease;
+  }
+  .node:hover {
+    transform: translate(-50%, -50%) scale(1.05);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.06) inset,
+      0 0 0 1px rgba(255,255,255,0.04) inset,
+      0 18px 40px var(--node-shadow),
+      0 4px 10px var(--node-shadow),
+      0 0 0 4px rgba(167, 139, 250, 0.06);
+    border-color: rgba(255,255,255,0.16);
+  }
+  .node:hover::before { opacity: 0.55; }
+  .node.selected {
+    border-color: var(--selection);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.06) inset,
+      0 0 0 1px rgba(255,255,255,0.04) inset,
+      0 18px 40px var(--node-shadow),
+      0 0 0 3px color-mix(in srgb, var(--selection) 35%, transparent),
+      0 0 24px color-mix(in srgb, var(--selection) 25%, transparent);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow:
+      0 1px 0 rgba(255,255,255,0.06) inset,
+      0 18px 40px var(--node-shadow),
+      0 0 0 3px color-mix(in srgb, var(--selection) 30%, transparent),
+      0 0 24px color-mix(in srgb, var(--selection) 20%, transparent);
+    }
+    50% { box-shadow:
+      0 1px 0 rgba(255,255,255,0.06) inset,
+      0 18px 40px var(--node-shadow),
+      0 0 0 5px color-mix(in srgb, var(--selection) 40%, transparent),
+      0 0 36px color-mix(in srgb, var(--selection) 35%, transparent);
+    }
+  }
+  .node.dragging { transition: none !important; cursor: grabbing; opacity: 0.92; }
+  .node.editing { cursor: text; }
+  .node.entering {
+    animation: nodeEnter 0.4s cubic-bezier(.2,.7,.3,1.4) both;
+  }
+  @keyframes nodeEnter {
+    0%   { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
+    100% { transform: translate(-50%, -50%) scale(1);   opacity: 1; }
+  }
+
+  .node[data-depth="0"] {
+    font-size: 17px;
+    font-weight: 600;
+    padding: 14px 22px;
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-3));
+    border-color: rgba(255,255,255,0.18);
+    color: white;
+    --accent-c1: var(--accent-1);
+    --accent-c2: var(--accent-3);
+  }
+  .node[data-depth="1"] { --accent-c1: var(--accent-1); --accent-c2: var(--accent-2); }
+  .node[data-depth="2"] { --accent-c1: var(--accent-2); --accent-c2: var(--accent-3); }
+  .node[data-depth="3"] { --accent-c1: var(--accent-3); --accent-c2: var(--accent-4); }
+  .node[data-depth="4"] { --accent-c1: var(--accent-4); --accent-c2: var(--accent-5); }
+  .node[data-depth="5"] { --accent-c1: var(--accent-5); --accent-c2: var(--accent-1); }
+
+  .node-edit {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: inherit;
+    font: inherit;
+    text-align: center;
+    width: 100%;
+    resize: none;
+    overflow: hidden;
+    padding: 0; margin: 0;
+  }
+
+  .add-handle {
+    position: absolute;
+    top: 50%; right: -10px;
+    transform: translate(50%, -50%) scale(0);
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--selection);
+    color: var(--bg-1);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 4px 12px var(--node-shadow), 0 0 0 3px color-mix(in srgb, var(--selection) 25%, transparent);
+    transition: transform 0.18s cubic-bezier(.2,.7,.3,1.4), background 0.15s;
+    z-index: 5;
+  }
+  .node.selected .add-handle, .node:hover .add-handle {
+    transform: translate(50%, -50%) scale(1);
+  }
+  .add-handle:hover { background: color-mix(in srgb, var(--selection) 80%, white); }
+
+  .edge-path {
+    fill: none;
+    stroke: var(--edge);
+    stroke-width: 2;
+    stroke-linecap: round;
+    transition: stroke-width 0.18s ease, opacity 0.18s ease, stroke 0.18s ease;
+    opacity: 0.7;
+  }
+  .edge-path.highlight {
+    stroke: var(--selection);
+    stroke-width: 2.5;
+    opacity: 1;
+  }
+  @keyframes flow {
+    to { stroke-dashoffset: -24; }
+  }
+
+  /* --- squishy deformations --- */
+  @property --blob-r1 { syntax: '<percentage>'; inherits: false; initial-value: 42%; }
+  @property --blob-r2 { syntax: '<percentage>'; inherits: false; initial-value: 58%; }
+  @property --blob-r3 { syntax: '<percentage>'; inherits: false; initial-value: 50%; }
+  @property --blob-r4 { syntax: '<percentage>'; inherits: false; initial-value: 50%; }
+
+  @keyframes breathe {
+    0%, 100% { filter: brightness(1) saturate(1); }
+    50%      { filter: brightness(1.08) saturate(1.1); }
+  }
+  /* nodes use rounded rects but the ::before glow uses a blob morph for organic feel */
+  @keyframes blobMorph {
+    0%   { border-radius: 42% 58% 50% 50% / 50% 45% 55% 50%; }
+    33%  { border-radius: 55% 45% 60% 40% / 40% 60% 40% 60%; }
+    66%  { border-radius: 45% 55% 40% 60% / 55% 40% 60% 45%; }
+    100% { border-radius: 42% 58% 50% 50% / 50% 45% 55% 50%; }
+  }
+  .node {
+    animation: breathe 4.5s ease-in-out infinite;
+  }
+  .node::before {
+    animation: blobMorph 8s ease-in-out infinite;
+  }
+  /* squishy hover — slight skew + bigger scale + morph */
+  .node:hover {
+    transform: translate(-50%, -50%) scale(1.07) rotate(-0.5deg);
+  }
+  .node:active:not(.dragging) {
+    transform: translate(-50%, -50%) scale(0.94);
+    transition: transform 0.08s ease-out;
+  }
+  /* dropped: quick squish-and-bounce after a drag ends */
+  .node.dropped {
+    animation: dropBounce 0.55s cubic-bezier(.34,1.56,.64,1) both, breathe 4.5s ease-in-out infinite 0.55s;
+  }
+  @keyframes dropBounce {
+    0%   { transform: translate(-50%, -50%) scale(1, 1); }
+    20%  { transform: translate(-50%, -50%) scale(1.18, 0.82); }
+    45%  { transform: translate(-50%, -50%) scale(0.88, 1.12); }
+    70%  { transform: translate(-50%, -50%) scale(1.04, 0.96); }
+    100% { transform: translate(-50%, -50%) scale(1, 1); }
+  }
+  /* override entering with bouncier overshoot */
+  @keyframes nodeEnter {
+    0%   { transform: translate(-50%, -50%) scale(0.2) rotate(-12deg); opacity: 0; }
+    60%  { transform: translate(-50%, -50%) scale(1.18) rotate(3deg); opacity: 1; }
+    80%  { transform: translate(-50%, -50%) scale(0.94) rotate(-1deg); }
+    100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+  }
+
+  /* --- the freestanding brain at the centre --- */
+  /* Box-less: no background, no border, no shadow. The brain IS the node. */
+  .is-brain {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .is-brain::before { display: none !important; }
+  .is-brain:hover {
+    transform: translate(-50%, -50%) scale(1.05) rotate(0deg);
+    box-shadow: none !important;
+  }
+  .is-brain.selected {
+    animation: none; /* the boxed pulse keyframe doesn't apply to a boxless brain */
+  }
+
+  .brain-svg-wrap {
+    width: 150px;
+    line-height: 0;
+    filter: drop-shadow(0 0 14px rgba(255, 130, 170, 0.45))
+            drop-shadow(0 0 28px color-mix(in srgb, var(--accent-3) 50%, transparent));
+    animation: brainWobble 3.6s ease-in-out infinite;
+    transform-origin: 50% 60%;
+  }
+  .brain-svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    overflow: visible;
+  }
+  .brain-img {
+    width: 100%;
+    height: auto;
+    display: block;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+  .is-brain.selected .brain-svg-wrap {
+    filter: drop-shadow(0 0 22px rgba(255, 130, 170, 0.85))
+            drop-shadow(0 0 44px color-mix(in srgb, var(--accent-1) 70%, transparent));
+  }
+  @keyframes brainWobble {
+    0%, 100% { transform: scale(1)    rotate(0deg)  skewX(0deg); }
+    20%      { transform: scale(1.08) rotate(-4deg) skewX(2deg); }
+    40%      { transform: scale(1.03) rotate(2deg)  skewX(-1deg); }
+    60%      { transform: scale(1.10) rotate(3deg)  skewX(1deg); }
+    80%      { transform: scale(1.04) rotate(-2deg) skewX(-2deg); }
+  }
+  .brain-label {
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.6px;
+    color: var(--ui-text);
+    text-transform: uppercase;
+    opacity: 0.85;
+    text-shadow: 0 0 12px color-mix(in srgb, var(--accent-3) 50%, transparent);
+  }
+  /* expanding pulse rings, behind the brain */
+  .brain-aura {
+    position: absolute;
+    width: 120px; height: 90px;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -55%);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: -1;
+    animation: brainPulseRing 2.6s cubic-bezier(.4,.0,.6,1) infinite;
+  }
+  .brain-aura::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    animation: brainPulseRing 2.6s cubic-bezier(.4,.0,.6,1) infinite 1.3s;
+    box-shadow: inherit;
+  }
+  @keyframes brainPulseRing {
+    0% {
+      box-shadow:
+        0 0 0 0   color-mix(in srgb, var(--accent-1) 70%, transparent),
+        0 0 0 0   color-mix(in srgb, var(--accent-3) 50%, transparent);
+    }
+    100% {
+      box-shadow:
+        0 0 0 24px color-mix(in srgb, var(--accent-1) 0%, transparent),
+        0 0 0 48px color-mix(in srgb, var(--accent-3) 0%, transparent);
+    }
+  }
+  /* The brain's add-handle needs to escape further to clear the SVG */
+  .is-brain .add-handle {
+    right: -22px;
+  }
+
+  /* --- ghost edge while drag-creating from a plus handle --- */
+  .edge-ghost {
+    fill: none;
+    stroke: var(--selection);
+    stroke-width: 2.5;
+    stroke-dasharray: 6 5;
+    stroke-linecap: round;
+    opacity: 0.85;
+    animation: flow 0.7s linear infinite;
+    pointer-events: none;
+  }
+  .add-handle { cursor: grab; }
+  .add-handle:active { cursor: grabbing; }
+
+  /* --- action chip (floats near selected node) --- */
+  .action-chip {
+    position: absolute;
+    transform: translate(-50%, 0);
+    display: flex;
+    gap: 4px;
+    padding: 5px;
+    background: var(--ui-bg);
+    border: 1px solid var(--ui-border);
+    border-radius: 24px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 6;
+    animation: chipIn 0.22s cubic-bezier(.34, 1.56, .64, 1) both;
+    pointer-events: auto;
+  }
+  @keyframes chipIn {
+    0%   { transform: translate(-50%, -8px) scale(0.7); opacity: 0; }
+    100% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+  }
+  .action-chip button {
+    background: transparent;
+    border: none;
+    color: var(--ui-text);
+    font-size: 14px;
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background 0.15s, transform 0.15s;
+  }
+  .action-chip button:hover {
+    background: color-mix(in srgb, var(--selection) 25%, transparent);
+    transform: scale(1.12);
+  }
+
+  /* --- detail view --- */
+  /* Use a body class to dim canvas content directly, avoiding stacking-context
+     issues that a separate fixed backdrop would create with #world's transform. */
+  body.in-detail-mode #grid,
+  body.in-detail-mode #particles,
+  body.in-detail-mode .edge-path,
+  body.in-detail-mode .node:not(.in-detail) {
+    opacity: 0.18;
+    filter: blur(2px);
+    pointer-events: none;
+    transition: opacity 0.3s ease, filter 0.3s ease;
+  }
+  body.in-detail-mode #stars { opacity: 0.4; transition: opacity 0.3s ease; }
+  body:not(.in-detail-mode) .node {
+    transition: opacity 0.3s ease, filter 0.3s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .node.in-detail {
+    width: 360px;
+    min-width: 320px;
+    max-width: 360px;
+    padding: 16px 18px !important;
+    cursor: default;
+    z-index: 100;
+    animation: none !important;
+    transform: translate(-50%, -50%) !important;
+  }
+  .node.in-detail:hover { transform: translate(-50%, -50%) !important; }
+  .node.in-detail .add-handle { display: none; }
+
+  /* Brain detail mode — temporarily restore a box so content has a container */
+  .is-brain.in-detail {
+    background: linear-gradient(180deg, var(--node-bg) 0%, var(--node-bg-2) 100%) !important;
+    border: 1px solid var(--node-border) !important;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.04) inset,
+      0 12px 28px var(--node-shadow),
+      0 2px 6px var(--node-shadow) !important;
+    padding: 16px 18px !important;
+  }
+  .is-brain.in-detail .brain-svg-wrap,
+  .is-brain.in-detail .brain-aura,
+  .is-brain.in-detail .brain-label {
+    display: none !important;
+  }
+
+  .detail-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+    position: relative;
+    width: 100%;
+    text-align: left;
+  }
+  .detail-close {
+    position: absolute;
+    top: -4px; right: -4px;
+    background: transparent;
+    border: none;
+    color: var(--node-text);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 4px 6px;
+    opacity: 0.55;
+    transition: opacity 0.15s;
+    z-index: 2;
+  }
+  .detail-close:hover { opacity: 1; }
+
+  .detail-label {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--node-text);
+    font-size: 17px;
+    font-weight: 600;
+    font-family: inherit;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--node-border);
+    margin-right: 22px;
+    width: calc(100% - 22px);
+  }
+  .detail-label:focus { border-bottom-color: var(--selection); }
+
+  .detail-section-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--ui-text-dim);
+    margin-top: 4px;
+    font-weight: 500;
+  }
+
+  .detail-note {
+    background: color-mix(in srgb, var(--node-bg) 70%, black 12%);
+    border: 1px solid var(--node-border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    color: var(--node-text);
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.55;
+    resize: vertical;
+    min-height: 90px;
+    max-height: 280px;
+    outline: none;
+    box-sizing: border-box;
+    width: 100%;
+  }
+  .detail-note:focus { border-color: color-mix(in srgb, var(--selection) 60%, transparent); }
+  .detail-note::placeholder { color: var(--ui-text-dim); }
+
+  .detail-colors {
+    display: flex;
+    gap: 8px;
+  }
+  .color-dot {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.12s, border-color 0.12s;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  }
+  .color-dot:hover { transform: scale(1.18); }
+  .color-dot.active {
+    border-color: var(--node-text);
+    transform: scale(1.12);
+  }
+
+  .detail-stubs {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .stub-btn {
+    flex: 1;
+    background: transparent;
+    border: 1px dashed var(--node-border);
+    border-radius: 8px;
+    padding: 6px 8px;
+    color: var(--ui-text-dim);
+    font-size: 11px;
+    cursor: not-allowed;
+    font-family: inherit;
+  }
+
+  /* --- toolbar --- */
+  .panel {
+    position: fixed;
+    background: var(--ui-bg);
+    border: 1px solid var(--ui-border);
+    border-radius: 14px;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    color: var(--ui-text);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    z-index: 50;
+  }
+  #toolbar {
+    top: 16px; left: 16px;
+    padding: 10px;
+    display: flex; gap: 6px;
+    align-items: center;
+  }
+  #toolbar h1 {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    margin: 0 12px 0 6px;
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-2), var(--accent-3));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .tb-btn {
+    background: transparent;
+    border: 1px solid var(--ui-border);
+    border-radius: 9px;
+    color: var(--ui-text);
+    padding: 7px 11px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .tb-btn:hover {
+    background: color-mix(in srgb, var(--selection) 12%, transparent);
+    border-color: color-mix(in srgb, var(--selection) 35%, transparent);
+  }
+  .tb-btn.icon { padding: 7px 9px; }
+  .tb-sep { width: 1px; align-self: stretch; background: var(--ui-border); margin: 0 4px; }
+  .tb-zoom { font-variant-numeric: tabular-nums; min-width: 42px; text-align: center; font-size: 12px; color: var(--ui-text-dim); }
+
+  .theme-dot {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s;
+  }
+  .theme-dot:hover { transform: scale(1.15); }
+  .theme-dot.active { border-color: white; }
+
+  /* --- info panel --- */
+  #info {
+    bottom: 16px; left: 16px;
+    padding: 12px 14px;
+    font-size: 11px;
+    line-height: 1.7;
+    color: var(--ui-text-dim);
+    max-width: 260px;
+  }
+  #info b { color: var(--ui-text); font-weight: 500; }
+  #info kbd {
+    background: color-mix(in srgb, var(--ui-text) 8%, transparent);
+    border: 1px solid var(--ui-border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 10px;
+    font-family: ui-monospace, "SF Mono", monospace;
+    color: var(--ui-text);
+  }
+  #info-close {
+    position: absolute;
+    top: 6px; right: 8px;
+    background: transparent;
+    border: none;
+    color: var(--ui-text-dim);
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: color 0.15s, background 0.15s;
+  }
+  #info-close:hover { color: var(--ui-text); background: color-mix(in srgb, var(--ui-text) 10%, transparent); }
+  #info { position: fixed; }
+  #info-toggle {
+    position: fixed;
+    bottom: 16px; left: 16px;
+    background: var(--ui-bg);
+    border: 1px solid var(--ui-border);
+    border-radius: 10px;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    color: var(--ui-text-dim);
+    font-size: 11px;
+    padding: 6px 10px;
+    cursor: pointer;
+    display: none;
+    transition: color 0.15s;
+    z-index: 50;
+  }
+  #info-toggle:hover { color: var(--ui-text); }
+
+  /* --- minimap --- */
+  #minimap {
+    bottom: 16px; right: 16px;
+    width: 200px; height: 140px;
+    padding: 0;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  #minimap-canvas { width: 100%; height: 100%; display: block; }
+
+  /* --- particles canvas (for edge flow) --- */
+  #particles {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    z-index: 2;
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="grid"></div>
+  <div id="world">
+    <svg id="edges"><g id="edges-g"></g></svg>
+    <div id="nodes"></div>
+  </div>
+  <canvas id="particles"></canvas>
+</div>
+
+<div id="toolbar" class="panel">
+  <h1>SquishyMind</h1>
+  <button class="tb-btn" id="btn-add" title="Add child to selected node (Tab)">+ Child</button>
+  <button class="tb-btn" id="btn-sibling" title="Add sibling to selected node (Enter)">+ Sibling</button>
+  <span class="tb-sep"></span>
+  <button class="tb-btn icon" id="btn-fit" title="Fit to screen (F)">Fit</button>
+  <button class="tb-btn icon" id="btn-center" title="Center on root (Home)">Center</button>
+  <span class="tb-zoom" id="zoom-label">100%</span>
+  <span class="tb-sep"></span>
+  <button class="tb-btn icon" id="btn-export" title="Export JSON">Export</button>
+  <button class="tb-btn icon" id="btn-import" title="Import JSON">Import</button>
+  <button class="tb-btn icon" id="btn-clear" title="Clear all">Reset</button>
+  <span class="tb-sep"></span>
+  <div class="theme-dot active" data-theme="aurora"  style="background: linear-gradient(135deg, #8b5cf6, #ec4899);" title="Aurora"></div>
+  <div class="theme-dot"        data-theme="sunrise" style="background: linear-gradient(135deg, #ff6b6b, #f59e0b);" title="Sunrise"></div>
+  <div class="theme-dot"        data-theme="forest"  style="background: linear-gradient(135deg, #4ade80, #22d3ee);" title="Forest"></div>
+  <div class="theme-dot"        data-theme="mono"    style="background: linear-gradient(135deg, #18181b, #71717a);" title="Mono"></div>
+</div>
+
+<div id="info" class="panel">
+  <button id="info-close" title="Hide shortcuts">✕</button>
+  <div><b>Drag</b> empty space to pan · <b>Scroll</b> to zoom</div>
+  <div><b>Click</b> a node to select · <b>Double-click</b> to edit</div>
+  <div><kbd>Tab</kbd> add child · <kbd>Enter</kbd> sibling · <kbd>Del</kbd> remove</div>
+  <div><kbd>F</kbd> fit · <kbd>Home</kbd> center · <kbd>Esc</kbd> deselect</div>
+</div>
+<button id="info-toggle">⌨ shortcuts</button>
+
+<div id="minimap" class="panel">
+  <canvas id="minimap-canvas"></canvas>
+</div>
+
+<input id="file-input" type="file" accept="application/json" style="display:none" />
+
+<script>
+'use strict';
+
+// =====================================================================
+// State
+// =====================================================================
+const state = {
+  nodes: {},            // id -> { id, x, y, label, parentId, depth, colorIdx, note, createdAt }
+  childIndex: {},       // parentId -> [childId, ...]
+  rootId: null,
+  selectedId: null,
+  hoveredId: null,
+  editingId: null,
+  detailId: null,       // id of node currently in detail view
+  pan: { x: 0, y: 0 },
+  zoom: 1,
+  theme: 'aurora',
+};
+
+const STORAGE_KEY = 'synapse-mindmap-v1';
+const COLOR_COUNT = 5; // number of theme accents
+let nextId = 1;
+const newId = () => 'n' + (nextId++);
+
+// Pick a color for a new child that's different from the parent (shift by 1-4).
+function pickChildColor(parent) {
+  if (!parent || parent.colorIdx == null) return Math.floor(Math.random() * COLOR_COUNT);
+  const offset = 1 + Math.floor(Math.random() * (COLOR_COUNT - 1));
+  return (parent.colorIdx + offset) % COLOR_COUNT;
+}
+
+// Apply per-node color via CSS variables on the element (overrides depth defaults).
+function applyNodeColor(el, colorIdx) {
+  if (colorIdx == null) return;
+  const a = (colorIdx % COLOR_COUNT) + 1;
+  const b = ((colorIdx + 2) % COLOR_COUNT) + 1;
+  el.style.setProperty('--accent-c1', `var(--accent-${a})`);
+  el.style.setProperty('--accent-c2', `var(--accent-${b})`);
+}
+
+// =====================================================================
+// DOM refs
+// =====================================================================
+const stage = document.getElementById('stage');
+const world = document.getElementById('world');
+const grid = document.getElementById('grid');
+const edgesSvg = document.getElementById('edges');
+const edgesG = document.getElementById('edges-g');
+const nodesLayer = document.getElementById('nodes');
+const zoomLabel = document.getElementById('zoom-label');
+const minimapCanvas = document.getElementById('minimap-canvas');
+const particlesCanvas = document.getElementById('particles');
+
+// =====================================================================
+// Demo data
+// =====================================================================
+function seedDemo() {
+  const root = addNode(null, 'My Brain', 0, 0);
+  ['Example', 'Hobby', 'Profession', 'Private'].forEach(name => addChild(root.id, name));
+  state.selectedId = root.id;
+}
+
+// =====================================================================
+// Node ops
+// =====================================================================
+function addNode(parentId, label, x, y, opts = {}) {
+  const id = newId();
+  const parent = parentId != null ? state.nodes[parentId] : null;
+  const depth = parent ? parent.depth + 1 : 0;
+  const colorIdx = opts.colorIdx != null
+    ? opts.colorIdx
+    : (parent ? pickChildColor(parent) : Math.floor(Math.random() * COLOR_COUNT));
+  const node = {
+    id, label, x, y, parentId, depth, colorIdx,
+    note: '',
+    createdAt: Date.now(),
+  };
+  state.nodes[id] = node;
+  if (parentId == null) state.rootId = id;
+  else (state.childIndex[parentId] = state.childIndex[parentId] || []).push(id);
+  return node;
+}
+
+function addChild(parentId, label = 'New idea') {
+  const parent = state.nodes[parentId];
+  if (!parent) return null;
+  const siblings = state.childIndex[parentId] || [];
+  const { x, y } = placeChild(parent, siblings.length);
+  return addNode(parentId, label, x, y);
+}
+
+function addSibling(nodeId, label = 'New sibling') {
+  const n = state.nodes[nodeId];
+  if (!n || n.parentId == null) return null;
+  return addChild(n.parentId, label);
+}
+
+function removeNode(id) {
+  if (id === state.rootId) return; // can't remove root
+  const n = state.nodes[id];
+  if (!n) return;
+  const kids = (state.childIndex[id] || []).slice();
+  kids.forEach(removeNode);
+  const sibs = state.childIndex[n.parentId];
+  if (sibs) state.childIndex[n.parentId] = sibs.filter(x => x !== id);
+  delete state.nodes[id];
+  delete state.childIndex[id];
+  if (state.selectedId === id) state.selectedId = n.parentId;
+}
+
+// All descendants (children, grandchildren, ...) of a node — used by hairy parent drag.
+function getDescendants(id) {
+  const out = [];
+  const queue = (state.childIndex[id] || []).slice();
+  while (queue.length) {
+    const cur = queue.shift();
+    out.push(cur);
+    const kids = state.childIndex[cur] || [];
+    for (const k of kids) queue.push(k);
+  }
+  return out;
+}
+
+// Place a new child by sweeping outward from the parent.
+// For non-root parents, fan within an arc on the side away from grandparent.
+// For root, distribute around the full circle.
+function placeChild(parent, indexAmongSiblings) {
+  const distance = parent.depth === 0 ? 220 : 180;
+  let baseAngle;
+  let arcSpread;
+  const total = (state.childIndex[parent.id] || []).length + 1; // including the new one we're about to add
+
+  if (parent.parentId == null) {
+    // root: spread evenly around 360°
+    baseAngle = 0;
+    arcSpread = Math.PI * 2;
+    const angle = (indexAmongSiblings / Math.max(total, 6)) * arcSpread;
+    return { x: parent.x + Math.cos(angle) * distance, y: parent.y + Math.sin(angle) * distance };
+  }
+
+  // non-root: outward from grandparent
+  const gp = state.nodes[parent.parentId];
+  baseAngle = Math.atan2(parent.y - gp.y, parent.x - gp.x);
+  arcSpread = Math.PI * 0.85;
+  // Spread children across the arc, centered on outward direction
+  if (total <= 1) {
+    return { x: parent.x + Math.cos(baseAngle) * distance, y: parent.y + Math.sin(baseAngle) * distance };
+  }
+  const angle = baseAngle - arcSpread / 2 + (indexAmongSiblings / (total - 1)) * arcSpread;
+  return { x: parent.x + Math.cos(angle) * distance, y: parent.y + Math.sin(angle) * distance };
+}
+
+// =====================================================================
+// Helpers
+// =====================================================================
+// Convert screen coordinates (e.g. mouse event) into world coordinates,
+// taking pan and zoom into account.
+function screenToWorld(sx, sy) {
+  const rect = stage.getBoundingClientRect();
+  const cx = sx - rect.left - rect.width / 2;
+  const cy = sy - rect.top - rect.height / 2;
+  return { x: (cx - state.pan.x) / state.zoom, y: (cy - state.pan.y) / state.zoom };
+}
+
+// Build the brain visual. Tries to load `brain.png` (or `brain.jpg`) from
+// the same folder as this HTML; falls back to a drawn SVG if not present.
+// To use your own brain image, save it as `brain.png` next to this file.
+function buildBrainSvg() {
+  const wrap = document.createElement('div');
+  wrap.className = 'brain-svg-wrap';
+
+  const img = document.createElement('img');
+  img.className = 'brain-img';
+  img.alt = 'My Brain';
+  img.draggable = false;
+  // Try in order: brain.svg → brain.png → brain.jpg → drawn SVG fallback.
+  const sources = ['brain.svg', 'brain.png', 'brain.jpg'];
+  let attempt = 0;
+  img.onerror = () => {
+    attempt += 1;
+    if (attempt < sources.length) {
+      img.src = sources[attempt];
+    } else {
+      img.remove();
+      wrap.innerHTML = renderBrainSvgFallback();
+    }
+  };
+  img.src = sources[0];
+  wrap.appendChild(img);
+  return wrap;
+}
+
+function renderBrainSvgFallback() {
+  return '<svg viewBox="0 0 200 160" class="brain-svg" xmlns="http://www.w3.org/2000/svg">' +
+    '<defs>' +
+      '<linearGradient id="brainGrad" x1="0" y1="0" x2="0.5" y2="1">' +
+        '<stop offset="0%" stop-color="#ffcadb"/>' +
+        '<stop offset="55%" stop-color="#ff85a8"/>' +
+        '<stop offset="100%" stop-color="#c84268"/>' +
+      '</linearGradient>' +
+    '</defs>' +
+    // brain stem (drawn first so cerebrum overlaps it)
+    '<path d="M 92 110 Q 88 132, 96 142 Q 106 145, 112 142 Q 116 130, 110 110 Z" fill="url(#brainGrad)" stroke="#8a2c4d" stroke-width="2"/>' +
+    // cerebellum (small bulge at lower-back)
+    '<path d="M 38 96 Q 26 104, 30 116 Q 38 124, 52 122 Q 64 116, 62 104 Q 50 96, 38 96 Z" fill="url(#brainGrad)" stroke="#8a2c4d" stroke-width="2" stroke-linejoin="round"/>' +
+    // cerebrum (main lobed body)
+    '<path d="M 40 86 C 28 70, 36 48, 56 46 C 58 28, 78 22, 96 30 C 106 20, 128 22, 138 36 C 152 26, 172 32, 180 52 C 196 56, 196 78, 184 86 C 196 102, 178 114, 162 110 C 154 120, 134 120, 124 110 C 116 120, 100 120, 92 110 C 84 116, 68 114, 64 104 C 52 104, 42 96, 40 86 Z" fill="url(#brainGrad)" stroke="#8a2c4d" stroke-width="2.2" stroke-linejoin="round"/>' +
+    // top cortex folds — three squiggly horizontals
+    '<path d="M 50 60 Q 62 56, 75 62 Q 90 56, 105 62 Q 120 56, 135 62 Q 150 58, 168 62" stroke="#722037" stroke-width="1.6" fill="none" stroke-linecap="round"/>' +
+    '<path d="M 44 76 Q 60 72, 75 78 Q 90 72, 108 78 Q 122 72, 140 78 Q 155 74, 172 76" stroke="#722037" stroke-width="1.6" fill="none" stroke-linecap="round"/>' +
+    '<path d="M 48 92 Q 65 88, 80 94 Q 95 88, 112 94 Q 128 88, 145 94 Q 158 90, 172 92" stroke="#722037" stroke-width="1.5" fill="none" stroke-linecap="round"/>' +
+    // cerebellum striations
+    '<path d="M 36 106 L 52 110" stroke="#722037" stroke-width="1.3" fill="none" stroke-linecap="round"/>' +
+    '<path d="M 33 112 L 54 116" stroke="#722037" stroke-width="1.3" fill="none" stroke-linecap="round"/>' +
+    '<path d="M 38 118 L 54 120" stroke="#722037" stroke-width="1.3" fill="none" stroke-linecap="round"/>' +
+    '</svg>';
+}
+
+// =====================================================================
+// Render
+// =====================================================================
+function applyTransform() {
+  world.style.transform = `translate(${state.pan.x}px, ${state.pan.y}px) scale(${state.zoom})`;
+  // grid scrolls in 1:1 with pan but doesn't scale (looks wrong if it does)
+  grid.style.backgroundPosition = `${state.pan.x}px ${state.pan.y}px, ${state.pan.x}px ${state.pan.y}px`;
+  zoomLabel.textContent = Math.round(state.zoom * 100) + '%';
+  drawMinimap();
+}
+
+function renderNodes() {
+  nodesLayer.innerHTML = '';
+  Object.values(state.nodes).forEach(n => {
+    const el = document.createElement('div');
+    el.className = 'node entering';
+    el.dataset.id = n.id;
+    el.dataset.depth = Math.min(n.depth, 5);
+    el.style.left = n.x + 'px';
+    el.style.top = n.y + 'px';
+    if (n.id === state.rootId) {
+      // Freestanding pulsing brain — no box, just the SVG with rings and a caption.
+      el.classList.add('is-brain');
+      const aura = document.createElement('div');
+      aura.className = 'brain-aura';
+      el.appendChild(aura);
+      el.appendChild(buildBrainSvg());
+      const lbl = document.createElement('div');
+      lbl.className = 'brain-label';
+      lbl.textContent = n.label;
+      el.appendChild(lbl);
+    } else {
+      el.textContent = n.label;
+    }
+    if (n.id === state.selectedId) el.classList.add('selected');
+
+    // add handle
+    const plus = document.createElement('div');
+    plus.className = 'add-handle';
+    plus.textContent = '+';
+    plus.title = 'Add child';
+    // Drag-to-create: clicking creates a child with auto-placement; clicking
+    // and dragging draws a ghost edge to wherever you release, then drops a
+    // new child at that exact world coordinate.
+    plus.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const startSX = e.clientX, startSY = e.clientY;
+      const parent = state.nodes[n.id];
+      let moved = false;
+      let endX = parent.x, endY = parent.y;
+
+      // Ghost edge attached to the SVG layer
+      const ghost = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      ghost.setAttribute('class', 'edge-ghost');
+      ghost.setAttribute('d', `M ${parent.x} ${parent.y} L ${parent.x} ${parent.y}`);
+      edgesG.appendChild(ghost);
+
+      function onMove(ev) {
+        if (!moved && Math.hypot(ev.clientX - startSX, ev.clientY - startSY) > 4) moved = true;
+        const w = screenToWorld(ev.clientX, ev.clientY);
+        endX = w.x; endY = w.y;
+        // soft S-curve to the cursor
+        const dx = (endX - parent.x) * 0.5;
+        ghost.setAttribute('d', `M ${parent.x} ${parent.y} C ${parent.x + dx} ${parent.y}, ${endX - dx} ${endY}, ${endX} ${endY}`);
+      }
+
+      function onUp() {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        ghost.remove();
+        let child;
+        if (moved) {
+          // dropped somewhere — create child at exactly that spot
+          child = addNode(parent.id, 'New idea', endX, endY);
+        } else {
+          // click without drag — auto-place via the usual fan algorithm
+          child = addChild(parent.id);
+        }
+        if (child) {
+          state.selectedId = child.id;
+          scheduleSave();
+          renderAll();
+          flashEdge(parent.id, child.id);
+          beginEdit(child.id);
+        }
+      }
+
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+    el.appendChild(plus);
+
+    // Per-node colour overrides depth-based defaults.
+    applyNodeColor(el, n.colorIdx);
+
+    // Detail view: this node expands to show its content.
+    if (n.id === state.detailId) {
+      el.classList.add('in-detail');
+      // Hide quick-add handle while in detail
+      plus.style.display = 'none';
+      // Build detail content (label, note, color picker, close button)
+      const detail = buildDetailContent(n);
+      el.appendChild(detail);
+    }
+
+    nodesLayer.appendChild(el);
+    setTimeout(() => el.classList.remove('entering'), 420);
+  });
+  // Action chip: floats near the selected node when it isn't in detail view.
+  renderActionChip();
+}
+
+// ---------------------------------------------------------------------
+// Detail view content + action chip
+// ---------------------------------------------------------------------
+function buildDetailContent(n) {
+  const wrap = document.createElement('div');
+  wrap.className = 'detail-content';
+  wrap.addEventListener('mousedown', e => e.stopPropagation());
+  wrap.addEventListener('click', e => e.stopPropagation());
+  wrap.addEventListener('dblclick', e => e.stopPropagation());
+
+  // Close button
+  const close = document.createElement('button');
+  close.className = 'detail-close';
+  close.title = 'Close (Esc)';
+  close.textContent = '✕';
+  close.addEventListener('click', closeDetail);
+  wrap.appendChild(close);
+
+  // Editable label
+  const labelInput = document.createElement('input');
+  labelInput.className = 'detail-label';
+  labelInput.value = n.label;
+  labelInput.spellcheck = false;
+  labelInput.addEventListener('input', () => {
+    n.label = labelInput.value || 'Untitled';
+    scheduleSave();
+  });
+  labelInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') labelInput.blur();
+    if (e.key === 'Escape') closeDetail();
+  });
+  wrap.appendChild(labelInput);
+
+  // Note textarea
+  const noteLabel = document.createElement('div');
+  noteLabel.className = 'detail-section-label';
+  noteLabel.textContent = 'Note';
+  wrap.appendChild(noteLabel);
+
+  const note = document.createElement('textarea');
+  note.className = 'detail-note';
+  note.placeholder = 'Add some thoughts…';
+  note.value = n.note || '';
+  note.addEventListener('input', () => {
+    n.note = note.value;
+    scheduleSave();
+  });
+  note.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); closeDetail(); }
+  });
+  wrap.appendChild(note);
+
+  // Color picker
+  const colorRow = document.createElement('div');
+  colorRow.className = 'detail-section-label';
+  colorRow.textContent = 'Color';
+  wrap.appendChild(colorRow);
+
+  const colors = document.createElement('div');
+  colors.className = 'detail-colors';
+  for (let i = 0; i < COLOR_COUNT; i++) {
+    const dot = document.createElement('button');
+    dot.className = 'color-dot' + (n.colorIdx === i ? ' active' : '');
+    dot.style.background = `linear-gradient(135deg, var(--accent-${i + 1}), var(--accent-${((i + 2) % COLOR_COUNT) + 1}))`;
+    dot.title = `Color ${i + 1}`;
+    dot.addEventListener('click', () => {
+      n.colorIdx = i;
+      scheduleSave();
+      renderAll();
+    });
+    colors.appendChild(dot);
+  }
+  wrap.appendChild(colors);
+
+  // Stub buttons for image / AI (next round)
+  const stubs = document.createElement('div');
+  stubs.className = 'detail-stubs';
+  stubs.innerHTML =
+    '<button class="stub-btn" disabled title="Coming soon">🖼️ Add image</button>' +
+    '<button class="stub-btn" disabled title="Coming soon">✨ AI expand</button>';
+  wrap.appendChild(stubs);
+
+  return wrap;
+}
+
+function renderActionChip() {
+  const existing = document.getElementById('action-chip');
+  if (state.detailId || state.editingId || !state.selectedId) {
+    if (existing) existing.remove();
+    return;
+  }
+  const n = state.nodes[state.selectedId];
+  if (!n) { if (existing) existing.remove(); return; }
+  let chip = existing;
+  if (!chip) {
+    chip = document.createElement('div');
+    chip.id = 'action-chip';
+    chip.className = 'action-chip';
+    chip.innerHTML =
+      '<button data-act="color" title="Cycle colour">🎨</button>' +
+      '<button data-act="open"  title="Expand (double-click)">' +
+        '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+          '<path d="M6 2H2V6 M10 2H14V6 M6 14H2V10 M10 14H14V10"/>' +
+        '</svg>' +
+      '</button>' +
+      '<button data-act="delete" title="Delete (Del)">✕</button>';
+    chip.addEventListener('mousedown', e => e.stopPropagation());
+    chip.addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      e.stopPropagation();
+      handleChipAction(btn.dataset.act);
+    });
+    nodesLayer.appendChild(chip);
+  }
+  // Position below the node in world coords.
+  const yOffset = (n.id === state.rootId) ? 110 : 50;
+  chip.style.left = n.x + 'px';
+  chip.style.top = (n.y + yOffset) + 'px';
+}
+
+function handleChipAction(act) {
+  const id = state.selectedId;
+  const n = id ? state.nodes[id] : null;
+  if (!n) return;
+  if (act === 'color') {
+    n.colorIdx = ((n.colorIdx ?? 0) + 1) % COLOR_COUNT;
+    scheduleSave();
+    renderAll();
+  } else if (act === 'open') {
+    openDetail(id);
+  } else if (act === 'delete') {
+    if (id === state.rootId) return;
+    removeNode(id);
+    scheduleSave();
+    renderAll();
+  }
+}
+
+function openDetail(id) {
+  if (!state.nodes[id]) return;
+  state.detailId = id;
+  state.editingId = null;
+  // gentle additional zoom into the detail
+  const n = state.nodes[id];
+  const z = Math.max(state.zoom, 1.5);
+  animateCamera(-n.x * z, -n.y * z, z, 350);
+  renderAll();
+  ensureBackdrop(true);
+  // focus the label input next tick
+  setTimeout(() => {
+    const el = nodesLayer.querySelector(`[data-id="${id}"] .detail-label`);
+    if (el) el.focus();
+  }, 0);
+}
+
+function closeDetail() {
+  state.detailId = null;
+  ensureBackdrop(false);
+  renderAll();
+}
+
+function ensureBackdrop(show) {
+  // Body class drives the dim — see CSS body.in-detail-mode rules.
+  // Avoids stacking-context issues that a separate fixed backdrop would have
+  // with the transformed #world container.
+  document.body.classList.toggle('in-detail-mode', !!show);
+}
+
+function renderEdges() {
+  // expand viewBox so edges render outside any container; we just position absolute and oversized
+  const all = Object.values(state.nodes);
+  if (!all.length) { edgesG.innerHTML = ''; return; }
+  const minX = Math.min(...all.map(n => n.x)) - 500;
+  const minY = Math.min(...all.map(n => n.y)) - 500;
+  const maxX = Math.max(...all.map(n => n.x)) + 500;
+  const maxY = Math.max(...all.map(n => n.y)) + 500;
+  edgesSvg.style.left = minX + 'px';
+  edgesSvg.style.top = minY + 'px';
+  edgesSvg.setAttribute('width', (maxX - minX));
+  edgesSvg.setAttribute('height', (maxY - minY));
+  edgesSvg.setAttribute('viewBox', `${minX} ${minY} ${maxX - minX} ${maxY - minY}`);
+
+  let html = '';
+  const sel = state.selectedId;
+  Object.values(state.nodes).forEach(n => {
+    if (n.parentId == null) return;
+    const p = state.nodes[n.parentId];
+    if (!p) return;
+    // give each edge a stable phase so the wiggle is varied but smooth
+    const phase = ((parseInt(n.id.replace('n', ''), 10) || 0) * 0.41) % (Math.PI * 2);
+    const d = curvePath(p.x, p.y, n.x, n.y, 0, phase);
+    const highlight = (sel && (sel === n.id || sel === p.id)) ? ' highlight' : '';
+    html += `<path class="edge-path${highlight}" d="${d}" data-from="${p.id}" data-to="${n.id}" data-phase="${phase}" />`;
+  });
+  edgesG.innerHTML = html;
+}
+
+function curvePath(x1, y1, x2, y2, t = 0, phase = 0) {
+  const dx = (x2 - x1) * 0.5;
+  const dy = (y2 - y1) * 0.5;
+  const length = Math.hypot(x2 - x1, y2 - y1);
+  // wiggle amplitude scales with edge length but capped
+  const amp = Math.min(18, length * 0.07);
+  // perpendicular unit vector
+  const nx = -(y2 - y1) / (length || 1);
+  const ny =  (x2 - x1) / (length || 1);
+  const w1 = Math.sin(t * 1.2 + phase) * amp;
+  const w2 = Math.sin(t * 1.5 + phase + 1.7) * amp;
+  const c1x = x1 + dx + nx * w1;
+  const c1y = y1 + dy * 0 + ny * w1;
+  const c2x = x2 - dx + nx * w2;
+  const c2y = y2 - dy * 0 + ny * w2;
+  return `M ${x1} ${y1} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${x2} ${y2}`;
+}
+
+function wiggleAllEdges(time) {
+  edgesG.querySelectorAll('path').forEach(p => {
+    const from = state.nodes[p.dataset.from];
+    const to = state.nodes[p.dataset.to];
+    if (!from || !to) return;
+    const phase = parseFloat(p.dataset.phase) || 0;
+    p.setAttribute('d', curvePath(from.x, from.y, to.x, to.y, time, phase));
+  });
+}
+
+function renderAll() {
+  renderEdges();
+  renderNodes();
+  applyTransform();
+}
+
+// =====================================================================
+// Pan / Zoom / Drag
+// =====================================================================
+let panState = null;       // { startX, startY, originX, originY }
+let dragNode = null;       // { id, startX, startY, originX, originY }
+let movedDuringClick = 0;
+
+stage.addEventListener('mousedown', (e) => {
+  if (e.button !== 0) return;
+  // In detail mode, clicking outside the focused node closes detail.
+  // The detail card itself stops propagation, so its own clicks won't bubble.
+  if (state.detailId) {
+    if (!e.target.closest('.in-detail')) closeDetail();
+    return;
+  }
+  const target = e.target.closest('.node');
+  if (target) {
+    const id = target.dataset.id;
+    const n = state.nodes[id];
+    if (!n) return;
+    dragNode = {
+      id,
+      startX: e.clientX, startY: e.clientY,
+      originX: n.x, originY: n.y,
+      descendants: getDescendants(id).map(did => ({
+        id: did,
+        originX: state.nodes[did].x,
+        originY: state.nodes[did].y,
+      })),
+    };
+    movedDuringClick = 0;
+  } else {
+    panState = {
+      startX: e.clientX, startY: e.clientY,
+      originX: state.pan.x, originY: state.pan.y,
+    };
+    stage.classList.add('panning');
+  }
+});
+
+window.addEventListener('mousemove', (e) => {
+  if (panState) {
+    state.pan.x = panState.originX + (e.clientX - panState.startX);
+    state.pan.y = panState.originY + (e.clientY - panState.startY);
+    applyTransform();
+  } else if (dragNode) {
+    const dx = (e.clientX - dragNode.startX) / state.zoom;
+    const dy = (e.clientY - dragNode.startY) / state.zoom;
+    movedDuringClick = Math.max(movedDuringClick, Math.hypot(dx, dy));
+    if (movedDuringClick > 4) {
+      const n = state.nodes[dragNode.id];
+      n.x = dragNode.originX + dx;
+      n.y = dragNode.originY + dy;
+      const el = nodesLayer.querySelector(`[data-id="${dragNode.id}"]`);
+      if (el) {
+        el.style.left = n.x + 'px';
+        el.style.top = n.y + 'px';
+        el.classList.add('dragging');
+      }
+      // Hairy parent: drag every descendant by the same delta so the whole
+      // subtree comes with you instead of getting orphaned.
+      for (const d of dragNode.descendants) {
+        const dn = state.nodes[d.id];
+        if (!dn) continue;
+        dn.x = d.originX + dx;
+        dn.y = d.originY + dy;
+        const dEl = nodesLayer.querySelector(`[data-id="${d.id}"]`);
+        if (dEl) {
+          dEl.style.left = dn.x + 'px';
+          dEl.style.top = dn.y + 'px';
+        }
+      }
+      // Edges follow automatically because the wiggle loop reads live positions
+      // every frame — no need to call renderEdges() during drag.
+    }
+  }
+});
+
+window.addEventListener('mouseup', (e) => {
+  if (panState) {
+    panState = null;
+    stage.classList.remove('panning');
+  }
+  if (dragNode) {
+    const wasClick = movedDuringClick < 4;
+    const id = dragNode.id;
+    const el = nodesLayer.querySelector(`[data-id="${id}"]`);
+    if (el) el.classList.remove('dragging');
+    dragNode = null;
+    if (wasClick) {
+      if (state.selectedId === id) {
+        // already selected — second click opens the detail view
+        openDetail(id);
+      } else {
+        state.selectedId = id;
+        renderAll();
+        focusOnNode(id);
+      }
+    } else {
+      // squish-bounce on drop
+      if (el) {
+        el.classList.remove('dropped');
+        // force reflow so animation re-triggers
+        void el.offsetWidth;
+        el.classList.add('dropped');
+        setTimeout(() => el && el.classList.remove('dropped'), 600);
+      }
+      scheduleSave();
+    }
+  }
+});
+
+stage.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const delta = -e.deltaY * 0.0015;
+  const oldZoom = state.zoom;
+  const newZoom = clamp(oldZoom * (1 + delta), 0.2, 3);
+  // zoom around cursor
+  const rect = stage.getBoundingClientRect();
+  const cx = e.clientX - rect.left - rect.width / 2;
+  const cy = e.clientY - rect.top - rect.height / 2;
+  // world coordinate at cursor
+  const wx = (cx - state.pan.x) / oldZoom;
+  const wy = (cy - state.pan.y) / oldZoom;
+  state.zoom = newZoom;
+  state.pan.x = cx - wx * newZoom;
+  state.pan.y = cy - wy * newZoom;
+  applyTransform();
+  scheduleSave();
+}, { passive: false });
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// =====================================================================
+// Double-click to edit
+// =====================================================================
+nodesLayer.addEventListener('dblclick', (e) => {
+  const target = e.target.closest('.node');
+  if (target) openDetail(target.dataset.id);
+});
+
+function beginEdit(id) {
+  const n = state.nodes[id];
+  if (!n) return;
+  state.editingId = id;
+  state.selectedId = id;
+  const el = nodesLayer.querySelector(`[data-id="${id}"]`);
+  if (!el) return;
+  el.classList.add('editing');
+  el.classList.add('selected');
+  el.textContent = '';
+  const ta = document.createElement('textarea');
+  ta.className = 'node-edit';
+  ta.value = n.label;
+  ta.rows = 1;
+  el.appendChild(ta);
+  ta.focus();
+  ta.setSelectionRange(0, ta.value.length);
+  const autosize = () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; };
+  ta.addEventListener('input', autosize); autosize();
+
+  const finish = (save) => {
+    if (state.editingId !== id) return;
+    state.editingId = null;
+    el.classList.remove('editing');
+    if (save) n.label = ta.value.trim() || 'Untitled';
+    scheduleSave();
+    renderAll();
+  };
+  ta.addEventListener('blur', () => finish(true));
+  ta.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); finish(true); }
+    if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+  });
+}
+
+// =====================================================================
+// Keyboard
+// =====================================================================
+window.addEventListener('keydown', (e) => {
+  if (state.editingId) return; // editing has its own handler
+  const tag = (e.target && e.target.tagName) || '';
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    if (state.selectedId) {
+      const c = addChild(state.selectedId);
+      if (c) { state.selectedId = c.id; scheduleSave(); renderAll(); flashEdge(c.parentId, c.id); beginEdit(c.id); }
+    }
+  } else if (e.key === 'Enter') {
+    if (!state.selectedId) return;
+    e.preventDefault();
+    const c = addSibling(state.selectedId);
+    if (c) { state.selectedId = c.id; scheduleSave(); renderAll(); flashEdge(c.parentId, c.id); beginEdit(c.id); }
+    else if (state.selectedId) beginEdit(state.selectedId);
+  } else if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (state.selectedId && state.selectedId !== state.rootId) {
+      e.preventDefault();
+      removeNode(state.selectedId);
+      scheduleSave();
+      renderAll();
+    }
+  } else if (e.key === 'Escape') {
+    if (state.detailId) {
+      closeDetail();
+    } else {
+      state.selectedId = null;
+      renderAll();
+    }
+  } else if (e.key.toLowerCase() === 'f') {
+    fitToScreen();
+  } else if (e.key === 'Home') {
+    centerOnRoot();
+  } else if (e.key === 'F2') {
+    if (state.selectedId) beginEdit(state.selectedId);
+  }
+});
+
+// =====================================================================
+// Toolbar
+// =====================================================================
+document.getElementById('btn-add').addEventListener('click', () => {
+  if (state.selectedId) {
+    const c = addChild(state.selectedId);
+    if (c) { state.selectedId = c.id; scheduleSave(); renderAll(); flashEdge(c.parentId, c.id); beginEdit(c.id); }
+  }
+});
+document.getElementById('btn-sibling').addEventListener('click', () => {
+  if (state.selectedId) {
+    const c = addSibling(state.selectedId);
+    if (c) { state.selectedId = c.id; scheduleSave(); renderAll(); flashEdge(c.parentId, c.id); beginEdit(c.id); }
+  }
+});
+document.getElementById('btn-fit').addEventListener('click', fitToScreen);
+document.getElementById('btn-center').addEventListener('click', centerOnRoot);
+document.getElementById('btn-export').addEventListener('click', () => {
+  const json = JSON.stringify({
+    nodes: state.nodes, childIndex: state.childIndex, rootId: state.rootId, theme: state.theme
+  }, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'synapse-mindmap-' + Date.now() + '.json';
+  a.click(); URL.revokeObjectURL(url);
+});
+document.getElementById('btn-import').addEventListener('click', () => {
+  document.getElementById('file-input').click();
+});
+document.getElementById('file-input').addEventListener('change', (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      state.nodes = data.nodes || {};
+      state.childIndex = data.childIndex || {};
+      state.rootId = data.rootId || null;
+      if (data.theme) setTheme(data.theme);
+      // bump nextId
+      const maxId = Math.max(0, ...Object.keys(state.nodes).map(id => parseInt(id.replace('n', '')) || 0));
+      nextId = maxId + 1;
+      state.selectedId = state.rootId;
+      scheduleSave();
+      renderAll();
+      fitToScreen();
+    } catch (err) { alert('Invalid JSON: ' + err.message); }
+  };
+  reader.readAsText(f);
+});
+document.getElementById('btn-clear').addEventListener('click', () => {
+  if (!confirm('Reset the mind map? This cannot be undone.')) return;
+  state.nodes = {}; state.childIndex = {}; state.rootId = null; state.selectedId = null;
+  nextId = 1;
+  const root = addNode(null, 'My Brain', 0, 0);
+  ['Example', 'Hobby', 'Profession', 'Private'].forEach(name => addChild(root.id, name));
+  state.selectedId = root.id;
+  scheduleSave();
+  renderAll();
+  centerOnRoot();
+});
+
+// info panel close / toggle
+(function () {
+  const info = document.getElementById('info');
+  const toggle = document.getElementById('info-toggle');
+  const HIDE_KEY = 'squishy-hide-info';
+  function setVisible(show) {
+    info.style.display = show ? '' : 'none';
+    toggle.style.display = show ? 'none' : '';
+    if (!show) localStorage.setItem(HIDE_KEY, '1');
+    else localStorage.removeItem(HIDE_KEY);
+  }
+  document.getElementById('info-close').addEventListener('click', () => setVisible(false));
+  toggle.addEventListener('click', () => setVisible(true));
+  if (localStorage.getItem(HIDE_KEY)) setVisible(false);
+})();
+
+// theme picker
+document.querySelectorAll('.theme-dot').forEach(el => {
+  el.addEventListener('click', () => setTheme(el.dataset.theme));
+});
+function setTheme(name) {
+  state.theme = name;
+  if (name === 'aurora') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', name);
+  document.querySelectorAll('.theme-dot').forEach(d => d.classList.toggle('active', d.dataset.theme === name));
+  scheduleSave();
+}
+
+// =====================================================================
+// Camera helpers
+// =====================================================================
+function bounds() {
+  const ns = Object.values(state.nodes);
+  if (!ns.length) return null;
+  return {
+    minX: Math.min(...ns.map(n => n.x)) - 100,
+    maxX: Math.max(...ns.map(n => n.x)) + 100,
+    minY: Math.min(...ns.map(n => n.y)) - 60,
+    maxY: Math.max(...ns.map(n => n.y)) + 60,
+  };
+}
+
+function fitToScreen() {
+  const b = bounds(); if (!b) return;
+  const w = stage.clientWidth, h = stage.clientHeight;
+  const targetZoom = clamp(Math.min(w / (b.maxX - b.minX), h / (b.maxY - b.minY)) * 0.85, 0.2, 1.5);
+  const cx = (b.minX + b.maxX) / 2;
+  const cy = (b.minY + b.maxY) / 2;
+  animateCamera(-cx * targetZoom, -cy * targetZoom, targetZoom);
+}
+
+function centerOnRoot() {
+  const root = state.nodes[state.rootId]; if (!root) return;
+  animateCamera(-root.x * state.zoom, -root.y * state.zoom, state.zoom);
+}
+
+// Click any node → center + comfortable zoom. The brain just centers
+// without changing zoom; everything else lifts to at least 1.3× so the
+// node feels "looked at".
+function focusOnNode(id) {
+  const n = state.nodes[id]; if (!n) return;
+  if (id === state.rootId) {
+    animateCamera(-n.x * state.zoom, -n.y * state.zoom, state.zoom, 500);
+  } else {
+    const z = Math.max(state.zoom, 1.3);
+    animateCamera(-n.x * z, -n.y * z, z, 500);
+  }
+}
+
+function animateCamera(targetX, targetY, targetZoom, duration = 400) {
+  const startX = state.pan.x, startY = state.pan.y, startZ = state.zoom;
+  const t0 = performance.now();
+  function tick() {
+    const t = Math.min(1, (performance.now() - t0) / duration);
+    const e = 1 - Math.pow(1 - t, 3);
+    state.pan.x = startX + (targetX - startX) * e;
+    state.pan.y = startY + (targetY - startY) * e;
+    state.zoom = startZ + (targetZoom - startZ) * e;
+    applyTransform();
+    if (t < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+// =====================================================================
+// Particles flowing along recently-touched edges
+// =====================================================================
+const pctx = particlesCanvas.getContext('2d');
+let pcW = 0, pcH = 0;
+function resizeParticles() {
+  pcW = particlesCanvas.clientWidth; pcH = particlesCanvas.clientHeight;
+  particlesCanvas.width = pcW * window.devicePixelRatio;
+  particlesCanvas.height = pcH * window.devicePixelRatio;
+  pctx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+}
+// Debounced resize — the world transform is viewport-independent, so we only
+// need to refresh the particle canvas and minimap. Calling renderAll on every
+// resize event was rebuilding the DOM and re-triggering enter animations,
+// which is what was crashing the page.
+let resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    resizeParticles();
+    drawMinimap();
+  }, 80);
+});
+resizeParticles();
+
+const particles = []; // { fromX, fromY, toX, toY, t, life }
+
+function flashEdge(parentId, childId, count = 6) {
+  const a = state.nodes[parentId], b = state.nodes[childId];
+  if (!a || !b) return;
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      fromX: a.x, fromY: a.y, toX: b.x, toY: b.y,
+      t: 0, life: 800 + i * 120, born: performance.now() + i * 60
+    });
+  }
+}
+
+function tickParticles() {
+  pctx.clearRect(0, 0, pcW, pcH);
+  const now = performance.now();
+  // wiggle all edges at the same time — pure sine-driven; perf-cheap up to a few hundred edges
+  wiggleAllEdges(now / 1000);
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--selection').trim() || '#a78bfa';
+
+  // transform from world to screen
+  const cx = stage.clientWidth / 2 + state.pan.x;
+  const cy = stage.clientHeight / 2 + state.pan.y;
+
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    const elapsed = now - p.born;
+    if (elapsed < 0) continue;
+    const t = elapsed / p.life;
+    if (t > 1) { particles.splice(i, 1); continue; }
+
+    // bezier-ish interp: ease curve
+    const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    const wx = p.fromX + (p.toX - p.fromX) * e;
+    const wy = p.fromY + (p.toY - p.fromY) * e;
+    const sx = cx + wx * state.zoom;
+    const sy = cy + wy * state.zoom;
+    const r = (1 - t) * 4 * state.zoom + 1.2;
+    const a = (1 - t) * 0.9;
+
+    pctx.beginPath();
+    pctx.arc(sx, sy, r, 0, Math.PI * 2);
+    pctx.fillStyle = accent;
+    pctx.globalAlpha = a;
+    pctx.shadowBlur = 12;
+    pctx.shadowColor = accent;
+    pctx.fill();
+  }
+  pctx.globalAlpha = 1;
+  pctx.shadowBlur = 0;
+  requestAnimationFrame(tickParticles);
+}
+requestAnimationFrame(tickParticles);
+
+// =====================================================================
+// Minimap
+// =====================================================================
+function drawMinimap() {
+  const ctx = minimapCanvas.getContext('2d');
+  const w = minimapCanvas.clientWidth, h = minimapCanvas.clientHeight;
+  minimapCanvas.width = w * window.devicePixelRatio;
+  minimapCanvas.height = h * window.devicePixelRatio;
+  ctx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  const b = bounds();
+  if (!b) return;
+  const bw = b.maxX - b.minX, bh = b.maxY - b.minY;
+  const scale = Math.min(w / bw, h / bh) * 0.85;
+  const ox = (w - bw * scale) / 2 - b.minX * scale;
+  const oy = (h - bh * scale) / 2 - b.minY * scale;
+
+  // edges
+  ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--edge') || '#666';
+  ctx.lineWidth = 1;
+  Object.values(state.nodes).forEach(n => {
+    if (n.parentId == null) return;
+    const p = state.nodes[n.parentId]; if (!p) return;
+    ctx.beginPath();
+    ctx.moveTo(p.x * scale + ox, p.y * scale + oy);
+    ctx.lineTo(n.x * scale + ox, n.y * scale + oy);
+    ctx.stroke();
+  });
+  // nodes
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--selection') || '#a78bfa';
+  Object.values(state.nodes).forEach(n => {
+    const r = n.id === state.rootId ? 4 : 2;
+    ctx.beginPath();
+    ctx.arc(n.x * scale + ox, n.y * scale + oy, r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  // viewport rect
+  const sw = stage.clientWidth, sh = stage.clientHeight;
+  const vx = (-state.pan.x - sw / 2) / state.zoom;
+  const vy = (-state.pan.y - sh / 2) / state.zoom;
+  const vw = sw / state.zoom, vh = sh / state.zoom;
+  ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--ui-text') || '#fff';
+  ctx.lineWidth = 1;
+  ctx.globalAlpha = 0.55;
+  ctx.strokeRect(vx * scale + ox, vy * scale + oy, vw * scale, vh * scale);
+  ctx.globalAlpha = 1;
+}
+
+// click on minimap to recenter
+minimapCanvas.addEventListener('click', (e) => {
+  const rect = minimapCanvas.getBoundingClientRect();
+  const px = e.clientX - rect.left;
+  const py = e.clientY - rect.top;
+  const w = rect.width, h = rect.height;
+  const b = bounds(); if (!b) return;
+  const bw = b.maxX - b.minX, bh = b.maxY - b.minY;
+  const scale = Math.min(w / bw, h / bh) * 0.85;
+  const ox = (w - bw * scale) / 2 - b.minX * scale;
+  const oy = (h - bh * scale) / 2 - b.minY * scale;
+  const wx = (px - ox) / scale, wy = (py - oy) / scale;
+  animateCamera(-wx * state.zoom, -wy * state.zoom, state.zoom);
+});
+
+// =====================================================================
+// Persistence
+// =====================================================================
+let saveTimer = null;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(save, 250);
+}
+function save() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      nodes: state.nodes, childIndex: state.childIndex, rootId: state.rootId,
+      pan: state.pan, zoom: state.zoom, theme: state.theme,
+    }));
+  } catch (e) { /* quota or private mode */ }
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    state.nodes = data.nodes || {};
+    state.childIndex = data.childIndex || {};
+    state.rootId = data.rootId || null;
+    state.pan = data.pan || { x: 0, y: 0 };
+    state.zoom = data.zoom || 1;
+    if (data.theme) setTheme(data.theme);
+    const maxId = Math.max(0, ...Object.keys(state.nodes).map(id => parseInt(id.replace('n', '')) || 0));
+    nextId = maxId + 1;
+    return Object.keys(state.nodes).length > 0;
+  } catch (e) { return false; }
+}
+
+// =====================================================================
+// Boot
+// =====================================================================
+const loaded = load();
+if (!loaded) seedDemo();
+state.selectedId = state.selectedId || state.rootId;
+renderAll();
+setTimeout(fitToScreen, 50);
+</script>
+</body>
+</html>
