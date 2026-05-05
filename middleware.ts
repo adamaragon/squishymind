@@ -2,16 +2,17 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
     return NextResponse.next({ request });
   }
 
-  let response = NextResponse.next({ request });
+  try {
+    let response = NextResponse.next({ request });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
+    const supabase = createServerClient(supabaseUrl, supabaseKey, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -24,22 +25,24 @@ export async function middleware(request: NextRequest) {
           );
         },
       },
-    },
-  );
+    });
 
-  const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
 
-  const path = request.nextUrl.pathname;
-  const protectedPrefixes = ['/dashboard', '/account', '/m/'];
-  const needsAuth = protectedPrefixes.some((p) => path === p || path.startsWith(p));
-  if (needsAuth && !user) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    url.searchParams.set('redirect', path);
-    return NextResponse.redirect(url);
+    const path = request.nextUrl.pathname;
+    const protectedPrefixes = ['/dashboard', '/account', '/m/'];
+    const needsAuth = protectedPrefixes.some((p) => path === p || path.startsWith(p));
+    if (needsAuth && !user) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/login';
+      url.searchParams.set('redirect', path);
+      return NextResponse.redirect(url);
+    }
+
+    return response;
+  } catch {
+    return NextResponse.next({ request });
   }
-
-  return response;
 }
 
 export const config = {
