@@ -11,9 +11,18 @@ export default async function EditorPage({ params }: { params: Promise<{ id: str
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
   const query = supabase
     .from('mindmaps')
-    .select('id, title, visibility, share_token, owner_id, slug');
+    .select('id, title, visibility, share_token, owner_id, slug, data');
   const { data: mindmap } = await (isUuid ? query.eq('id', id) : query.eq('slug', id)).single();
   if (!mindmap) notFound();
 
-  return <EditorShell id={mindmap.id} initialTitle={mindmap.title} initialSlug={mindmap.slug ?? ''} />;
+  return (
+    <EditorShell
+      id={mindmap.id}
+      initialTitle={mindmap.title}
+      initialSlug={mindmap.slug ?? ''}
+      initialVisibility={mindmap.visibility}
+      initialShareToken={mindmap.share_token}
+      initialData={mindmap.data}
+    />
+  );
 }

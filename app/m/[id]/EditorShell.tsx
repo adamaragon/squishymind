@@ -1,24 +1,34 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import ShareDialog from '@/components/ShareDialog';
+import MindMapCanvas from '@/components/MindMapCanvas';
+import type { MindMapData, Visibility } from '@/lib/types';
 
 function toSlug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
 }
 
 type SlugState = 'idle' | 'checking' | 'available' | 'taken' | 'invalid';
+type SaveState = 'idle' | 'saving' | 'error';
 
 export default function EditorShell({
   id,
   initialTitle,
   initialSlug,
+  initialVisibility,
+  initialShareToken,
+  initialData,
 }: {
   id: string;
   initialTitle: string;
   initialSlug: string;
+  initialVisibility: Visibility;
+  initialShareToken: string;
+  initialData: MindMapData;
 }) {
   const router = useRouter();
   const [title, setTitle] = useState(initialTitle);
@@ -27,14 +37,52 @@ export default function EditorShell({
   const [slugState, setSlugState] = useState<SlugState>('idle');
   const [slugOpen, setSlugOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [visibility, setVisibility] = useState<Visibility>(initialVisibility);
+  const [shareToken, setShareToken] = useState(initialShareToken);
+
+  const [saveState, setSaveState] = useState<SaveState>('idle');
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [, forceTick] = useState(0);
+  const dataTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastDataRef = useRef<MindMapData>(initialData);
 
   const titleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const slugTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const supabase = createClient();
-
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const shareUrl = `${origin}/m/${slug || id}`;
+
+  // Re-render once a minute so "Saved · Xs ago" stays current.
+  useEffect(() => {
+    const t = setInterval(() => forceTick((n) => n + 1), 60_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const persistData = useCallback(async (data: MindMapData) => {
+    setSaveState('saving');
+    try {
+      const res = await fetch(`/api/mindmaps/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data }),
+      });
+      if (!res.ok) throw new Error('save failed');
+      setSavedAt(Date.now());
+      setSaveState('idle');
+    } catch {
+      setSaveState('error');
+    }
+  }, [id]);
+
+  const onDataChange = useCallback((data: MindMapData) => {
+    lastDataRef.current = data;
+    if (dataTimer.current) clearTimeout(dataTimer.current);
+    dataTimer.current = setTimeout(() => persistData(data), 800);
+  }, [persistData]);
+
+  function retrySave() {
+    persistData(lastDataRef.current);
+  }
 
   async function persistTitle(value: string) {
     setSaving(true);
@@ -83,10 +131,14 @@ export default function EditorShell({
     if (e.key === 'Escape') { setSlugInput(slug); setSlugOpen(false); setSlugState('idle'); }
   }
 
-  function copyShareUrl() {
-    navigator.clipboard.writeText(shareUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  function formatSavedAgo(): string {
+    if (!savedAt) return 'Saved';
+    const sec = Math.max(1, Math.round((Date.now() - savedAt) / 1000));
+    if (sec < 60) return `Saved · ${sec}s ago`;
+    const min = Math.round(sec / 60);
+    if (min < 60) return `Saved · ${min}m ago`;
+    const hr = Math.round(min / 60);
+    return `Saved · ${hr}h ago`;
   }
 
   const slugIndicator: Record<SlugState, { text: string; color: string }> = {
@@ -156,25 +208,63 @@ export default function EditorShell({
 
         {/* share button */}
         <button
-          onClick={copyShareUrl}
+          onClick={() => setShareOpen(true)}
           className="shrink-0 flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-white transition-colors"
         >
-          {copied ? (
-            <><span>✓</span> Copied!</>
-          ) : (
-            <><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm8-8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM5.8 7.2l4.4-2.4M5.8 8.8l4.4 2.4"/></svg> Share</>
-          )}
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm8-8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM5.8 7.2l4.4-2.4M5.8 8.8l4.4 2.4" />
+          </svg>
+          Share
         </button>
 
-        {saving && <span className="text-xs text-[--text-dim] shrink-0">Saving…</span>}
+        {/* save indicator */}
+        <span className="text-xs text-[--text-dim] shrink-0 min-w-[5rem] text-right" aria-live="polite">
+          {saveState === 'saving' ? (
+            'Saving…'
+          ) : saveState === 'error' ? (
+            <button
+              onClick={retrySave}
+              className="text-red-300 hover:text-red-200 transition-colors"
+            >
+              ● Couldn’t save — retry
+            </button>
+          ) : savedAt ? (
+            formatSavedAgo()
+          ) : saving ? (
+            'Saving…'
+          ) : (
+            ''
+          )}
+        </span>
       </div>
 
-      {/* fullscreen canvas */}
-      <iframe
-        src="/editor.html"
-        title={title}
-        className="flex-1 w-full block border-0 min-h-0"
-      />
+      <div className="flex-1 min-h-0 relative">
+        <MindMapCanvas
+          key={id}
+          mindmapId={id}
+          initialData={initialData}
+          initialTitle={title}
+          onDataChange={onDataChange}
+          onTitleChange={(next) => {
+            setTitle(next);
+            if (titleTimer.current) clearTimeout(titleTimer.current);
+            titleTimer.current = setTimeout(() => persistTitle(next || 'Untitled mind map'), 600);
+          }}
+        />
+      </div>
+
+      {shareOpen && (
+        <ShareDialog
+          mindmapId={id}
+          initialVisibility={visibility}
+          initialShareToken={shareToken}
+          onClose={() => setShareOpen(false)}
+          onChange={({ visibility: v, shareToken: t }) => {
+            setVisibility(v);
+            setShareToken(t);
+          }}
+        />
+      )}
     </div>
   );
 }
