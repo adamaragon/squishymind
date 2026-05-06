@@ -142,6 +142,104 @@ export default function MindMapCanvas({
     const clamp = (v: number, a: number, b: number) =>
       Math.max(a, Math.min(b, v));
 
+    // ---- Sound effects ----
+    // Kenney's CC0 interface pack — pluck for "pop" on node creation, scratch for "stretch" during drag.
+    const popAudio = typeof Audio !== 'undefined' ? new Audio('/sfx/pop.ogg') : null;
+    const stretchAudio = typeof Audio !== 'undefined' ? new Audio('/sfx/stretch.ogg') : null;
+    const ttsAudio = typeof Audio !== 'undefined' ? new Audio() : null;
+    if (popAudio) popAudio.volume = 0.55;
+    if (stretchAudio) stretchAudio.volume = 0.4;
+    if (ttsAudio) ttsAudio.volume = 0.85;
+
+    let muted =
+      typeof window !== 'undefined' && window.localStorage?.getItem('squishy-muted') === '1';
+    function setMuted(next: boolean) {
+      muted = next;
+      try {
+        window.localStorage.setItem('squishy-muted', next ? '1' : '0');
+      } catch {
+        /* localStorage may be disabled */
+      }
+      const btn = root.querySelector('#smm-mute-btn') as HTMLButtonElement | null;
+      if (btn) btn.textContent = next ? '🔇' : '🔊';
+      if (next) {
+        ttsAudio?.pause();
+        if (ttsAudio) ttsAudio.currentTime = 0;
+      }
+    }
+
+    function playSfx(kind: 'pop' | 'stretch') {
+      if (muted) return;
+      const a = kind === 'pop' ? popAudio : stretchAudio;
+      if (!a) return;
+      try {
+        a.currentTime = 0;
+        // Browsers reject autoplay before any user gesture; call sites are all
+        // user-initiated (mousedown/mouseup/click/keydown) so this should always fire.
+        const p = a.play();
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+      } catch {
+        /* degrade silently — codec or transient browser error */
+      }
+    }
+
+    // ---- Voice (ElevenLabs TTS on label commit) ----
+    let ttsTimer: ReturnType<typeof setTimeout> | null = null;
+    let ttsRequestSeq = 0;
+    let ttsObjectUrl: string | null = null;
+    function speakLabel(text: string) {
+      if (muted) return;
+      const trimmed = text.trim();
+      if (!trimmed) return;
+      if (ttsTimer) clearTimeout(ttsTimer);
+      const debounceMs = 250;
+      ttsTimer = setTimeout(async () => {
+        const reqId = ++ttsRequestSeq;
+        try {
+          const res = await fetch('/api/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: trimmed }),
+          });
+          // A newer commit superseded us — drop this audio.
+          if (reqId !== ttsRequestSeq) return;
+          if (!res.ok) return;
+          const blob = await res.blob();
+          if (reqId !== ttsRequestSeq) return;
+          if (muted) return;
+          if (!ttsAudio) return;
+          if (ttsObjectUrl) URL.revokeObjectURL(ttsObjectUrl);
+          ttsObjectUrl = URL.createObjectURL(blob);
+          ttsAudio.src = ttsObjectUrl;
+          try {
+            await ttsAudio.play();
+          } catch {
+            /* autoplay rejected — first commit may need an existing user gesture */
+          }
+        } catch {
+          /* network or auth failure — degrade silently */
+        }
+      }, debounceMs);
+    }
+
+    // Pre-baked ElevenLabs phrases (no auth required, no API calls per event).
+    const oohAudio = typeof Audio !== 'undefined' ? new Audio('/sfx/ooooh.mp3') : null;
+    const awwAudio = typeof Audio !== 'undefined' ? new Audio('/sfx/aww.mp3') : null;
+    if (oohAudio) oohAudio.volume = 0.7;
+    if (awwAudio) awwAudio.volume = 0.7;
+    function playPhrase(kind: 'ooh' | 'aww') {
+      if (muted) return;
+      const a = kind === 'ooh' ? oohAudio : awwAudio;
+      if (!a) return;
+      try {
+        a.currentTime = 0;
+        const p = a.play();
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+      } catch {
+        /* degrade silently */
+      }
+    }
+
     function pickChildColor(parent: MindMapNode | null): number {
       if (!parent || parent.colorIdx == null)
         return Math.floor(Math.random() * COLOR_COUNT);
@@ -355,9 +453,10 @@ export default function MindMapCanvas({
 
       const labelInput = document.createElement('input');
       labelInput.className = 'detail-label';
+      const isRoot = n.id === state.rootId;
       // Show the parent-supplied title for the root node when it has no own label.
       const initialLabel =
-        n.id === state.rootId && (!n.label || n.label === 'My Brain')
+        isRoot && (!n.label || n.label === 'My Brain')
           ? titleRef.current || n.label || 'My Brain'
           : n.label;
       labelInput.value = initialLabel;
@@ -374,6 +473,9 @@ export default function MindMapCanvas({
         if (e.key === 'Escape') closeDetail();
       });
       wrap.appendChild(labelInput);
+
+      // Brain root is rename-only — skip note, color, and action buttons.
+      if (isRoot) return wrap;
 
       const noteLabel = document.createElement('div');
       noteLabel.className = 'detail-section-label';
@@ -421,14 +523,340 @@ export default function MindMapCanvas({
       }
       wrap.appendChild(colors);
 
-      const stubs = document.createElement('div');
-      stubs.className = 'detail-stubs';
-      stubs.innerHTML =
-        '<button class="stub-btn" disabled title="Coming soon">🖼️ Add image</button>' +
-        '<button class="stub-btn" disabled title="Coming soon">✨ AI expand</button>';
-      wrap.appendChild(stubs);
+      // Image preview (read-only and editor both render it).
+      const imageHolder = document.createElement('div');
+      imageHolder.className = 'detail-image-holder';
+      renderDetailImage(n, imageHolder);
+      wrap.appendChild(imageHolder);
+
+      // Action buttons row (hidden in readonly).
+      if (!readonlyRef.current) {
+        const actions = document.createElement('div');
+        actions.className = 'detail-stubs';
+
+        const imageBtn = document.createElement('button');
+        imageBtn.className = 'stub-btn ai-btn';
+        imageBtn.title = 'Upload an image (PNG, JPG, WEBP, GIF up to 5 MB)';
+        imageBtn.textContent = n.imageUrl ? '🖼️ Replace image' : '🖼️ Add image';
+        imageBtn.addEventListener('click', () => pickAndUploadImage(n, imageBtn, imageHolder));
+        actions.appendChild(imageBtn);
+
+        const aiBtn = document.createElement('button');
+        aiBtn.className = 'stub-btn ai-btn';
+        aiBtn.title = 'Suggest 5–8 child ideas with AI';
+        aiBtn.textContent = '✨ AI expand';
+        aiBtn.addEventListener('click', () => runAIExpand(n, aiBtn, wrap));
+        actions.appendChild(aiBtn);
+
+        wrap.appendChild(actions);
+
+        // Drag-drop image upload on the whole detail wrap.
+        wrap.addEventListener('dragenter', (e) => {
+          if (readonlyRef.current) return;
+          if (!e.dataTransfer?.types.includes('Files')) return;
+          e.preventDefault();
+          wrap.classList.add('dropzone-hover');
+        });
+        wrap.addEventListener('dragover', (e) => {
+          if (readonlyRef.current) return;
+          if (!e.dataTransfer?.types.includes('Files')) return;
+          e.preventDefault();
+        });
+        wrap.addEventListener('dragleave', (e) => {
+          if (e.target === wrap) wrap.classList.remove('dropzone-hover');
+        });
+        wrap.addEventListener('drop', async (e) => {
+          if (readonlyRef.current) return;
+          if (!e.dataTransfer?.files?.length) return;
+          e.preventDefault();
+          wrap.classList.remove('dropzone-hover');
+          const file = e.dataTransfer.files[0];
+          await uploadAndAttachImage(n, file, imageBtn, imageHolder);
+        });
+      }
 
       return wrap;
+    }
+
+    // ---- Image attachments ----
+    function renderDetailImage(n: MindMapNode, holder: HTMLElement) {
+      holder.innerHTML = '';
+      if (!n.imageUrl) return;
+      const img = document.createElement('img');
+      img.className = 'detail-image';
+      img.src = n.imageUrl;
+      img.alt = '';
+      img.draggable = false;
+      img.addEventListener('error', () => {
+        holder.innerHTML = '';
+        const broken = document.createElement('div');
+        broken.className = 'ai-error';
+        broken.textContent = '✕ Image failed to load.';
+        holder.appendChild(broken);
+      });
+      holder.appendChild(img);
+      if (!readonlyRef.current) {
+        const del = document.createElement('button');
+        del.className = 'detail-image-del';
+        del.title = 'Remove image';
+        del.textContent = '✕';
+        del.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          n.imageUrl = null;
+          renderDetailImage(n, holder);
+          scheduleSave();
+          renderAll();
+        });
+        holder.appendChild(del);
+      }
+    }
+
+    function pickAndUploadImage(
+      n: MindMapNode,
+      btn: HTMLButtonElement,
+      imageHolder: HTMLElement,
+    ) {
+      if (readonlyRef.current) return;
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/png,image/jpeg,image/webp,image/gif';
+      input.style.display = 'none';
+      input.addEventListener('change', async () => {
+        const file = input.files?.[0];
+        if (file) await uploadAndAttachImage(n, file, btn, imageHolder);
+        input.remove();
+      });
+      document.body.appendChild(input);
+      input.click();
+    }
+
+    async function uploadAndAttachImage(
+      n: MindMapNode,
+      file: File,
+      btn: HTMLButtonElement,
+      imageHolder: HTMLElement,
+    ) {
+      if (readonlyRef.current) return;
+      const ALLOWED = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+      if (!ALLOWED.includes(file.type)) {
+        showImageError(imageHolder, 'Only PNG, JPG, WEBP or GIF allowed.');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        showImageError(imageHolder, 'File is over 5 MB.');
+        return;
+      }
+
+      const originalText = btn.textContent || '🖼️ Add image';
+      btn.disabled = true;
+      btn.textContent = '🖼️ Uploading…';
+      btn.classList.add('ai-thinking');
+
+      try {
+        const form = new FormData();
+        form.append('file', file);
+        const res = await fetch('/api/upload', { method: 'POST', body: form });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const msg =
+            body.error === 'too_large' ? 'File is over 5 MB.'
+            : body.error === 'bad_type' ? 'Unsupported file type.'
+            : body.error === 'unauthenticated' ? 'You need to be signed in.'
+            : body.error || 'Upload failed.';
+          showImageError(imageHolder, msg);
+          return;
+        }
+        n.imageUrl = body.url;
+        renderDetailImage(n, imageHolder);
+        scheduleSave();
+        renderAll();
+        btn.textContent = '🖼️ Replace image';
+      } catch {
+        showImageError(imageHolder, 'Couldn’t reach upload server.');
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('ai-thinking');
+        if (btn.textContent === '🖼️ Uploading…') btn.textContent = originalText;
+      }
+    }
+
+    function showImageError(holder: HTMLElement, msg: string) {
+      const err = document.createElement('div');
+      err.className = 'ai-error';
+      err.textContent = `✕ ${msg}`;
+      holder.appendChild(err);
+      setTimeout(() => err.remove(), 4000);
+    }
+
+    // ---- AI expand ----
+    type AISuggestion = { label: string; note: string };
+
+    async function runAIExpand(
+      n: MindMapNode,
+      btn: HTMLButtonElement,
+      wrap: HTMLElement,
+    ) {
+      if (readonlyRef.current) return;
+      // Don't allow stacking — remove any existing panel first.
+      wrap.querySelector('.ai-panel')?.remove();
+      const originalText = btn.textContent || '✨ AI expand';
+      btn.disabled = true;
+      btn.textContent = '✨ Thinking…';
+      btn.classList.add('ai-thinking');
+
+      const parent = n.parentId ? state.nodes[n.parentId] : null;
+      const siblingIds = (parent && state.childIndex[parent.id]) || [];
+      const siblingLabels = siblingIds
+        .filter((sid) => sid !== n.id)
+        .map((sid) => state.nodes[sid]?.label)
+        .filter((l): l is string => !!l);
+
+      let suggestions: AISuggestion[] = [];
+      let errorMsg: string | null = null;
+      try {
+        const res = await fetch(`/api/mindmaps/${mindmapId}/expand`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nodeLabel: n.label,
+            nodeNote: n.note || undefined,
+            parentLabel: parent?.label,
+            siblingLabels,
+          }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          errorMsg = body.error || `request failed (${res.status})`;
+        } else {
+          const body = await res.json();
+          suggestions = Array.isArray(body.children) ? body.children : [];
+        }
+      } catch {
+        errorMsg = 'Couldn’t reach AI';
+      }
+
+      btn.disabled = false;
+      btn.textContent = originalText;
+      btn.classList.remove('ai-thinking');
+
+      if (errorMsg) {
+        const err = document.createElement('div');
+        err.className = 'ai-error';
+        err.textContent = `✕ ${errorMsg}`;
+        wrap.appendChild(err);
+        setTimeout(() => err.remove(), 4000);
+        return;
+      }
+
+      if (suggestions.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'ai-error';
+        empty.textContent = 'No suggestions returned. Try a different label.';
+        wrap.appendChild(empty);
+        setTimeout(() => empty.remove(), 4000);
+        return;
+      }
+
+      renderAIPanel(n, suggestions, wrap);
+    }
+
+    function renderAIPanel(
+      parentNode: MindMapNode,
+      suggestions: AISuggestion[],
+      wrap: HTMLElement,
+    ) {
+      const panel = document.createElement('div');
+      panel.className = 'ai-panel';
+
+      const header = document.createElement('div');
+      header.className = 'ai-panel-header';
+      header.innerHTML = `<span class="ai-panel-title">✨ Suggestions</span><span class="ai-panel-hint">tweak labels, uncheck to drop</span>`;
+      panel.appendChild(header);
+
+      const list = document.createElement('ul');
+      list.className = 'ai-panel-list';
+
+      const items: { label: string; note: string; accepted: boolean; input: HTMLInputElement }[] = [];
+
+      suggestions.forEach((s) => {
+        const li = document.createElement('li');
+        li.className = 'ai-panel-item';
+
+        const checkLabel = document.createElement('label');
+        checkLabel.className = 'ai-panel-check';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = true;
+        checkLabel.appendChild(checkbox);
+
+        const body = document.createElement('div');
+        body.className = 'ai-panel-body';
+
+        const labelInput = document.createElement('input');
+        labelInput.className = 'ai-panel-label';
+        labelInput.value = s.label;
+
+        body.appendChild(labelInput);
+        if (s.note) {
+          const note = document.createElement('div');
+          note.className = 'ai-panel-note';
+          note.textContent = s.note;
+          body.appendChild(note);
+        }
+
+        li.appendChild(checkLabel);
+        li.appendChild(body);
+        list.appendChild(li);
+
+        const item = { label: s.label, note: s.note, accepted: true, input: labelInput };
+        labelInput.addEventListener('input', () => {
+          item.label = labelInput.value;
+          updateAddCount();
+        });
+        checkbox.addEventListener('change', () => {
+          item.accepted = checkbox.checked;
+          updateAddCount();
+        });
+        items.push(item);
+      });
+
+      panel.appendChild(list);
+
+      const actions = document.createElement('div');
+      actions.className = 'ai-panel-actions';
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'ai-panel-btn ai-panel-btn-ghost';
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.addEventListener('click', () => panel.remove());
+
+      const addBtn = document.createElement('button');
+      addBtn.className = 'ai-panel-btn ai-panel-btn-primary';
+      addBtn.addEventListener('click', () => {
+        const picks = items.filter((it) => it.accepted && it.label.trim().length > 0);
+        if (picks.length === 0) return;
+        for (const pick of picks) {
+          const child = addChild(parentNode.id, pick.label.trim());
+          if (child) child.note = pick.note || '';
+        }
+        scheduleSave();
+        panel.remove();
+        renderAll();
+        playSfx('pop');
+      });
+
+      function updateAddCount() {
+        const count = items.filter((it) => it.accepted && it.label.trim().length > 0).length;
+        addBtn.disabled = count === 0;
+        addBtn.textContent = count > 0 ? `Add ${count} selected` : 'Add selected';
+      }
+      updateAddCount();
+
+      actions.appendChild(cancelBtn);
+      actions.appendChild(addBtn);
+      panel.appendChild(actions);
+
+      wrap.appendChild(panel);
     }
 
     // ---- Action chip ----
@@ -492,6 +920,7 @@ export default function MindMapCanvas({
         removeNode(id);
         scheduleSave();
         renderAll();
+        playPhrase('aww');
       }
     }
 
@@ -543,6 +972,21 @@ export default function MindMapCanvas({
           lbl.className = 'brain-label';
           lbl.textContent = n.label;
           el.appendChild(lbl);
+        } else if (n.imageUrl) {
+          const thumb = document.createElement('img');
+          thumb.className = 'node-thumb';
+          thumb.src = n.imageUrl;
+          thumb.alt = '';
+          thumb.draggable = false;
+          thumb.addEventListener('error', () => {
+            // Graceful fallback: if image fails to load, hide thumb so label still reads.
+            thumb.style.display = 'none';
+          });
+          el.appendChild(thumb);
+          const lbl = document.createElement('div');
+          lbl.className = 'node-label';
+          lbl.textContent = n.label;
+          el.appendChild(lbl);
         } else {
           el.textContent = n.label;
         }
@@ -580,8 +1024,10 @@ export default function MindMapCanvas({
               if (
                 !moved &&
                 Math.hypot(ev.clientX - startSX, ev.clientY - startSY) > 4
-              )
+              ) {
                 moved = true;
+                playSfx('stretch');
+              }
               const w = screenToWorld(ev.clientX, ev.clientY);
               endX = w.x;
               endY = w.y;
@@ -608,6 +1054,7 @@ export default function MindMapCanvas({
                 renderAll();
                 flashEdge(parent.id, child.id);
                 beginEdit(child.id);
+                playSfx('pop');
               }
             }
 
@@ -707,13 +1154,18 @@ export default function MindMapCanvas({
       ta.addEventListener('input', autosize);
       autosize();
 
+      const originalLabel = n.label;
       const finish = (save: boolean) => {
         if (state.editingId !== id) return;
         state.editingId = null;
         el.classList.remove('editing');
         if (save) {
-          n.label = ta.value.trim() || 'Untitled';
+          const next = ta.value.trim() || 'Untitled';
+          n.label = next;
           if (n.id === state.rootId) onTitleChangeRef.current?.(n.label);
+          // Speak the label only when it actually changed and isn't the brain
+          // (brain has its own "Ooooh" on click — see playPhrase).
+          if (next !== originalLabel && n.id !== state.rootId) speakLabel(next);
         }
         scheduleSave();
         renderAll();
@@ -853,6 +1305,7 @@ export default function MindMapCanvas({
         const draggedNode = dragNode;
         dragNode = null;
         if (wasClick) {
+          if (id === state.rootId) playPhrase('ooh');
           if (state.selectedId === id) {
             // already selected — second click opens the detail view (only when
             // not readonly: spec says no detail in editable mode for readonly,
@@ -928,6 +1381,7 @@ export default function MindMapCanvas({
             renderAll();
             flashEdge(c.parentId!, c.id);
             beginEdit(c.id);
+            playSfx('pop');
           }
         }
       } else if (e.key === 'Enter') {
@@ -941,6 +1395,7 @@ export default function MindMapCanvas({
           renderAll();
           flashEdge(c.parentId!, c.id);
           beginEdit(c.id);
+          playSfx('pop');
         } else if (state.selectedId) {
           beginEdit(state.selectedId);
         }
@@ -951,6 +1406,7 @@ export default function MindMapCanvas({
           removeNode(state.selectedId);
           scheduleSave();
           renderAll();
+          playPhrase('aww');
         }
       } else if (e.key === 'Escape') {
         if (state.detailId) {
@@ -1228,6 +1684,7 @@ export default function MindMapCanvas({
           renderAll();
           flashEdge(c.parentId!, c.id);
           beginEdit(c.id);
+          playSfx('pop');
         }
       }
     }
@@ -1241,6 +1698,7 @@ export default function MindMapCanvas({
           renderAll();
           flashEdge(c.parentId!, c.id);
           beginEdit(c.id);
+          playSfx('pop');
         }
       }
     }
@@ -1325,6 +1783,7 @@ export default function MindMapCanvas({
       '[data-tb="import"]',
     ) as HTMLButtonElement | null;
     const btnClear = root.querySelector('[data-tb="clear"]') as HTMLButtonElement | null;
+    const btnMute = root.querySelector('[data-tb="mute"]') as HTMLButtonElement | null;
     const themeDots = Array.from(
       root.querySelectorAll('.theme-dot'),
     ) as HTMLElement[];
@@ -1336,7 +1795,10 @@ export default function MindMapCanvas({
     btnExport?.addEventListener('click', onExport);
     btnImport?.addEventListener('click', onImportClick);
     btnClear?.addEventListener('click', onClear);
+    btnMute?.addEventListener('click', () => setMuted(!muted));
     fileInputRef.current?.addEventListener('change', onFileChange);
+    // Sync the button label with the persisted preference at mount.
+    if (btnMute) btnMute.textContent = muted ? '🔇' : '🔊';
 
     function applyThemeAttr(name: Theme) {
       state.theme = name;
@@ -1390,6 +1852,9 @@ export default function MindMapCanvas({
       saveTimerRef.current = null;
       if (resizeTimer) clearTimeout(resizeTimer);
       resizeTimer = null;
+      if (ttsTimer) clearTimeout(ttsTimer);
+      if (ttsObjectUrl) URL.revokeObjectURL(ttsObjectUrl);
+      ttsObjectUrl = null;
 
       stage.removeEventListener('mousedown', onStageMouseDown);
       stage.removeEventListener('wheel', onStageWheel);
@@ -1491,6 +1956,15 @@ export default function MindMapCanvas({
             </button>
           </>
         )}
+        <span className="tb-sep" />
+        <button
+          id="smm-mute-btn"
+          className="tb-btn icon"
+          data-tb="mute"
+          title="Mute / unmute sound effects"
+        >
+          🔊
+        </button>
         <span className="tb-sep" />
         <div
           className="theme-dot active"
@@ -2346,6 +2820,215 @@ export default function MindMapCanvas({
           font-size: 11px;
           cursor: not-allowed;
           font-family: inherit;
+        }
+        .smm-root :global(.stub-btn.ai-btn) {
+          border-style: solid;
+          border-color: color-mix(in srgb, var(--selection) 35%, var(--node-border));
+          color: var(--ui-text);
+          cursor: pointer;
+          transition: background 0.12s, border-color 0.12s;
+        }
+        .smm-root :global(.stub-btn.ai-btn:hover:not(:disabled)) {
+          background: color-mix(in srgb, var(--selection) 12%, transparent);
+          border-color: var(--selection);
+        }
+        .smm-root :global(.stub-btn.ai-btn.ai-thinking) {
+          animation: aiPulse 1.4s ease-in-out infinite;
+        }
+        @keyframes aiPulse {
+          0%, 100% { opacity: 0.7; }
+          50%      { opacity: 1; }
+        }
+        .smm-root :global(.ai-error) {
+          font-size: 12px;
+          color: #fca5a5;
+          padding: 6px 8px;
+          border: 1px solid rgba(252, 165, 165, 0.3);
+          border-radius: 8px;
+          background: rgba(252, 165, 165, 0.05);
+        }
+        .smm-root :global(.ai-panel) {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          background: color-mix(in srgb, var(--node-bg) 70%, black 12%);
+          border: 1px solid var(--node-border);
+          border-radius: 10px;
+          padding: 10px;
+          margin-top: 4px;
+          animation: aiPanelIn 0.22s cubic-bezier(.34, 1.56, .64, 1);
+        }
+        @keyframes aiPanelIn {
+          0% { opacity: 0; transform: translateY(-4px) scale(0.98); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .smm-root :global(.ai-panel-header) {
+          display: flex;
+          justify-content: space-between;
+          align-items: baseline;
+          gap: 8px;
+        }
+        .smm-root :global(.ai-panel-title) {
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 0.6px;
+          text-transform: uppercase;
+          color: var(--ui-text);
+        }
+        .smm-root :global(.ai-panel-hint) {
+          font-size: 10px;
+          color: var(--ui-text-dim);
+        }
+        .smm-root :global(.ai-panel-list) {
+          list-style: none;
+          margin: 0;
+          padding: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          max-height: 240px;
+          overflow-y: auto;
+        }
+        .smm-root :global(.ai-panel-item) {
+          display: flex;
+          gap: 8px;
+          align-items: flex-start;
+          padding: 4px 6px;
+          border-radius: 6px;
+          transition: background 0.12s;
+        }
+        .smm-root :global(.ai-panel-item:hover) {
+          background: color-mix(in srgb, var(--ui-text) 5%, transparent);
+        }
+        .smm-root :global(.ai-panel-check) {
+          margin-top: 4px;
+          flex-shrink: 0;
+        }
+        .smm-root :global(.ai-panel-check input) {
+          accent-color: var(--selection);
+        }
+        .smm-root :global(.ai-panel-body) {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        .smm-root :global(.ai-panel-label) {
+          background: transparent;
+          border: 1px solid transparent;
+          outline: none;
+          color: var(--node-text);
+          font-family: inherit;
+          font-size: 13px;
+          font-weight: 500;
+          padding: 2px 4px;
+          border-radius: 4px;
+          width: 100%;
+        }
+        .smm-root :global(.ai-panel-label:hover),
+        .smm-root :global(.ai-panel-label:focus) {
+          border-color: var(--node-border);
+          background: color-mix(in srgb, var(--node-bg) 60%, black 8%);
+        }
+        .smm-root :global(.ai-panel-note) {
+          font-size: 11px;
+          line-height: 1.45;
+          color: var(--ui-text-dim);
+          padding: 0 4px;
+        }
+        .smm-root :global(.ai-panel-actions) {
+          display: flex;
+          justify-content: flex-end;
+          gap: 6px;
+        }
+        .smm-root :global(.ai-panel-btn) {
+          font-family: inherit;
+          font-size: 12px;
+          padding: 6px 12px;
+          border-radius: 8px;
+          cursor: pointer;
+          border: 1px solid var(--ui-border);
+          background: transparent;
+          color: var(--ui-text);
+          transition: background 0.12s, border-color 0.12s;
+        }
+        .smm-root :global(.ai-panel-btn-ghost:hover) {
+          background: color-mix(in srgb, var(--ui-text) 8%, transparent);
+        }
+        .smm-root :global(.ai-panel-btn-primary) {
+          background: var(--selection);
+          color: var(--bg-1);
+          border-color: var(--selection);
+          font-weight: 600;
+        }
+        .smm-root :global(.ai-panel-btn-primary:hover:not(:disabled)) {
+          background: color-mix(in srgb, var(--selection) 85%, white);
+        }
+        .smm-root :global(.ai-panel-btn-primary:disabled) {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+
+        /* Image attachments */
+        .smm-root :global(.node-thumb) {
+          display: block;
+          width: 100px;
+          height: 100px;
+          object-fit: cover;
+          border-radius: 10px;
+          margin: -2px auto 6px;
+          border: 1px solid color-mix(in srgb, var(--accent-c1, var(--accent-1)) 35%, var(--node-border));
+          box-shadow: 0 2px 6px var(--node-shadow);
+          background: color-mix(in srgb, var(--node-bg) 80%, black 8%);
+        }
+        .smm-root :global(.node-label) {
+          display: block;
+        }
+        .smm-root :global(.detail-image-holder) {
+          position: relative;
+          display: flex;
+          justify-content: center;
+        }
+        .smm-root :global(.detail-image-holder:empty) {
+          display: none;
+        }
+        .smm-root :global(.detail-image) {
+          display: block;
+          max-width: 100%;
+          max-height: 240px;
+          border-radius: 10px;
+          border: 1px solid var(--node-border);
+          box-shadow: 0 2px 6px var(--node-shadow);
+          background: color-mix(in srgb, var(--node-bg) 80%, black 8%);
+        }
+        .smm-root :global(.detail-image-del) {
+          position: absolute;
+          top: 6px;
+          right: 6px;
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          border: 1px solid rgba(255, 255, 255, 0.18);
+          background: rgba(0, 0, 0, 0.55);
+          color: white;
+          font-size: 12px;
+          line-height: 1;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 0.15s, transform 0.15s;
+          padding: 0;
+        }
+        .smm-root :global(.detail-image-del:hover) {
+          background: rgba(0, 0, 0, 0.78);
+          transform: scale(1.08);
+        }
+        .smm-root :global(.detail-content.dropzone-hover) {
+          outline: 2px dashed color-mix(in srgb, var(--selection) 60%, transparent);
+          outline-offset: 4px;
+          border-radius: 8px;
         }
 
         /* Toolbar */

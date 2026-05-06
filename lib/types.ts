@@ -8,6 +8,7 @@ export type MindMapNode = {
   colorIdx: number;
   note: string;
   createdAt: number;
+  imageUrl?: string | null;
 };
 
 export type MindMapData = {
