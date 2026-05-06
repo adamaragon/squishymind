@@ -158,7 +158,9 @@ export default function MindMapCanvas({
     const popAudio = typeof Audio !== 'undefined' ? new Audio('/sfx/pop.mp3') : null;
     const stretchAudio = typeof Audio !== 'undefined' ? new Audio('/sfx/stretch.mp3') : null;
     const ttsAudio = typeof Audio !== 'undefined' ? new Audio() : null;
-    if (popAudio) popAudio.volume = 0.55;
+    // All SFX files are normalized to -9 LUFS via ffmpeg loudnorm so volume=1
+    // gives a consistent perceived loudness across pop/stretch/ooh/aww.
+    if (popAudio) popAudio.volume = 1.0;
     if (stretchAudio) stretchAudio.volume = 1.0;
     if (ttsAudio) ttsAudio.volume = 1.0;
 
