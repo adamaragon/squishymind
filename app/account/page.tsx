@@ -1,21 +1,29 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Header from '@/components/Header';
 import { createClient } from '@/lib/supabase/server';
+import DeleteAccountButton from './DeleteAccountButton';
 
 async function deleteAccount() {
   'use server';
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+  const cookieStore = await cookies();
+  const cookieHeader = cookieStore
+    .getAll()
+    .map((c) => `${c.name}=${c.value}`)
+    .join('; ');
 
-  // Cascade-delete via the on-delete policy on auth.users.
-  // We still need an admin call to actually remove the auth row — but the
-  // anon key can't do that. For now we sign the user out and delete their
-  // owned data; full auth-row deletion is wired up server-side next round.
-  await supabase.from('mindmaps').delete().eq('owner_id', user.id);
-  await supabase.from('profiles').delete().eq('id', user.id);
-  await supabase.auth.signOut();
+  const res = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/account/delete`, {
+    method: 'POST',
+    headers: { Cookie: cookieHeader },
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const { error } = await res.json().catch(() => ({ error: 'unknown' }));
+    throw new Error(`Account deletion failed: ${error}`);
+  }
+
   redirect('/?deleted=1');
 }
 
@@ -58,19 +66,7 @@ export default async function AccountPage() {
             Permanently deletes your account, all your mind maps, and all
             collaborator invites. No email confirmation. No undo.
           </p>
-          <form action={deleteAccount}>
-            <button
-              type="submit"
-              className="btn btn-danger"
-              onClick={(e) => {
-                if (!confirm('Permanently delete your account and all maps? This cannot be undone.')) {
-                  e.preventDefault();
-                }
-              }}
-            >
-              Delete my account
-            </button>
-          </form>
+          <DeleteAccountButton action={deleteAccount} />
         </section>
 
         <p className="text-center text-sm text-[--text-dim] mt-8">
