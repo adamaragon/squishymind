@@ -93,6 +93,8 @@ export default function MindMapCanvas({
   const rafRef = useRef<number | null>(null);
   const cancelledRef = useRef(false);
   const initialDataRef = useRef<MindMapData>(initialData);
+  // Imperative re-render hook the main effect populates so other effects (e.g. title sync) can refresh.
+  const renderAllRef = useRef<(() => void) | null>(null);
 
   // Keep latest callbacks/props readable from event handlers without re-running effect
   useEffect(() => {
@@ -104,8 +106,17 @@ export default function MindMapCanvas({
   useEffect(() => {
     readonlyRef.current = readonly;
   }, [readonly]);
+  // The brain's label is the page title; sync them so changes from the editor
+  // toolbar propagate to the brain-label DOM under the SVG.
   useEffect(() => {
     titleRef.current = initialTitle;
+    const state = stateRef.current;
+    const root = state.rootId ? state.nodes[state.rootId] : null;
+    const next = initialTitle || 'My Brain';
+    if (root && root.label !== next) {
+      root.label = next;
+      renderAllRef.current?.();
+    }
   }, [initialTitle]);
 
   // ============================================================
@@ -143,9 +154,9 @@ export default function MindMapCanvas({
       Math.max(a, Math.min(b, v));
 
     // ---- Sound effects ----
-    // Kenney's CC0 interface pack — pluck for "pop" on node creation, scratch for "stretch" during drag.
-    const popAudio = typeof Audio !== 'undefined' ? new Audio('/sfx/pop.ogg') : null;
-    const stretchAudio = typeof Audio !== 'undefined' ? new Audio('/sfx/stretch.ogg') : null;
+    // Pre-baked ElevenLabs sound-generation clips: pop on node creation, stretch on drag.
+    const popAudio = typeof Audio !== 'undefined' ? new Audio('/sfx/pop.mp3') : null;
+    const stretchAudio = typeof Audio !== 'undefined' ? new Audio('/sfx/stretch.mp3') : null;
     const ttsAudio = typeof Audio !== 'undefined' ? new Audio() : null;
     if (popAudio) popAudio.volume = 0.55;
     if (stretchAudio) stretchAudio.volume = 0.4;
@@ -465,7 +476,14 @@ export default function MindMapCanvas({
       labelInput.addEventListener('input', () => {
         if (readonlyRef.current) return;
         n.label = labelInput.value || 'Untitled';
-        if (n.id === state.rootId) onTitleChangeRef.current?.(n.label);
+        if (n.id === state.rootId) {
+          onTitleChangeRef.current?.(n.label);
+          // Brain-label is hidden by CSS in detail mode but must reflect the
+          // new value the moment detail closes. Update it now so a closeDetail
+          // that doesn't trigger a full renderAll still leaves the right text.
+          const brainLbl = nodesLayer.querySelector('.brain-label') as HTMLElement | null;
+          if (brainLbl) brainLbl.textContent = n.label;
+        }
         scheduleSave();
       });
       labelInput.addEventListener('keydown', (e) => {
@@ -970,7 +988,17 @@ export default function MindMapCanvas({
           el.appendChild(buildBrainSvg());
           const lbl = document.createElement('div');
           lbl.className = 'brain-label';
-          lbl.textContent = n.label;
+          lbl.textContent = titleRef.current || n.label || 'My Brain';
+          if (!readonlyRef.current) {
+            lbl.classList.add('brain-label-clickable');
+            // Stop the brain-click flow from running so a label click goes
+            // straight to detail edit (no bounce + no ooh).
+            lbl.addEventListener('mousedown', (ev) => ev.stopPropagation());
+            lbl.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              openDetail(n.id);
+            });
+          }
           el.appendChild(lbl);
         } else if (n.imageUrl) {
           const thumb = document.createElement('img');
@@ -1119,6 +1147,8 @@ export default function MindMapCanvas({
       zoomLabel.textContent = Math.round(state.zoom * 100) + '%';
       drawMinimap();
     }
+
+    renderAllRef.current = () => renderAll();
 
     function renderAll() {
       renderEdges();
@@ -1305,11 +1335,24 @@ export default function MindMapCanvas({
         const draggedNode = dragNode;
         dragNode = null;
         if (wasClick) {
-          if (id === state.rootId) playPhrase('ooh');
-          if (state.selectedId === id) {
-            // already selected — second click opens the detail view (only when
-            // not readonly: spec says no detail in editable mode for readonly,
-            // wait — spec actually says "can't open detail in editable mode" when readonly).
+          if (id === state.rootId) {
+            // Brain: bounce + recenter + ooh. Never opens detail (label edit
+            // is via the .brain-label click handler, not the brain itself).
+            playPhrase('ooh');
+            state.selectedId = id;
+            const wasAlreadySelected = state.selectedId === id;
+            if (!wasAlreadySelected) renderAll();
+            focusOnNode(id);
+            const brainEl = nodesLayer.querySelector('.is-brain') as HTMLElement | null;
+            if (brainEl) {
+              brainEl.classList.remove('dropped');
+              // Force reflow so the animation restarts even on rapid clicks.
+              void brainEl.offsetWidth;
+              brainEl.classList.add('dropped');
+              setTimeout(() => brainEl.classList.remove('dropped'), 600);
+            }
+          } else if (state.selectedId === id) {
+            // Already selected non-brain node — second click opens detail.
             if (!readonlyRef.current) {
               openDetail(id);
             } else {
@@ -2563,6 +2606,16 @@ export default function MindMapCanvas({
           opacity: 0.85;
           text-shadow: 0 0 12px
             color-mix(in srgb, var(--accent-3) 50%, transparent);
+          padding: 4px 10px;
+          border-radius: 6px;
+          transition: opacity 0.15s, background 0.15s;
+        }
+        .smm-root :global(.brain-label-clickable) {
+          cursor: text;
+        }
+        .smm-root :global(.brain-label-clickable:hover) {
+          opacity: 1;
+          background: color-mix(in srgb, var(--ui-text) 8%, transparent);
         }
         .smm-root :global(.brain-aura) {
           position: absolute;
