@@ -159,8 +159,8 @@ export default function MindMapCanvas({
     const stretchAudio = typeof Audio !== 'undefined' ? new Audio('/sfx/stretch.mp3') : null;
     const ttsAudio = typeof Audio !== 'undefined' ? new Audio() : null;
     if (popAudio) popAudio.volume = 0.55;
-    if (stretchAudio) stretchAudio.volume = 0.4;
-    if (ttsAudio) ttsAudio.volume = 0.85;
+    if (stretchAudio) stretchAudio.volume = 1.0;
+    if (ttsAudio) ttsAudio.volume = 1.0;
 
     let muted =
       typeof window !== 'undefined' && window.localStorage?.getItem('squishy-muted') === '1';
@@ -236,8 +236,8 @@ export default function MindMapCanvas({
     // Pre-baked ElevenLabs phrases (no auth required, no API calls per event).
     const oohAudio = typeof Audio !== 'undefined' ? new Audio('/sfx/ooooh.mp3') : null;
     const awwAudio = typeof Audio !== 'undefined' ? new Audio('/sfx/aww.mp3') : null;
-    if (oohAudio) oohAudio.volume = 0.7;
-    if (awwAudio) awwAudio.volume = 0.7;
+    if (oohAudio) oohAudio.volume = 1.0;
+    if (awwAudio) awwAudio.volume = 1.0;
     function playPhrase(kind: 'ooh' | 'aww') {
       if (muted) return;
       const a = kind === 'ooh' ? oohAudio : awwAudio;
