@@ -256,6 +256,7 @@ export default function EditorShell({
       {shareOpen && (
         <ShareDialog
           mindmapId={id}
+          slug={slug || null}
           initialVisibility={visibility}
           initialShareToken={shareToken}
           onClose={() => setShareOpen(false)}

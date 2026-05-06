@@ -5,6 +5,8 @@ import type { Visibility } from '@/lib/types';
 
 type Props = {
   mindmapId: string;
+  /** Vanity slug if the user has set one; share link uses it when present. */
+  slug?: string | null;
   initialVisibility: Visibility;
   initialShareToken: string;
   onClose: () => void;
@@ -19,6 +21,7 @@ const VISIBILITY_OPTIONS: { value: Visibility; label: string; help: string }[] =
 
 export default function ShareDialog({
   mindmapId,
+  slug,
   initialVisibility,
   initialShareToken,
   onClose,
@@ -33,7 +36,13 @@ export default function ShareDialog({
   const dialogRef = useRef<HTMLDivElement>(null);
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const shareUrl = `${origin}/share/${shareToken}`;
+  // Slug share URL is prettier and easier to remember; falls back to the
+  // unguessable token when no slug is set. Slug-based URLs are guessable
+  // by anyone who knows the slug — the visibility filter on /share still
+  // gates access (private maps stay private even if their slug is known).
+  const shareUrl = slug
+    ? `${origin}/share/${slug}`
+    : `${origin}/share/${shareToken}`;
   const linkDisabled = visibility === 'private';
 
   useEffect(() => {

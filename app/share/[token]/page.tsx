@@ -6,13 +6,19 @@ import MindMapCanvas from '@/components/MindMapCanvas';
 export default async function SharePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const supabase = await createClient();
-  // Public + unlisted maps are readable by anyone via the share token.
-  const { data: mindmap } = await supabase
+
+  // The share route accepts either a 32-char hex share_token (unguessable,
+  // regeneratable) OR the map's vanity slug (pretty, guessable). Visibility
+  // filter applies in both cases so private maps remain private.
+  const isHexToken = /^[0-9a-f]{32}$/i.test(token);
+  const base = supabase
     .from('mindmaps')
     .select('id, title, visibility, data')
-    .eq('share_token', token)
-    .in('visibility', ['public', 'unlisted'])
-    .single();
+    .in('visibility', ['public', 'unlisted']);
+  const { data: mindmap } = await (isHexToken
+    ? base.eq('share_token', token)
+    : base.eq('slug', token)
+  ).single();
   if (!mindmap) notFound();
 
   return (

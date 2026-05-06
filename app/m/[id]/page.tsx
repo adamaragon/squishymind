@@ -15,6 +15,11 @@ export default async function EditorPage({ params }: { params: Promise<{ id: str
   const { data: mindmap } = await (isUuid ? query.eq('id', id) : query.eq('slug', id)).single();
   if (!mindmap) notFound();
 
+  // Canonical URL: when a slug is set, the address bar should use it.
+  if (mindmap.slug && id !== mindmap.slug) {
+    redirect(`/m/${mindmap.slug}`);
+  }
+
   return (
     <EditorShell
       id={mindmap.id}
