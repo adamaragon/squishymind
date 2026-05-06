@@ -7,17 +7,18 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
   const { token } = await params;
   const supabase = await createClient();
 
-  // The share route accepts either a 32-char hex share_token (unguessable,
-  // regeneratable) OR the map's vanity slug (pretty, guessable). Visibility
-  // filter applies in both cases so private maps remain private.
+  // The share route accepts two URL forms:
+  //  - 32-char hex share_token: unguessable, works for any visibility
+  //    (private/unlisted/public). The token IS the access gate.
+  //  - vanity slug: pretty but guessable, only unlocks unlisted/public.
+  //    Slug URLs never expose private maps.
   const isHexToken = /^[0-9a-f]{32}$/i.test(token);
-  const base = supabase
+  const select = supabase
     .from('mindmaps')
-    .select('id, title, visibility, data')
-    .in('visibility', ['public', 'unlisted']);
+    .select('id, title, visibility, data');
   const { data: mindmap } = await (isHexToken
-    ? base.eq('share_token', token)
-    : base.eq('slug', token)
+    ? select.eq('share_token', token)
+    : select.eq('slug', token).in('visibility', ['public', 'unlisted'])
   ).single();
   if (!mindmap) notFound();
 

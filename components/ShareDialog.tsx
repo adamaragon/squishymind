@@ -14,8 +14,8 @@ type Props = {
 };
 
 const VISIBILITY_OPTIONS: { value: Visibility; label: string; help: string }[] = [
-  { value: 'private', label: 'Private', help: 'Only you and invited collaborators can see this map.' },
-  { value: 'unlisted', label: 'Unlisted', help: 'Anyone with the link can view (read-only). Not in any public list.' },
+  { value: 'private', label: 'Private', help: 'Only people you give the random link to. Slug URL won’t open this map.' },
+  { value: 'unlisted', label: 'Unlisted', help: 'Anyone with the link or slug can view (read-only). Not in any public list.' },
   { value: 'public', label: 'Public', help: 'Anyone can view. Will appear in the public gallery (gallery coming soon).' },
 ];
 
@@ -36,14 +36,15 @@ export default function ShareDialog({
   const dialogRef = useRef<HTMLDivElement>(null);
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  // Slug share URL is prettier and easier to remember; falls back to the
-  // unguessable token when no slug is set. Slug-based URLs are guessable
-  // by anyone who knows the slug — the visibility filter on /share still
-  // gates access (private maps stay private even if their slug is known).
-  const shareUrl = slug
-    ? `${origin}/share/${slug}`
-    : `${origin}/share/${shareToken}`;
-  const linkDisabled = visibility === 'private';
+  // Private maps always use the unguessable token URL (the token IS the
+  // privacy gate). Public/unlisted prefer the pretty slug URL when one is
+  // set, falling back to the token if not. The /share route refuses to
+  // serve private maps via slug, so a slug URL on a private map would 404.
+  const shareUrl =
+    visibility === 'private' || !slug
+      ? `${origin}/share/${shareToken}`
+      : `${origin}/share/${slug}`;
+  const linkDisabled = false;
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
