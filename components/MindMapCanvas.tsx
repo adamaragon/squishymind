@@ -158,10 +158,40 @@ export default function MindMapCanvas({
     const popAudio = typeof Audio !== 'undefined' ? new Audio('/sfx/pop.mp3') : null;
     const stretchAudio = typeof Audio !== 'undefined' ? new Audio('/sfx/stretch.mp3') : null;
     const ttsAudio = typeof Audio !== 'undefined' ? new Audio() : null;
-    // All SFX files are normalized to -9 LUFS via ffmpeg loudnorm so volume=1
-    // gives a consistent perceived loudness across pop/stretch/ooh/aww.
+    // Static SFX files are normalized to -9 LUFS via ffmpeg loudnorm so
+    // volume=1 gives a consistent perceived loudness across pop/stretch/
+    // ooh/aww.
     if (popAudio) popAudio.volume = 1.0;
     if (stretchAudio) stretchAudio.volume = 1.0;
+    // TTS audio comes from ElevenLabs unprocessed (no loudnorm) so it's
+    // ~10dB quieter than the SFX bank. We route it through a Web Audio
+    // gain node to boost past the HTMLAudioElement 1.0 ceiling.
+    const TTS_GAIN = 2.8;
+    type AudioCtxCtor = typeof AudioContext;
+    type WebkitWindow = typeof window & { webkitAudioContext?: AudioCtxCtor };
+    let ttsCtx: AudioContext | null = null;
+    let ttsGainConnected = false;
+    function ensureTtsBoost() {
+      if (!ttsAudio || ttsGainConnected) return;
+      try {
+        const Ctor: AudioCtxCtor | undefined =
+          typeof window !== 'undefined'
+            ? window.AudioContext || (window as WebkitWindow).webkitAudioContext
+            : undefined;
+        if (!Ctor) return;
+        ttsCtx = new Ctor();
+        const source = ttsCtx.createMediaElementSource(ttsAudio);
+        const gain = ttsCtx.createGain();
+        gain.gain.value = TTS_GAIN;
+        source.connect(gain);
+        gain.connect(ttsCtx.destination);
+        ttsGainConnected = true;
+      } catch {
+        // createMediaElementSource fails if called twice, AudioContext may
+        // be unsupported. Either way, fall back to native volume = 1.
+        ttsGainConnected = true;
+      }
+    }
     if (ttsAudio) ttsAudio.volume = 1.0;
 
     let muted =
@@ -226,6 +256,10 @@ export default function MindMapCanvas({
       ttsTimer = setTimeout(async () => {
         const reqId = ++ttsRequestSeq;
         if (!ttsAudio) return;
+        ensureTtsBoost();
+        if (ttsCtx?.state === 'suspended') {
+          try { await ttsCtx.resume(); } catch { /* ignore */ }
+        }
 
         // Cache hit — skip the network roundtrip entirely.
         const cached = ttsCache.get(trimmed);
@@ -1928,6 +1962,10 @@ export default function MindMapCanvas({
       ttsObjectUrl = null;
       for (const url of ttsCache.values()) URL.revokeObjectURL(url);
       ttsCache.clear();
+      if (ttsCtx) {
+        ttsCtx.close().catch(() => {});
+        ttsCtx = null;
+      }
 
       stage.removeEventListener('mousedown', onStageMouseDown);
       stage.removeEventListener('wheel', onStageWheel);
