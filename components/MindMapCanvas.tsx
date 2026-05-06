@@ -200,6 +200,23 @@ export default function MindMapCanvas({
     let ttsTimer: ReturnType<typeof setTimeout> | null = null;
     let ttsRequestSeq = 0;
     let ttsObjectUrl: string | null = null;
+    // Per-mount cache: label text → object URL of synthesized audio. Saves an
+    // ElevenLabs roundtrip when a node is renamed back to a value seen earlier
+    // in this session. Bounded so a renaming spree can't grow it forever.
+    const TTS_CACHE_LIMIT = 50;
+    const ttsCache = new Map<string, string>();
+    function rememberTtsBlob(text: string, blob: Blob): string {
+      const url = URL.createObjectURL(blob);
+      ttsCache.set(text, url);
+      while (ttsCache.size > TTS_CACHE_LIMIT) {
+        const oldestKey = ttsCache.keys().next().value;
+        if (oldestKey === undefined) break;
+        const oldestUrl = ttsCache.get(oldestKey);
+        if (oldestUrl) URL.revokeObjectURL(oldestUrl);
+        ttsCache.delete(oldestKey);
+      }
+      return url;
+    }
     function speakLabel(text: string) {
       if (muted) return;
       const trimmed = text.trim();
@@ -208,6 +225,16 @@ export default function MindMapCanvas({
       const debounceMs = 250;
       ttsTimer = setTimeout(async () => {
         const reqId = ++ttsRequestSeq;
+        if (!ttsAudio) return;
+
+        // Cache hit — skip the network roundtrip entirely.
+        const cached = ttsCache.get(trimmed);
+        if (cached) {
+          ttsAudio.src = cached;
+          try { await ttsAudio.play(); } catch { /* autoplay reject */ }
+          return;
+        }
+
         try {
           const res = await fetch('/api/tts', {
             method: 'POST',
@@ -220,10 +247,9 @@ export default function MindMapCanvas({
           const blob = await res.blob();
           if (reqId !== ttsRequestSeq) return;
           if (muted) return;
-          if (!ttsAudio) return;
-          if (ttsObjectUrl) URL.revokeObjectURL(ttsObjectUrl);
-          ttsObjectUrl = URL.createObjectURL(blob);
-          ttsAudio.src = ttsObjectUrl;
+          const url = rememberTtsBlob(trimmed, blob);
+          ttsObjectUrl = url;
+          ttsAudio.src = url;
           try {
             await ttsAudio.play();
           } catch {
@@ -1900,6 +1926,8 @@ export default function MindMapCanvas({
       if (ttsTimer) clearTimeout(ttsTimer);
       if (ttsObjectUrl) URL.revokeObjectURL(ttsObjectUrl);
       ttsObjectUrl = null;
+      for (const url of ttsCache.values()) URL.revokeObjectURL(url);
+      ttsCache.clear();
 
       stage.removeEventListener('mousedown', onStageMouseDown);
       stage.removeEventListener('wheel', onStageWheel);
