@@ -15,8 +15,10 @@ export default function HomePage() {
         {/* HERO */}
         <section className="max-w-5xl mx-auto pt-10 md:pt-14 pb-16 text-center">
           <BetaBanner />
-          <div className="inline-block mt-8 mb-6 animate-[wobble_3.6s_ease-in-out_infinite] origin-bottom">
-            <img src="/brain.svg" alt="" width={160} height={130} />
+          <div className="flex justify-center mt-8 mb-6">
+            <div className="animate-[wobble_3.6s_ease-in-out_infinite] origin-bottom">
+              <img src="/brain.svg" alt="" width={160} height={130} />
+            </div>
           </div>
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-[1.05]">
             Your brain, but{' '}
