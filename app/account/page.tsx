@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import Header from '@/components/Header';
 import { createClient } from '@/lib/supabase/server';
 import DeleteAccountButton from './DeleteAccountButton';
+import SignOutButton from './SignOutButton';
 
 async function deleteAccount() {
   'use server';
@@ -55,9 +56,7 @@ export default async function AccountPage() {
         <section className="glass rounded-2xl p-6 mb-5">
           <h2 className="text-lg font-medium mb-3">Sign out</h2>
           <p className="text-sm text-[--text-dim] mb-4">End your session on this browser.</p>
-          <form action="/auth/signout" method="post">
-            <button type="submit" className="btn btn-ghost">Sign out</button>
-          </form>
+          <SignOutButton />
         </section>
 
         <section className="glass rounded-2xl p-6 border-red-500/20">

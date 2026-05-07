@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { clearConversationId } from '@/lib/squishy';
 
 type Props = {
   action: () => Promise<void>;
@@ -16,6 +17,9 @@ export default function DeleteAccountButton({ action }: Props) {
           return;
         }
         setBusy(true);
+        // Clear before the deletion so a failure mid-way doesn't leave a
+        // stale conversation tied to a deleted account.
+        clearConversationId();
         try {
           await action();
         } finally {
