@@ -1409,6 +1409,10 @@ export default function MindMapCanvas({
               if (child) {
                 const childId = child.id;
                 state.selectedId = childId;
+                // For a click (no drag) we auto-placed via placeChild — re-spread
+                // siblings so they don't stack. For a drag the user picked the
+                // exact spot; respect it.
+                if (!moved) layoutChildren(parent.id);
                 scheduleSave();
                 renderAll();
                 flashEdge(parent.id, childId);
@@ -1768,13 +1772,15 @@ export default function MindMapCanvas({
         if (readonlyRef.current) return;
         e.preventDefault();
         if (state.selectedId) {
-          const c = addChild(state.selectedId);
+          const parentId = state.selectedId;
+          const c = addChild(parentId);
           if (c) {
             const childId = c.id;
             state.selectedId = childId;
+            layoutChildren(parentId);
             scheduleSave();
             renderAll();
-            flashEdge(c.parentId!, childId);
+            flashEdge(parentId, childId);
             beginEdit(childId);
             playSfx('pop');
             pushHistory({
@@ -1790,10 +1796,12 @@ export default function MindMapCanvas({
         const c = addSibling(state.selectedId);
         if (c) {
           const childId = c.id;
+          const parentId = c.parentId!;
           state.selectedId = childId;
+          layoutChildren(parentId);
           scheduleSave();
           renderAll();
-          flashEdge(c.parentId!, childId);
+          flashEdge(parentId, childId);
           beginEdit(childId);
           playSfx('pop');
           pushHistory({
@@ -2087,13 +2095,15 @@ export default function MindMapCanvas({
     function onAdd() {
       if (readonlyRef.current) return;
       if (state.selectedId) {
-        const c = addChild(state.selectedId);
+        const parentId = state.selectedId;
+        const c = addChild(parentId);
         if (c) {
           const childId = c.id;
           state.selectedId = childId;
+          layoutChildren(parentId);
           scheduleSave();
           renderAll();
-          flashEdge(c.parentId!, childId);
+          flashEdge(parentId, childId);
           beginEdit(childId);
           playSfx('pop');
           pushHistory({
@@ -2109,10 +2119,12 @@ export default function MindMapCanvas({
         const c = addSibling(state.selectedId);
         if (c) {
           const childId = c.id;
+          const parentId = c.parentId!;
           state.selectedId = childId;
+          layoutChildren(parentId);
           scheduleSave();
           renderAll();
-          flashEdge(c.parentId!, childId);
+          flashEdge(parentId, childId);
           beginEdit(childId);
           playSfx('pop');
           pushHistory({
