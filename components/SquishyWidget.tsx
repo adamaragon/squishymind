@@ -19,7 +19,11 @@ type ConvaiElement = HTMLElement & {
   updateDynamicVariables?: (vars: Record<string, string>) => void;
 };
 
-export default function SquishyWidget() {
+type SquishyWidgetProps = {
+  isLoggedIn?: boolean;
+};
+
+export default function SquishyWidget({ isLoggedIn = false }: SquishyWidgetProps) {
   const pathname = usePathname();
   const widgetRef = useRef<HTMLElement | null>(null);
   const [resumedId, setResumedId] = useState<string | null>(null);
@@ -50,11 +54,14 @@ export default function SquishyWidget() {
     return () => events.forEach((n) => window.removeEventListener(n, onStart));
   }, []);
 
-  // When the route changes, push the new page name into the agent.
+  // When the route or auth state changes, push the new variables into the agent.
   useEffect(() => {
     const el = widgetRef.current as ConvaiElement | null;
     if (!el) return;
-    const vars = { current_page: pathToPageName(pathname) };
+    const vars = {
+      current_page: pathToPageName(pathname),
+      is_logged_in: isLoggedIn ? 'yes' : 'no',
+    };
 
     if (typeof el.setDynamicVariables === 'function') {
       try {
@@ -80,13 +87,16 @@ export default function SquishyWidget() {
     } catch {
       /* ignore */
     }
-  }, [pathname]);
+  }, [pathname, isLoggedIn]);
 
   // Wait for the resume-id check to settle so the initial render decides
   // whether to set the conversation-id attribute.
   if (!mounted) return null;
 
-  const initialVars = JSON.stringify({ current_page: pathToPageName(pathname) });
+  const initialVars = JSON.stringify({
+    current_page: pathToPageName(pathname),
+    is_logged_in: isLoggedIn ? 'yes' : 'no',
+  });
 
   return (
     <>
