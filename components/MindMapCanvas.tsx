@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { MindMapData, MindMapNode } from '@/lib/types';
+import { registerCanvasHandler, type CanvasResult } from '@/lib/canvas-bus';
 
 export type MindMapCanvasProps = {
   mindmapId: string;
@@ -451,6 +452,159 @@ export default function MindMapCanvas({
       return out;
     }
 
+    // ---- Subtree snapshot / restore (used for undoing deletes) ----
+    type SubtreeSnapshot = {
+      rootId: string;
+      rootLabel: string;
+      descendantCount: number;
+      // Deep clone of every node in the subtree
+      nodes: MindMapNode[];
+      // Order of children under each parent so restore is stable
+      childOrder: Record<string, string[]>;
+      // Index of the deleted root within its old parent's child list (so
+      // restoring keeps siblings in the same relative position)
+      formerSlot: { parentId: string | null; index: number };
+      // Selection at the time of deletion (undo restores it)
+      formerSelected: string | null;
+    };
+
+    function deepCloneNode(n: MindMapNode): MindMapNode {
+      return { ...n };
+    }
+
+    function snapshotSubtree(rootId: string): SubtreeSnapshot {
+      const root = state.nodes[rootId];
+      const ids = [rootId, ...getDescendants(rootId)];
+      const nodes = ids.map((id) => deepCloneNode(state.nodes[id]));
+      const childOrder: Record<string, string[]> = {};
+      for (const id of ids) {
+        childOrder[id] = (state.childIndex[id] || []).slice();
+      }
+      const parentId = root?.parentId ?? null;
+      const siblings = parentId ? state.childIndex[parentId] || [] : [];
+      const idx = siblings.indexOf(rootId);
+      return {
+        rootId,
+        rootLabel: root?.label ?? '',
+        descendantCount: ids.length - 1,
+        nodes,
+        childOrder,
+        formerSlot: { parentId, index: idx >= 0 ? idx : siblings.length },
+        formerSelected: state.selectedId,
+      };
+    }
+
+    function restoreSubtree(snap: SubtreeSnapshot) {
+      for (const node of snap.nodes) {
+        state.nodes[node.id] = deepCloneNode(node);
+      }
+      for (const id in snap.childOrder) {
+        state.childIndex[id] = snap.childOrder[id].slice();
+      }
+      const { parentId, index } = snap.formerSlot;
+      if (parentId) {
+        const siblings = state.childIndex[parentId] || [];
+        if (!siblings.includes(snap.rootId)) {
+          const insertAt = Math.min(index, siblings.length);
+          siblings.splice(insertAt, 0, snap.rootId);
+          state.childIndex[parentId] = siblings;
+        }
+      }
+      if (snap.formerSelected && state.nodes[snap.formerSelected]) {
+        state.selectedId = snap.formerSelected;
+      }
+    }
+
+    // ---- Re-parenting (used by Squishy's move_node tool) ----
+    function reparent(
+      nodeId: string,
+      newParentId: string,
+    ): { success: true } | { success: false; error: string } {
+      const node = state.nodes[nodeId];
+      const newParent = state.nodes[newParentId];
+      if (!node) return { success: false, error: 'Node not found' };
+      if (!newParent) return { success: false, error: 'New parent not found' };
+      if (nodeId === state.rootId) return { success: false, error: 'Cannot move the root brain' };
+      if (nodeId === newParentId) return { success: false, error: 'Cannot parent a node to itself' };
+      if (newParentId === node.parentId) return { success: false, error: 'Already there' };
+
+      const descendants = getDescendants(nodeId);
+      if (descendants.includes(newParentId)) {
+        return { success: false, error: 'Cannot move a node into its own subtree' };
+      }
+
+      const oldParentId = node.parentId;
+      if (oldParentId) {
+        const siblings = (state.childIndex[oldParentId] || []).filter((id) => id !== nodeId);
+        state.childIndex[oldParentId] = siblings;
+      }
+      const newSiblings = state.childIndex[newParentId] || [];
+      newSiblings.push(nodeId);
+      state.childIndex[newParentId] = newSiblings;
+      node.parentId = newParentId;
+
+      function recomputeDepth(id: string, depth: number) {
+        const n = state.nodes[id];
+        if (!n) return;
+        n.depth = depth;
+        const kids = state.childIndex[id] || [];
+        for (const k of kids) recomputeDepth(k, depth + 1);
+      }
+      recomputeDepth(nodeId, newParent.depth + 1);
+
+      // Drop the moved node next to its new parent so it has a sensible
+      // starting position. The user will see it animate from old to new
+      // location via the next render's transform.
+      const dx = newParent.x - node.x;
+      const dy = newParent.y - node.y;
+      // Walk subtree and translate so relative geometry stays intact.
+      const moveIds = [nodeId, ...descendants];
+      const placed = placeChild(newParent, (state.childIndex[newParentId] || []).length - 1);
+      const targetDx = placed.x - node.x;
+      const targetDy = placed.y - node.y;
+      // Use whichever shift moves it closer to the new parent — preserves
+      // subtree shape even if the parent is far from the previous location.
+      const useTarget = Math.hypot(targetDx, targetDy) < Math.hypot(dx, dy) * 1.6;
+      const shiftX = useTarget ? targetDx : dx * 0.2;
+      const shiftY = useTarget ? targetDy : dy * 0.2;
+      for (const id of moveIds) {
+        const n = state.nodes[id];
+        if (!n) continue;
+        n.x += shiftX;
+        n.y += shiftY;
+      }
+
+      return { success: true };
+    }
+
+    // ---- Undo stack ----
+    type HistoryEntry = { description: string; undo: () => void };
+    const HISTORY_MAX = 50;
+    const history: HistoryEntry[] = [];
+
+    function pushHistory(entry: HistoryEntry) {
+      history.push(entry);
+      while (history.length > HISTORY_MAX) history.shift();
+    }
+
+    function undoLast(): HistoryEntry | null {
+      const entry = history.pop();
+      if (!entry) return null;
+      try {
+        entry.undo();
+      } catch {
+        /* if the undo throws, the entry was malformed — drop it silently */
+      }
+      scheduleSave();
+      renderAll();
+      return entry;
+    }
+
+    // Direct delete (no history push) used as the inverse of create.
+    function deleteNodeById(id: string) {
+      removeNode(id);
+    }
+
     // ---- Geometry ----
     function screenToWorld(sx: number, sy: number) {
       const rect = stage.getBoundingClientRect();
@@ -595,9 +749,18 @@ export default function MindMapCanvas({
         if (readonlyRef.current) dot.disabled = true;
         dot.addEventListener('click', () => {
           if (readonlyRef.current) return;
+          const before = n.colorIdx;
           n.colorIdx = i;
           scheduleSave();
           renderAll();
+          if (before !== i) {
+            pushHistory({
+              description: `Recoloured "${n.label}"`,
+              undo: () => {
+                n.colorIdx = before;
+              },
+            });
+          }
         });
         colors.appendChild(dot);
       }
@@ -915,14 +1078,26 @@ export default function MindMapCanvas({
       addBtn.addEventListener('click', () => {
         const picks = items.filter((it) => it.accepted && it.label.trim().length > 0);
         if (picks.length === 0) return;
+        const createdIds: string[] = [];
         for (const pick of picks) {
           const child = addChild(parentNode.id, pick.label.trim());
-          if (child) child.note = pick.note || '';
+          if (child) {
+            child.note = pick.note || '';
+            createdIds.push(child.id);
+          }
         }
         scheduleSave();
         panel.remove();
         renderAll();
         playSfx('pop');
+        if (createdIds.length > 0) {
+          pushHistory({
+            description: `AI added ${createdIds.length} children to "${parentNode.label}"`,
+            undo: () => {
+              for (const id of createdIds) deleteNodeById(id);
+            },
+          });
+        }
       });
 
       function updateAddCount() {
@@ -990,17 +1165,29 @@ export default function MindMapCanvas({
       const n = id ? state.nodes[id] : null;
       if (!n || !id) return;
       if (act === 'color') {
+        const before = n.colorIdx;
         n.colorIdx = ((n.colorIdx ?? 0) + 1) % COLOR_COUNT;
         scheduleSave();
         renderAll();
+        pushHistory({
+          description: `Recoloured "${n.label}"`,
+          undo: () => {
+            n.colorIdx = before;
+          },
+        });
       } else if (act === 'open') {
         openDetail(id);
       } else if (act === 'delete') {
         if (id === state.rootId) return;
+        const snap = snapshotSubtree(id);
         removeNode(id);
         scheduleSave();
         renderAll();
         playPhrase('aww');
+        pushHistory({
+          description: `Deleted "${snap.rootLabel}"`,
+          undo: () => restoreSubtree(snap),
+        });
       }
     }
 
@@ -1139,12 +1326,17 @@ export default function MindMapCanvas({
                 child = addChild(parent.id);
               }
               if (child) {
-                state.selectedId = child.id;
+                const childId = child.id;
+                state.selectedId = childId;
                 scheduleSave();
                 renderAll();
-                flashEdge(parent.id, child.id);
-                beginEdit(child.id);
+                flashEdge(parent.id, childId);
+                beginEdit(childId);
                 playSfx('pop');
+                pushHistory({
+                  description: `Created "${child.label}"`,
+                  undo: () => deleteNodeById(childId),
+                });
               }
             }
 
@@ -1258,6 +1450,15 @@ export default function MindMapCanvas({
           // Speak the label only when it actually changed and isn't the brain
           // (brain has its own "Ooooh" on click — see playPhrase).
           if (next !== originalLabel && n.id !== state.rootId) speakLabel(next);
+          if (next !== originalLabel) {
+            pushHistory({
+              description: `Renamed to "${next}"`,
+              undo: () => {
+                n.label = originalLabel;
+                if (n.id === state.rootId) onTitleChangeRef.current?.(n.label);
+              },
+            });
+          }
         }
         scheduleSave();
         renderAll();
@@ -1475,18 +1676,30 @@ export default function MindMapCanvas({
         (e.target && (e.target as HTMLElement).tagName) || '';
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
 
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        if (readonlyRef.current) return;
+        e.preventDefault();
+        undoLast();
+        return;
+      }
+
       if (e.key === 'Tab') {
         if (readonlyRef.current) return;
         e.preventDefault();
         if (state.selectedId) {
           const c = addChild(state.selectedId);
           if (c) {
-            state.selectedId = c.id;
+            const childId = c.id;
+            state.selectedId = childId;
             scheduleSave();
             renderAll();
-            flashEdge(c.parentId!, c.id);
-            beginEdit(c.id);
+            flashEdge(c.parentId!, childId);
+            beginEdit(childId);
             playSfx('pop');
+            pushHistory({
+              description: `Created "${c.label}"`,
+              undo: () => deleteNodeById(childId),
+            });
           }
         }
       } else if (e.key === 'Enter') {
@@ -1495,12 +1708,17 @@ export default function MindMapCanvas({
         e.preventDefault();
         const c = addSibling(state.selectedId);
         if (c) {
-          state.selectedId = c.id;
+          const childId = c.id;
+          state.selectedId = childId;
           scheduleSave();
           renderAll();
-          flashEdge(c.parentId!, c.id);
-          beginEdit(c.id);
+          flashEdge(c.parentId!, childId);
+          beginEdit(childId);
           playSfx('pop');
+          pushHistory({
+            description: `Created sibling "${c.label}"`,
+            undo: () => deleteNodeById(childId),
+          });
         } else if (state.selectedId) {
           beginEdit(state.selectedId);
         }
@@ -1508,10 +1726,16 @@ export default function MindMapCanvas({
         if (readonlyRef.current) return;
         if (state.selectedId && state.selectedId !== state.rootId) {
           e.preventDefault();
-          removeNode(state.selectedId);
+          const id = state.selectedId;
+          const snap = snapshotSubtree(id);
+          removeNode(id);
           scheduleSave();
           renderAll();
           playPhrase('aww');
+          pushHistory({
+            description: `Deleted "${snap.rootLabel}"`,
+            undo: () => restoreSubtree(snap),
+          });
         }
       } else if (e.key === 'Escape') {
         if (state.detailId) {
@@ -1784,12 +2008,17 @@ export default function MindMapCanvas({
       if (state.selectedId) {
         const c = addChild(state.selectedId);
         if (c) {
-          state.selectedId = c.id;
+          const childId = c.id;
+          state.selectedId = childId;
           scheduleSave();
           renderAll();
-          flashEdge(c.parentId!, c.id);
-          beginEdit(c.id);
+          flashEdge(c.parentId!, childId);
+          beginEdit(childId);
           playSfx('pop');
+          pushHistory({
+            description: `Created "${c.label}"`,
+            undo: () => deleteNodeById(childId),
+          });
         }
       }
     }
@@ -1798,12 +2027,17 @@ export default function MindMapCanvas({
       if (state.selectedId) {
         const c = addSibling(state.selectedId);
         if (c) {
-          state.selectedId = c.id;
+          const childId = c.id;
+          state.selectedId = childId;
           scheduleSave();
           renderAll();
-          flashEdge(c.parentId!, c.id);
-          beginEdit(c.id);
+          flashEdge(c.parentId!, childId);
+          beginEdit(childId);
           playSfx('pop');
+          pushHistory({
+            description: `Created sibling "${c.label}"`,
+            undo: () => deleteNodeById(childId),
+          });
         }
       }
     }
@@ -1946,8 +2180,196 @@ export default function MindMapCanvas({
     setTimeout(fitToScreen, 50);
     rafRef.current = requestAnimationFrame(tickParticles);
 
+    // ---- Squishy voice command handler ----
+    // Read-only viewers (share/[token]) still register the handler so list /
+    // focus / fit work, but mutation commands return a clean error.
+    const unregisterCanvasHandler = registerCanvasHandler((cmd): CanvasResult => {
+      const isMutation =
+        cmd.type === 'create_node' ||
+        cmd.type === 'create_nodes_batch' ||
+        cmd.type === 'update_node' ||
+        cmd.type === 'move_node' ||
+        cmd.type === 'delete_node' ||
+        cmd.type === 'undo';
+      if (isMutation && readonlyRef.current) {
+        return { success: false, error: 'This map is read-only.' };
+      }
+
+      if (cmd.type === 'create_node') {
+        const parent = state.nodes[cmd.parent_id];
+        if (!parent) return { success: false, error: `No parent with id ${cmd.parent_id}` };
+        const newNode = addChild(cmd.parent_id, cmd.label);
+        if (!newNode) return { success: false, error: 'Could not create node' };
+        if (cmd.note) newNode.note = cmd.note;
+        if (typeof cmd.color_idx === 'number') {
+          newNode.colorIdx = ((cmd.color_idx % COLOR_COUNT) + COLOR_COUNT) % COLOR_COUNT;
+        }
+        const newId = newNode.id;
+        scheduleSave();
+        renderAll();
+        flashEdge(cmd.parent_id, newId);
+        playSfx('pop');
+        pushHistory({
+          description: `Created "${newNode.label}"`,
+          undo: () => deleteNodeById(newId),
+        });
+        return {
+          success: true,
+          data: { node_id: newId, label: newNode.label, parent_id: cmd.parent_id },
+        };
+      }
+
+      if (cmd.type === 'create_nodes_batch') {
+        const parent = state.nodes[cmd.parent_id];
+        if (!parent) return { success: false, error: `No parent with id ${cmd.parent_id}` };
+        const created: Array<{ id: string; label: string }> = [];
+        for (const child of cmd.children) {
+          const node = addChild(cmd.parent_id, child.label);
+          if (!node) continue;
+          if (child.note) node.note = child.note;
+          if (typeof child.color_idx === 'number') {
+            node.colorIdx = ((child.color_idx % COLOR_COUNT) + COLOR_COUNT) % COLOR_COUNT;
+          }
+          created.push({ id: node.id, label: node.label });
+          flashEdge(cmd.parent_id, node.id);
+        }
+        scheduleSave();
+        renderAll();
+        playSfx('pop');
+        if (created.length > 0) {
+          const ids = created.map((c) => c.id);
+          pushHistory({
+            description: `Created ${created.length} children under "${parent.label}"`,
+            undo: () => {
+              for (const id of ids) deleteNodeById(id);
+            },
+          });
+        }
+        return { success: true, data: { created, count: created.length } };
+      }
+
+      if (cmd.type === 'update_node') {
+        const n = state.nodes[cmd.node_id];
+        if (!n) return { success: false, error: `No node with id ${cmd.node_id}` };
+        const before = { label: n.label, note: n.note, colorIdx: n.colorIdx };
+        if (cmd.label !== undefined) n.label = cmd.label;
+        if (cmd.note !== undefined) n.note = cmd.note;
+        if (typeof cmd.color_idx === 'number') {
+          n.colorIdx = ((cmd.color_idx % COLOR_COUNT) + COLOR_COUNT) % COLOR_COUNT;
+        }
+        if (n.id === state.rootId && cmd.label !== undefined) {
+          onTitleChangeRef.current?.(n.label);
+        }
+        scheduleSave();
+        renderAll();
+        pushHistory({
+          description: `Updated "${n.label}"`,
+          undo: () => {
+            n.label = before.label;
+            n.note = before.note;
+            n.colorIdx = before.colorIdx;
+            if (n.id === state.rootId) onTitleChangeRef.current?.(n.label);
+          },
+        });
+        return {
+          success: true,
+          data: { node_id: n.id, label: n.label, note: n.note, color_idx: n.colorIdx },
+        };
+      }
+
+      if (cmd.type === 'move_node') {
+        const node = state.nodes[cmd.node_id];
+        if (!node) return { success: false, error: `No node with id ${cmd.node_id}` };
+        const oldParentId = node.parentId;
+        const result = reparent(cmd.node_id, cmd.new_parent_id);
+        if (!result.success) return { success: false, error: result.error };
+        scheduleSave();
+        renderAll();
+        pushHistory({
+          description: `Moved "${node.label}"`,
+          undo: () => {
+            if (oldParentId) reparent(cmd.node_id, oldParentId);
+          },
+        });
+        return {
+          success: true,
+          data: { node_id: cmd.node_id, new_parent_id: cmd.new_parent_id },
+        };
+      }
+
+      if (cmd.type === 'delete_node') {
+        const n = state.nodes[cmd.node_id];
+        if (!n) return { success: false, error: `No node with id ${cmd.node_id}` };
+        if (cmd.node_id === state.rootId) {
+          return { success: false, error: 'Cannot delete the root brain' };
+        }
+        const snap = snapshotSubtree(cmd.node_id);
+        removeNode(cmd.node_id);
+        scheduleSave();
+        renderAll();
+        playPhrase('aww');
+        pushHistory({
+          description: `Deleted "${snap.rootLabel}"`,
+          undo: () => restoreSubtree(snap),
+        });
+        return {
+          success: true,
+          data: { deleted_count: snap.descendantCount + 1, label: snap.rootLabel },
+        };
+      }
+
+      if (cmd.type === 'undo') {
+        const undone = undoLast();
+        if (!undone) return { success: false, error: 'Nothing to undo' };
+        return { success: true, data: { description: undone.description } };
+      }
+
+      if (cmd.type === 'list_nodes') {
+        let nodeArr: MindMapNode[];
+        if (cmd.parent_id) {
+          const childIds = state.childIndex[cmd.parent_id] || [];
+          nodeArr = childIds.map((id) => state.nodes[id]).filter(Boolean);
+        } else {
+          nodeArr = Object.values(state.nodes);
+        }
+        if (cmd.query) {
+          const q = cmd.query.toLowerCase();
+          nodeArr = nodeArr.filter((n) => n.label.toLowerCase().includes(q));
+        }
+        const summary = nodeArr.map((n) => ({
+          id: n.id,
+          label: n.label,
+          depth: n.depth,
+          parent_id: n.parentId,
+          child_count: (state.childIndex[n.id] || []).length,
+          has_note: !!n.note,
+          color_idx: n.colorIdx,
+          is_root: n.id === state.rootId,
+        }));
+        return {
+          success: true,
+          data: { count: summary.length, root_id: state.rootId, nodes: summary },
+        };
+      }
+
+      if (cmd.type === 'focus_node') {
+        const n = state.nodes[cmd.node_id];
+        if (!n) return { success: false, error: `No node with id ${cmd.node_id}` };
+        focusOnNode(cmd.node_id);
+        return { success: true, data: { node_id: cmd.node_id, label: n.label } };
+      }
+
+      if (cmd.type === 'fit_to_screen') {
+        fitToScreen();
+        return { success: true };
+      }
+
+      return { success: false, error: 'Unknown command type' };
+    });
+
     // ---- Cleanup ----
     return () => {
+      unregisterCanvasHandler();
       cancelledRef.current = true;
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
