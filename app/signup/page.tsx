@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import Footer from '@/components/Footer';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -33,6 +34,7 @@ export default function SignupPage() {
   }
 
   return (
+    <>
     <main className="min-h-screen flex flex-col items-center justify-center px-6">
       <Link href="/" className="flex items-center gap-3 mb-8 group">
         <img src="/brain.svg" alt="" width={48} height={48}
@@ -64,5 +66,7 @@ export default function SignupPage() {
         </p>
       </form>
     </main>
+    <Footer />
+    </>
   );
 }

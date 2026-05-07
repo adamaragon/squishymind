@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 import DeleteMapButton from '@/components/DeleteMapButton';
 import { createClient } from '@/lib/supabase/server';
 import type { Mindmap } from '@/lib/types';
@@ -89,6 +90,7 @@ export default async function DashboardPage() {
           </ul>
         )}
       </main>
+      <Footer />
     </>
   );
 }

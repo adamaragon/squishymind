@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 
 export default function HomePage() {
   return (
@@ -46,10 +47,8 @@ export default function HomePage() {
           <Link href="/signup" className="btn btn-primary">Sign up free</Link>
         </section>
 
-        <footer className="border-t border-white/5 py-8 text-center text-sm text-[--text-dim]">
-          Built with too much affection · {new Date().getFullYear()}
-        </footer>
       </main>
+      <Footer />
 
       <style>{`
         @keyframes wobble {

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 import { createClient } from '@/lib/supabase/server';
 import DeleteAccountButton from './DeleteAccountButton';
 import SignOutButton from './SignOutButton';
@@ -72,6 +73,7 @@ export default async function AccountPage() {
           <Link href="/dashboard" className="underline">← Back to dashboard</Link>
         </p>
       </main>
+      <Footer />
     </>
   );
 }

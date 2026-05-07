@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import EditorShell from './EditorShell';
+import Footer from '@/components/Footer';
 
 export default async function EditorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -21,13 +22,16 @@ export default async function EditorPage({ params }: { params: Promise<{ id: str
   }
 
   return (
-    <EditorShell
-      id={mindmap.id}
-      initialTitle={mindmap.title}
-      initialSlug={mindmap.slug ?? ''}
-      initialVisibility={mindmap.visibility}
-      initialShareToken={mindmap.share_token}
-      initialData={mindmap.data}
-    />
+    <>
+      <EditorShell
+        id={mindmap.id}
+        initialTitle={mindmap.title}
+        initialSlug={mindmap.slug ?? ''}
+        initialVisibility={mindmap.visibility}
+        initialShareToken={mindmap.share_token}
+        initialData={mindmap.data}
+      />
+      <Footer minimal />
+    </>
   );
 }

@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import Footer from '@/components/Footer';
 
 function LoginForm() {
   const router = useRouter();
@@ -56,15 +57,18 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-6">
-      <Link href="/" className="flex items-center gap-3 mb-8 group">
-        <img src="/brain.svg" alt="" width={48} height={48}
-             className="transition-transform group-hover:rotate-3" />
-        <span className="text-2xl font-semibold gradient-text">SquishyMind</span>
-      </Link>
-      <Suspense>
-        <LoginForm />
-      </Suspense>
-    </main>
+    <>
+      <main className="min-h-screen flex flex-col items-center justify-center px-6">
+        <Link href="/" className="flex items-center gap-3 mb-8 group">
+          <img src="/brain.svg" alt="" width={48} height={48}
+               className="transition-transform group-hover:rotate-3" />
+          <span className="text-2xl font-semibold gradient-text">SquishyMind</span>
+        </Link>
+        <Suspense>
+          <LoginForm />
+        </Suspense>
+      </main>
+      <Footer />
+    </>
   );
 }
