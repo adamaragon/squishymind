@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import BetaBanner from '@/components/BetaBanner';
 import SquishyWidget from '@/components/SquishyWidget';
 import SquishyToolBridge from '@/components/SquishyToolBridge';
 
@@ -14,7 +13,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <BetaBanner />
         {children}
         <SquishyWidget />
         <SquishyToolBridge />

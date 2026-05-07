@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import BetaBanner from '@/components/BetaBanner';
 import SquishyCTA from '@/components/SquishyCTA';
 import RecentShipped from '@/components/RecentShipped';
 import FAQ from '@/components/FAQ';
@@ -12,15 +13,10 @@ export default function HomePage() {
 
       <main className="px-6">
         {/* HERO */}
-        <section className="max-w-5xl mx-auto pt-16 md:pt-24 pb-16 text-center">
-          <div className="inline-block mb-6 animate-[wobble_3.6s_ease-in-out_infinite] origin-bottom">
+        <section className="max-w-5xl mx-auto pt-10 md:pt-14 pb-16 text-center">
+          <BetaBanner />
+          <div className="inline-block mt-8 mb-6 animate-[wobble_3.6s_ease-in-out_infinite] origin-bottom">
             <img src="/brain.svg" alt="" width={160} height={130} />
-          </div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pink-500/10 border border-pink-500/30 text-xs mb-6">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-pink-400 animate-pulse" />
-            <span className="text-pink-300">
-              Now in beta — free forever for early signups
-            </span>
           </div>
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-[1.05]">
             Your brain, but{' '}
