@@ -4,6 +4,9 @@ export type ShippedEntry = {
   date: string; // "May 2026"
   highlights: string[]; // ≤12 words each, sentence case
   squishyNote?: string;
+  /** Commit SHA at the time this entry was published. Used by
+   *  scripts/draft-changelog.mjs to determine "since when" for the next draft. */
+  commit?: string;
 };
 
 export type RoadmapEntry = {
@@ -14,9 +17,21 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v2.6',
+    title: 'Changelog Page Added',
+    date: 'May 2026',
+    commit: 'bb8be1c',
+    highlights: [
+      'New changelog page to track updates',
+      'Shared footer with a link to what\'s new',
+    ],
+    squishyNote: 'Keeping tabs on me, darling? How quaint.',
+  },
+  {
     version: 'v2.5',
     title: 'Voice-Driven Canvas Control',
     date: 'May 2026',
+    commit: 'a748164',
     highlights: [
       'Squishy can create, edit, move, and delete nodes by voice',
       'Batch creation — “add five children under Research” in one breath',
