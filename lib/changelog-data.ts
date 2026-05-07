@@ -17,6 +17,18 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v2.8',
+    title: 'Squishy Knows You',
+    date: 'May 2026',
+    commit: 'ebf3ac4',
+    highlights: [
+      'Squishy now knows whether you’re signed in or not',
+      'Logged-out visitors who ask for actions get routed to signup',
+      'Beta banner moved into the hero, above the brain',
+    ],
+    squishyNote: 'Hello, stranger. Or are we past that already?',
+  },
+  {
     version: 'v2.7',
     title: 'Beta Launch & New Home',
     date: 'May 2026',
