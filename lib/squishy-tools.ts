@@ -54,30 +54,27 @@ export async function executeSquishyTool(
     }
 
     case 'create_nodes_batch': {
+      // ElevenLabs tool parameters can't nest objects, so the agent sends a
+      // flat `labels: string[]`. The internal CanvasCommand still uses
+      // children: { label, note?, color_idx? }[] — we just no longer accept
+      // note or color_idx from the tool input.
       const parent_id = asString(params.parent_id);
-      const childrenIn = params.children;
-      if (!parent_id || !Array.isArray(childrenIn)) {
+      const labelsIn = params.labels;
+      if (!parent_id || !Array.isArray(labelsIn)) {
         return {
           success: false,
-          error: 'create_nodes_batch requires parent_id and children array',
+          error: 'create_nodes_batch requires parent_id and labels array',
         };
       }
-      type Child = { label: string; note?: string; color_idx?: number };
-      const children: Child[] = [];
-      for (const c of childrenIn) {
-        if (!c || typeof c !== 'object') continue;
-        const child = c as ToolParams;
-        const label = asString(child.label);
-        if (!label) continue;
-        const out: Child = { label };
-        const note = asString(child.note);
-        if (note !== undefined) out.note = note;
-        const color = asNumber(child.color_idx);
-        if (color !== undefined) out.color_idx = color;
-        children.push(out);
-      }
+      const children = labelsIn
+        .map((l) => String(l).trim())
+        .filter((l) => l.length > 0)
+        .map((label) => ({ label }));
       if (children.length === 0) {
-        return { success: false, error: 'create_nodes_batch needs at least one valid child' };
+        return {
+          success: false,
+          error: 'create_nodes_batch needs at least one non-empty label',
+        };
       }
       command = { type: 'create_nodes_batch', parent_id, children };
       break;
