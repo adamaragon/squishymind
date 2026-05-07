@@ -424,24 +424,63 @@ export default function MindMapCanvas({
     // Existing placeChild uses each sibling's stale total at insertion time,
     // so children added one-by-one (via voice) end up stacked at the +arc edge.
     // Call this after batch / repeat-voice creates to redistribute.
+    //
+    // Each sibling is then pushed outward along its angle (in steps) until it
+    // clears any other node in the map, so a new branch doesn't slam into an
+    // existing distant cousin.
+    const MIN_NODE_SEPARATION = 140; // px between centers
+    const PUSH_STEP = 30;
+    const MAX_PUSH_STEPS = 12;
+
+    function nodeOverlaps(x: number, y: number, ignoreId: string): boolean {
+      for (const id in state.nodes) {
+        if (id === ignoreId) continue;
+        const other = state.nodes[id];
+        if (!other) continue;
+        const d = Math.hypot(x - other.x, y - other.y);
+        if (d < MIN_NODE_SEPARATION) return true;
+      }
+      return false;
+    }
+
+    function placeChildAtAngle(
+      parent: MindMapNode,
+      childId: string,
+      angle: number,
+      startDistance: number,
+    ) {
+      const child = state.nodes[childId];
+      if (!child) return;
+      let distance = startDistance;
+      let x = parent.x + Math.cos(angle) * distance;
+      let y = parent.y + Math.sin(angle) * distance;
+      let steps = 0;
+      while (nodeOverlaps(x, y, childId) && steps < MAX_PUSH_STEPS) {
+        distance += PUSH_STEP;
+        x = parent.x + Math.cos(angle) * distance;
+        y = parent.y + Math.sin(angle) * distance;
+        steps++;
+      }
+      child.x = x;
+      child.y = y;
+    }
+
     function layoutChildren(parentId: string) {
       const parent = state.nodes[parentId];
       if (!parent) return;
       const siblingIds = state.childIndex[parentId] || [];
       const total = siblingIds.length;
       if (total === 0) return;
-      const distance = parent.depth === 0 ? 220 : 180;
+      const baseDistance = parent.depth === 0 ? 220 : 180;
 
       if (parent.parentId == null) {
         // Root — full-circle distribution. Reserve 6 slots so a brain with
         // 1–5 children doesn't crowd onto a single hemisphere.
         const slots = Math.max(total, 6);
         for (let i = 0; i < total; i++) {
-          const child = state.nodes[siblingIds[i]];
-          if (!child) continue;
+          const id = siblingIds[i];
           const angle = (i / slots) * Math.PI * 2;
-          child.x = parent.x + Math.cos(angle) * distance;
-          child.y = parent.y + Math.sin(angle) * distance;
+          placeChildAtAngle(parent, id, angle, baseDistance);
         }
         return;
       }
@@ -452,20 +491,13 @@ export default function MindMapCanvas({
       const arcSpread = Math.PI * 0.85;
 
       if (total === 1) {
-        const child = state.nodes[siblingIds[0]];
-        if (child) {
-          child.x = parent.x + Math.cos(baseAngle) * distance;
-          child.y = parent.y + Math.sin(baseAngle) * distance;
-        }
+        placeChildAtAngle(parent, siblingIds[0], baseAngle, baseDistance);
         return;
       }
 
       for (let i = 0; i < total; i++) {
-        const child = state.nodes[siblingIds[i]];
-        if (!child) continue;
         const angle = baseAngle - arcSpread / 2 + (i / (total - 1)) * arcSpread;
-        child.x = parent.x + Math.cos(angle) * distance;
-        child.y = parent.y + Math.sin(angle) * distance;
+        placeChildAtAngle(parent, siblingIds[i], angle, baseDistance);
       }
     }
 
