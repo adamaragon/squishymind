@@ -17,6 +17,19 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v2.7',
+    title: 'Beta Launch & New Home',
+    date: 'May 2026',
+    commit: 'e26c412',
+    highlights: [
+      'Refreshed home page that actually shows what we built',
+      'Persistent beta banner — sign up now and stay free forever',
+      'Six rewritten feature cards and a noticeably weirder FAQ',
+      'Recently shipped strip pulls live from the changelog',
+    ],
+    squishyNote: 'Free forever, darling. Don\'t make me beg.',
+  },
+  {
     version: 'v2.6',
     title: 'Changelog Page Added',
     date: 'May 2026',
