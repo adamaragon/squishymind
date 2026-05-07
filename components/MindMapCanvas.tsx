@@ -420,6 +420,55 @@ export default function MindMapCanvas({
       return addNode(parentId, label, x, y);
     }
 
+    // Re-spread every child of `parentId` evenly across the parent's arc.
+    // Existing placeChild uses each sibling's stale total at insertion time,
+    // so children added one-by-one (via voice) end up stacked at the +arc edge.
+    // Call this after batch / repeat-voice creates to redistribute.
+    function layoutChildren(parentId: string) {
+      const parent = state.nodes[parentId];
+      if (!parent) return;
+      const siblingIds = state.childIndex[parentId] || [];
+      const total = siblingIds.length;
+      if (total === 0) return;
+      const distance = parent.depth === 0 ? 220 : 180;
+
+      if (parent.parentId == null) {
+        // Root — full-circle distribution. Reserve 6 slots so a brain with
+        // 1–5 children doesn't crowd onto a single hemisphere.
+        const slots = Math.max(total, 6);
+        for (let i = 0; i < total; i++) {
+          const child = state.nodes[siblingIds[i]];
+          if (!child) continue;
+          const angle = (i / slots) * Math.PI * 2;
+          child.x = parent.x + Math.cos(angle) * distance;
+          child.y = parent.y + Math.sin(angle) * distance;
+        }
+        return;
+      }
+
+      const gp = state.nodes[parent.parentId];
+      if (!gp) return;
+      const baseAngle = Math.atan2(parent.y - gp.y, parent.x - gp.x);
+      const arcSpread = Math.PI * 0.85;
+
+      if (total === 1) {
+        const child = state.nodes[siblingIds[0]];
+        if (child) {
+          child.x = parent.x + Math.cos(baseAngle) * distance;
+          child.y = parent.y + Math.sin(baseAngle) * distance;
+        }
+        return;
+      }
+
+      for (let i = 0; i < total; i++) {
+        const child = state.nodes[siblingIds[i]];
+        if (!child) continue;
+        const angle = baseAngle - arcSpread / 2 + (i / (total - 1)) * arcSpread;
+        child.x = parent.x + Math.cos(angle) * distance;
+        child.y = parent.y + Math.sin(angle) * distance;
+      }
+    }
+
     function addSibling(nodeId: string, label = 'New sibling'): MindMapNode | null {
       const n = state.nodes[nodeId];
       if (!n || n.parentId == null) return null;
@@ -2205,6 +2254,8 @@ export default function MindMapCanvas({
           newNode.colorIdx = ((cmd.color_idx % COLOR_COUNT) + COLOR_COUNT) % COLOR_COUNT;
         }
         const newId = newNode.id;
+        // Re-spread existing siblings so the new one doesn't stack on top.
+        layoutChildren(cmd.parent_id);
         scheduleSave();
         renderAll();
         flashEdge(cmd.parent_id, newId);
@@ -2233,6 +2284,8 @@ export default function MindMapCanvas({
           created.push({ id: node.id, label: node.label });
           flashEdge(cmd.parent_id, node.id);
         }
+        // Spread the whole sibling set so the batch lands evenly.
+        layoutChildren(cmd.parent_id);
         scheduleSave();
         renderAll();
         playSfx('pop');
