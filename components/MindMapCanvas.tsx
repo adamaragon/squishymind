@@ -2461,6 +2461,30 @@ export default function MindMapCanvas({
         return { success: true };
       }
 
+      if (cmd.type === 'open_detail_view') {
+        const n = state.nodes[cmd.node_id];
+        if (!n) return { success: false, error: `No node with id ${cmd.node_id}` };
+        openDetail(cmd.node_id);
+        return {
+          success: true,
+          data: {
+            node_id: n.id,
+            label: n.label,
+            note: n.note || null,
+            color_idx: n.colorIdx,
+            has_image: !!n.imageUrl,
+          },
+        };
+      }
+
+      if (cmd.type === 'close_detail_view') {
+        if (!state.detailId) {
+          return { success: false, error: 'No detail view is currently open' };
+        }
+        closeDetail();
+        return { success: true };
+      }
+
       return { success: false, error: 'Unknown command type' };
     });
 

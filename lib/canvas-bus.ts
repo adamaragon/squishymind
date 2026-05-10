@@ -27,7 +27,9 @@ export type CanvasCommand =
   | { type: 'undo' }
   | { type: 'list_nodes'; parent_id?: string; query?: string }
   | { type: 'focus_node'; node_id: string }
-  | { type: 'fit_to_screen' };
+  | { type: 'fit_to_screen' }
+  | { type: 'open_detail_view'; node_id: string }
+  | { type: 'close_detail_view' };
 
 export type CanvasResult =
   | { success: true; data?: unknown }

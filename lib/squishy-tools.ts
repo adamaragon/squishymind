@@ -14,6 +14,8 @@ export const CANVAS_TOOLS = [
   'list_nodes',
   'focus_node',
   'fit_to_screen',
+  'open_detail_view',
+  'close_detail_view',
 ] as const;
 
 type ToolParams = Record<string, unknown>;
@@ -134,6 +136,17 @@ export async function executeSquishyTool(
 
     case 'fit_to_screen':
       command = { type: 'fit_to_screen' };
+      break;
+
+    case 'open_detail_view': {
+      const node_id = asString(params.node_id);
+      if (!node_id) return { success: false, error: 'open_detail_view requires node_id' };
+      command = { type: 'open_detail_view', node_id };
+      break;
+    }
+
+    case 'close_detail_view':
+      command = { type: 'close_detail_view' };
       break;
 
     default:
