@@ -17,6 +17,20 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v3.0',
+    title: 'Collaboration. Done.',
+    date: 'May 2026',
+    commit: 'bdb358a',
+    highlights: [
+      'Threaded comments on any node — owners, editors, and commenters all post',
+      '“Sam editing” badge appears on the node a collaborator opens',
+      'Commenter role is now properly read-only on the canvas, with comments allowed',
+      'Squishy notices when other people are in the map and mentions them naturally',
+      'Premium signposting — free during beta and forever for early signups',
+    ],
+    squishyNote: 'There you all are. Try not to crowd me.',
+  },
+  {
     version: 'v2.10',
     title: 'Two Brains',
     date: 'May 2026',
@@ -139,12 +153,6 @@ export const roadmap: RoadmapEntry[] = [
     title: 'Squishy gets smarter at teaching',
     description:
       'Workflow and prompt revision so Squishy uses her new canvas powers at the right tutoring moments — building example maps with you in real time.',
-    status: 'next',
-  },
-  {
-    title: 'Finishing v3 collaboration',
-    description:
-      'The core just shipped — invites, presence, real-time sync. Still to come in v3.0 proper: “X is editing this node” badges, threaded comments on nodes, and Squishy noticing when other people are in the map with you.',
     status: 'next',
   },
   {
