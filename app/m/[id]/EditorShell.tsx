@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import ShareDialog from '@/components/ShareDialog';
+import MembersPanel from '@/components/MembersPanel';
 import MindMapCanvas from '@/components/MindMapCanvas';
 import type { MindMapData, Visibility } from '@/lib/types';
 
@@ -22,6 +23,8 @@ export default function EditorShell({
   initialVisibility,
   initialShareToken,
   initialData,
+  currentUserId,
+  ownerId,
 }: {
   id: string;
   initialTitle: string;
@@ -29,7 +32,10 @@ export default function EditorShell({
   initialVisibility: Visibility;
   initialShareToken: string;
   initialData: MindMapData;
+  currentUserId: string;
+  ownerId: string;
 }) {
+  const isOwner = currentUserId === ownerId;
   const router = useRouter();
   const [title, setTitle] = useState(initialTitle);
   const [slug, setSlug] = useState(initialSlug);
@@ -38,6 +44,7 @@ export default function EditorShell({
   const [slugOpen, setSlugOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
   const [visibility, setVisibility] = useState<Visibility>(initialVisibility);
   const [shareToken, setShareToken] = useState(initialShareToken);
 
@@ -206,6 +213,21 @@ export default function EditorShell({
           )}
         </div>
 
+        {/* members button */}
+        <button
+          onClick={() => setMembersOpen(true)}
+          className="shrink-0 flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-white transition-colors"
+          title={isOwner ? 'Manage collaborators' : 'See who else is on this map'}
+        >
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="5" cy="6" r="2.2" />
+            <path d="M1.5 13.5c0-1.9 1.6-3.4 3.5-3.4s3.5 1.5 3.5 3.4" />
+            <circle cx="11" cy="5" r="1.8" />
+            <path d="M9.5 13.5c0-1.5 1-2.8 2.5-3.2" />
+          </svg>
+          Members
+        </button>
+
         {/* share button */}
         <button
           onClick={() => setShareOpen(true)}
@@ -264,6 +286,15 @@ export default function EditorShell({
             setVisibility(v);
             setShareToken(t);
           }}
+        />
+      )}
+
+      {membersOpen && (
+        <MembersPanel
+          mindmapId={id}
+          isOwner={isOwner}
+          currentUserId={currentUserId}
+          onClose={() => setMembersOpen(false)}
         />
       )}
     </div>

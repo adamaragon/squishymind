@@ -30,6 +30,8 @@ export default async function EditorPage({ params }: { params: Promise<{ id: str
         initialVisibility={mindmap.visibility}
         initialShareToken={mindmap.share_token}
         initialData={mindmap.data}
+        currentUserId={user.id}
+        ownerId={mindmap.owner_id}
       />
       <Footer minimal />
     </>
