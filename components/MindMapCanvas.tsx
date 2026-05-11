@@ -2709,6 +2709,18 @@ export default function MindMapCanvas({
           }
           otherPresence = next;
           renderPresence();
+          // Surface the collaborator count to the Squishy widget (which lives
+          // in another React tree). Squishy's system prompt reads this via
+          // {{collaborator_count}} and acknowledges other people naturally.
+          try {
+            window.dispatchEvent(
+              new CustomEvent('squishymind:collaborator-count', {
+                detail: { count: Object.keys(next).length },
+              }),
+            );
+          } catch {
+            /* ignore */
+          }
         })
         .subscribe(async (status) => {
           if (status === 'SUBSCRIBED') {
@@ -3144,6 +3156,16 @@ export default function MindMapCanvas({
       }
       try {
         commentsChannel.unsubscribe();
+      } catch {
+        /* ignore */
+      }
+      // Reset collaborator count for the Squishy widget — we've left the map.
+      try {
+        window.dispatchEvent(
+          new CustomEvent('squishymind:collaborator-count', {
+            detail: { count: 0 },
+          }),
+        );
       } catch {
         /* ignore */
       }

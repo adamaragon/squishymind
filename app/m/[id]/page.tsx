@@ -23,6 +23,27 @@ export default async function EditorPage({ params }: { params: Promise<{ id: str
 
   const displayName = user.email?.split('@')[0] || 'someone';
 
+  // Determine the viewer's role on this map. Owner trumps everything; otherwise
+  // look up the collaborators row. RLS already restricts who can read the map
+  // at all, so the only valid roles reaching this point are owner, editor, or
+  // commenter — but we default to commenter (least privilege) if anything's
+  // unexpected.
+  const isOwner = mindmap.owner_id === user.id;
+  let role: 'owner' | 'editor' | 'commenter' = 'commenter';
+  if (isOwner) {
+    role = 'owner';
+  } else {
+    const { data: collab } = await supabase
+      .from('collaborators')
+      .select('role')
+      .eq('mindmap_id', mindmap.id)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (collab?.role === 'editor') role = 'editor';
+    else if (collab?.role === 'commenter') role = 'commenter';
+  }
+  const canEdit = role === 'owner' || role === 'editor';
+
   return (
     <>
       <EditorShell
@@ -35,6 +56,8 @@ export default async function EditorPage({ params }: { params: Promise<{ id: str
         currentUserId={user.id}
         currentUserName={displayName}
         ownerId={mindmap.owner_id}
+        canEdit={canEdit}
+        role={role}
       />
       <Footer minimal />
     </>

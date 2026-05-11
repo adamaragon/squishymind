@@ -26,6 +26,8 @@ export default function EditorShell({
   currentUserId,
   currentUserName,
   ownerId,
+  canEdit,
+  role,
 }: {
   id: string;
   initialTitle: string;
@@ -36,6 +38,8 @@ export default function EditorShell({
   currentUserId: string;
   currentUserName: string;
   ownerId: string;
+  canEdit: boolean;
+  role: 'owner' | 'editor' | 'commenter';
 }) {
   const isOwner = currentUserId === ownerId;
   const router = useRouter();
@@ -167,14 +171,22 @@ export default function EditorShell({
         </Link>
 
         <input
-          className="flex-1 bg-transparent border-none outline-none text-sm font-medium text-white placeholder:text-[--text-dim] min-w-0"
+          className="flex-1 bg-transparent border-none outline-none text-sm font-medium text-white placeholder:text-[--text-dim] min-w-0 disabled:opacity-70"
           value={title}
           onChange={onTitleChange}
           placeholder="Untitled mind map"
           spellCheck={false}
+          readOnly={!canEdit}
         />
 
-        {/* vanity URL pill */}
+        {role === 'commenter' && (
+          <span className="shrink-0 text-[10px] uppercase tracking-wider px-2 py-1 rounded-full border border-violet-500/40 bg-violet-500/10 text-violet-200">
+            Commenter · read-only
+          </span>
+        )}
+
+        {/* vanity URL pill — owners/editors only */}
+        {canEdit && (
         <div className="flex items-center gap-2 shrink-0">
           {!slugOpen ? (
             <button
@@ -214,6 +226,7 @@ export default function EditorShell({
             </div>
           )}
         </div>
+        )}
 
         {/* members button — collaboration is a future premium feature; free during beta */}
         <button
@@ -271,6 +284,7 @@ export default function EditorShell({
           initialTitle={title}
           currentUserId={currentUserId}
           currentUserName={currentUserName}
+          readonly={!canEdit}
           onDataChange={onDataChange}
           onTitleChange={(next) => {
             setTitle(next);
