@@ -9,11 +9,15 @@ const faqs = [
   },
   {
     q: 'Can I share a map with my team?',
-    a: 'Yes. Open any map you own, click Members, invite people by email as Editor (full edit) or Commenter (read-only + comments). Recipients get a magic-link email. Once they accept, you see each other’s cursors live on the canvas, and edits sync between browsers in about a second.',
+    a: 'Yes. Open any map you own, click Members, invite people by email as Editor (full edit) or Commenter (read-only plus comments). Once they accept, you see each other’s cursors live on the canvas, edits sync between browsers in about a second, and either of you can leave threaded comments on any node.',
   },
   {
     q: 'What’s the difference between Editor and Commenter?',
-    a: 'Editors can do anything you can — add, move, delete, rename, edit notes. Commenters can view but not change the canvas. Comment threads on specific nodes are landing in the next release; for now Commenter is the right role to give a reviewer.',
+    a: 'Editors can do anything you can — add, move, delete, rename, edit notes. Commenters can read the map and leave comments on specific nodes, but can’t change the canvas itself. Useful for getting feedback without letting the reviewer rearrange the furniture.',
+  },
+  {
+    q: 'Wait — is collaboration going to cost money?',
+    a: 'Eventually, yes. Multi-user features (invites, live cursors, real-time sync, comments) will be on a paid Premium tier after beta. While the beta banner is still up at the top of the page, everything’s free — and if you signed up during beta, those features stay free forever on your account. Sign up now, lock in the deal, ignore us later when we put up a paywall.',
   },
   {
     q: 'How long is the beta?',

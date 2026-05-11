@@ -61,8 +61,8 @@ export default function HomePage() {
             body="Every node breathes. Every edge wiggles. The brain in the middle pulses gently. It feels alive because we put a lot of work into making it feel alive. We have priorities."
           />
           <Feature
-            title="Bring people in"
-            body="Invite collaborators by email as Editors or Commenters. See their cursors moving on your canvas in real time. When they add a branch, it shows up on your screen. When you're both editing, you can tell. It's a brain you can share."
+            title="Bring people in (Premium · free during beta)"
+            body="Invite collaborators by email as Editors or Commenters. See their cursors moving in real time, watch their edits appear, leave threaded comments on any node. Will be a paid feature after beta — free forever for you if you signed up while the banner was up."
           />
           <Feature
             title="Auto-coloured branches"

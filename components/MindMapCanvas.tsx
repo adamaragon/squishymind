@@ -927,6 +927,14 @@ export default function MindMapCanvas({
         });
       }
 
+      // Comments section — appended for every non-brain node, for any reader.
+      // Compose form only renders when the current user is authenticated.
+      const commentsHolder = document.createElement('div');
+      commentsHolder.className = 'detail-comments';
+      commentsHolder.dataset.nodeId = n.id;
+      wrap.appendChild(commentsHolder);
+      mountCommentsPanel(commentsHolder, n.id);
+
       return wrap;
     }
 
@@ -1038,6 +1046,185 @@ export default function MindMapCanvas({
       err.textContent = `✕ ${msg}`;
       holder.appendChild(err);
       setTimeout(() => err.remove(), 4000);
+    }
+
+    // ---- Comments ----
+    type CommentDTO = {
+      id: string;
+      body: string;
+      parent_comment_id: string | null;
+      author_id: string;
+      author_name: string;
+      created_at: string;
+    };
+
+    // node_id → latest fetched list. Used to repaint on realtime events.
+    const commentsCache: Record<string, CommentDTO[]> = {};
+
+    function relativeTime(iso: string): string {
+      const t = new Date(iso).getTime();
+      const diff = Math.max(1, Math.floor((Date.now() - t) / 1000));
+      if (diff < 60) return `${diff}s ago`;
+      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+      return new Date(iso).toLocaleDateString();
+    }
+
+    async function fetchComments(nodeId: string): Promise<CommentDTO[]> {
+      try {
+        const res = await fetch(
+          `/api/mindmaps/${mindmapId}/comments?node_id=${encodeURIComponent(nodeId)}`,
+        );
+        if (!res.ok) return [];
+        const body = await res.json();
+        return Array.isArray(body.comments) ? body.comments : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function renderCommentsList(holder: HTMLElement, list: CommentDTO[]) {
+      const ul = holder.querySelector('.detail-comments-list');
+      if (!ul) return;
+      ul.innerHTML = '';
+      if (list.length === 0) {
+        const empty = document.createElement('li');
+        empty.className = 'detail-comments-empty';
+        empty.textContent = currentUserId
+          ? 'No comments yet. Be the first.'
+          : 'No comments yet.';
+        ul.appendChild(empty);
+        return;
+      }
+      for (const c of list) {
+        const li = document.createElement('li');
+        li.className = 'detail-comment';
+        li.dataset.cid = c.id;
+        const head = document.createElement('div');
+        head.className = 'detail-comment-head';
+        const author = document.createElement('span');
+        author.className = 'detail-comment-author';
+        author.textContent = c.author_name;
+        const when = document.createElement('span');
+        when.className = 'detail-comment-when';
+        when.textContent = relativeTime(c.created_at);
+        head.appendChild(author);
+        head.appendChild(when);
+        li.appendChild(head);
+
+        const body = document.createElement('div');
+        body.className = 'detail-comment-body';
+        body.textContent = c.body;
+        li.appendChild(body);
+
+        if (currentUserId === c.author_id) {
+          const del = document.createElement('button');
+          del.className = 'detail-comment-del';
+          del.textContent = 'Delete';
+          del.addEventListener('click', async () => {
+            del.disabled = true;
+            try {
+              await fetch(`/api/mindmaps/${mindmapId}/comments/${c.id}`, {
+                method: 'DELETE',
+              });
+              await refreshComments((holder as HTMLElement).dataset.nodeId || '');
+            } finally {
+              del.disabled = false;
+            }
+          });
+          li.appendChild(del);
+        }
+        ul.appendChild(li);
+      }
+    }
+
+    async function refreshComments(nodeId: string) {
+      const list = await fetchComments(nodeId);
+      commentsCache[nodeId] = list;
+      // Repaint any visible holder whose dataset.nodeId matches.
+      const holder = nodesLayer.querySelector(
+        `.detail-comments[data-node-id="${nodeId}"]`,
+      ) as HTMLElement | null;
+      if (holder) renderCommentsList(holder, list);
+    }
+
+    function mountCommentsPanel(holder: HTMLElement, nodeId: string) {
+      holder.innerHTML = '';
+
+      const header = document.createElement('div');
+      header.className = 'detail-section-label';
+      header.textContent = 'Comments';
+      holder.appendChild(header);
+
+      const ul = document.createElement('ul');
+      ul.className = 'detail-comments-list';
+      holder.appendChild(ul);
+
+      // Loading state until first fetch returns.
+      const loading = document.createElement('li');
+      loading.className = 'detail-comments-empty';
+      loading.textContent = 'Loading…';
+      ul.appendChild(loading);
+
+      if (currentUserId) {
+        const composer = document.createElement('div');
+        composer.className = 'detail-comments-composer';
+        const ta = document.createElement('textarea');
+        ta.placeholder = 'Leave a comment…';
+        ta.rows = 2;
+        ta.className = 'detail-note';
+        ta.style.minHeight = '48px';
+        const row = document.createElement('div');
+        row.className = 'detail-comments-actions';
+        const post = document.createElement('button');
+        post.className = 'stub-btn ai-btn';
+        post.textContent = 'Post';
+        post.disabled = true;
+        ta.addEventListener('input', () => {
+          post.disabled = ta.value.trim().length === 0;
+        });
+        ta.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            if (!post.disabled) post.click();
+          }
+        });
+        post.addEventListener('click', async () => {
+          const text = ta.value.trim();
+          if (!text) return;
+          post.disabled = true;
+          try {
+            const res = await fetch(`/api/mindmaps/${mindmapId}/comments`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ node_id: nodeId, body: text }),
+            });
+            if (!res.ok) {
+              const e = await res.json().catch(() => ({}));
+              const errEl = document.createElement('div');
+              errEl.className = 'ai-error';
+              errEl.textContent =
+                e.error === 'forbidden'
+                  ? 'You don’t have permission to comment here.'
+                  : `Couldn’t post: ${e.error || 'unknown'}`;
+              composer.appendChild(errEl);
+              setTimeout(() => errEl.remove(), 4000);
+              return;
+            }
+            ta.value = '';
+            await refreshComments(nodeId);
+          } finally {
+            post.disabled = ta.value.trim().length === 0;
+          }
+        });
+        row.appendChild(post);
+        composer.appendChild(ta);
+        composer.appendChild(row);
+        holder.appendChild(composer);
+      }
+
+      // Kick off the initial fetch; renderCommentsList replaces the loading row.
+      refreshComments(nodeId);
     }
 
     // ---- AI expand ----
@@ -2470,6 +2657,32 @@ export default function MindMapCanvas({
     const myColor = currentUserId ? colorForUser(currentUserId) : '#888888';
     const myName = currentUserName || 'someone';
 
+    // Realtime comments — refresh the visible detail's comments list on any
+    // insert/delete affecting the open node. Filtered to this mindmap so we
+    // don't subscribe to the entire comments table.
+    const commentsChannel = realtimeClient
+      .channel(`map:${mindmapId}:comments`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'comments',
+          filter: `mindmap_id=eq.${mindmapId}`,
+        },
+        (payload) => {
+          const row =
+            (payload.new as { node_id?: string } | null) ||
+            (payload.old as { node_id?: string } | null);
+          const targetNode = row?.node_id;
+          // Only re-fetch if the change is for the node currently in detail view.
+          if (targetNode && state.detailId === targetNode) {
+            refreshComments(targetNode);
+          }
+        },
+      )
+      .subscribe();
+
     if (currentUserId) {
       presenceChannel = realtimeClient.channel(presenceChannelName(mindmapId), {
         config: { presence: { key: currentUserId } },
@@ -2858,6 +3071,11 @@ export default function MindMapCanvas({
       }
       try {
         presenceChannel?.unsubscribe();
+      } catch {
+        /* ignore */
+      }
+      try {
+        commentsChannel.unsubscribe();
       } catch {
         /* ignore */
       }
@@ -3584,6 +3802,86 @@ export default function MindMapCanvas({
             transform: scale(1.04) rotate(-2deg) skewX(-2deg);
           }
         }
+        .smm-root :global(.detail-comments) {
+          margin-top: 8px;
+          padding-top: 12px;
+          border-top: 1px solid var(--node-border);
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .smm-root :global(.detail-comments-list) {
+          list-style: none;
+          margin: 0;
+          padding: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          max-height: 200px;
+          overflow-y: auto;
+        }
+        .smm-root :global(.detail-comments-empty) {
+          font-size: 12px;
+          color: var(--ui-text-dim);
+          font-style: italic;
+          padding: 2px 0;
+        }
+        .smm-root :global(.detail-comment) {
+          background: color-mix(in srgb, var(--node-bg) 70%, black 10%);
+          border: 1px solid var(--node-border);
+          border-radius: 8px;
+          padding: 6px 8px;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          position: relative;
+        }
+        .smm-root :global(.detail-comment-head) {
+          display: flex;
+          gap: 8px;
+          align-items: baseline;
+          justify-content: space-between;
+        }
+        .smm-root :global(.detail-comment-author) {
+          font-size: 11px;
+          font-weight: 600;
+          color: var(--node-text);
+        }
+        .smm-root :global(.detail-comment-when) {
+          font-size: 10px;
+          color: var(--ui-text-dim);
+        }
+        .smm-root :global(.detail-comment-body) {
+          font-size: 12px;
+          line-height: 1.45;
+          color: var(--node-text);
+          white-space: pre-wrap;
+          word-wrap: break-word;
+        }
+        .smm-root :global(.detail-comment-del) {
+          align-self: flex-end;
+          background: transparent;
+          border: none;
+          color: #fca5a5;
+          font-size: 11px;
+          cursor: pointer;
+          padding: 2px 4px;
+          margin-top: 2px;
+        }
+        .smm-root :global(.detail-comment-del:hover) {
+          color: #fecaca;
+        }
+        .smm-root :global(.detail-comments-composer) {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          margin-top: 4px;
+        }
+        .smm-root :global(.detail-comments-actions) {
+          display: flex;
+          justify-content: flex-end;
+        }
+
         .smm-root :global(.smm-cursor) {
           position: absolute;
           pointer-events: none;

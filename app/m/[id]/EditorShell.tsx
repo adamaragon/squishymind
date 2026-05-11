@@ -215,11 +215,11 @@ export default function EditorShell({
           )}
         </div>
 
-        {/* members button */}
+        {/* members button — collaboration is a future premium feature; free during beta */}
         <button
           onClick={() => setMembersOpen(true)}
-          className="shrink-0 flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-white transition-colors"
-          title={isOwner ? 'Manage collaborators' : 'See who else is on this map'}
+          className="shrink-0 flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border border-pink-500/30 bg-pink-500/10 hover:bg-pink-500/15 text-white transition-colors"
+          title="Manage collaborators (Premium — free during beta)"
         >
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="5" cy="6" r="2.2" />
@@ -228,6 +228,7 @@ export default function EditorShell({
             <path d="M9.5 13.5c0-1.5 1-2.8 2.5-3.2" />
           </svg>
           Members
+          <span className="ml-1 text-[10px] text-pink-300 font-medium">PREMIUM</span>
         </button>
 
         {/* share button */}

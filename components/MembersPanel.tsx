@@ -109,7 +109,7 @@ export default function MembersPanel({ mindmapId, isOwner, currentUserId, onClos
         onClick={(e) => e.stopPropagation()}
         className="glass rounded-2xl max-w-lg w-full p-7"
       >
-        <div className="flex items-baseline justify-between mb-5">
+        <div className="flex items-baseline justify-between mb-3">
           <h2 className="text-xl font-semibold">Members</h2>
           <button
             onClick={onClose}
@@ -118,6 +118,16 @@ export default function MembersPanel({ mindmapId, isOwner, currentUserId, onClos
           >
             ✕
           </button>
+        </div>
+
+        <div className="mb-5 rounded-lg border border-pink-500/30 bg-gradient-to-r from-pink-500/10 to-violet-500/10 px-3 py-2 text-xs flex items-start gap-2">
+          <span className="text-pink-300 font-semibold shrink-0">PREMIUM</span>
+          <span className="text-[--text-dim] leading-snug">
+            Collaboration — invites, live cursors, real-time sync, comments — will
+            be a paid feature after beta. Free for you right now, and{' '}
+            <span className="text-white">free forever</span> if you signed up
+            during the beta banner.
+          </span>
         </div>
 
         {isOwner && (
