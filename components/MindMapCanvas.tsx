@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { MindMapData, MindMapNode } from '@/lib/types';
 import { registerCanvasHandler, type CanvasResult } from '@/lib/canvas-bus';
 import { templates as TEMPLATES } from '@/lib/templates';
+import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
 
 export type MindMapCanvasProps = {
   mindmapId: string;
@@ -97,6 +98,9 @@ export default function MindMapCanvas({
   const initialDataRef = useRef<MindMapData>(initialData);
   // Imperative re-render hook the main effect populates so other effects (e.g. title sync) can refresh.
   const renderAllRef = useRef<(() => void) | null>(null);
+  // Drain pending remote realtime updates that were queued during a drag.
+  // Populated by the main effect, called from the drag-end handler.
+  const flushPendingRemoteDataRef = useRef<(() => void) | null>(null);
 
   // Keep latest callbacks/props readable from event handlers without re-running effect
   useEffect(() => {
@@ -331,6 +335,17 @@ export default function MindMapCanvas({
     }
 
     // ---- Persistence (debounced 800ms) ----
+    // Echo prevention for realtime sync: when this client writes data, the
+    // resulting Postgres UPDATE event comes back to us too. We dedupe by
+    // tracking the JSON hash of recent saves; an incoming broadcast that
+    // matches any recent hash is our own echo and gets dropped.
+    const recentSentHashes: string[] = [];
+    const RECENT_SENT_LIMIT = 16;
+    function recordSentHash(hash: string) {
+      recentSentHashes.push(hash);
+      while (recentSentHashes.length > RECENT_SENT_LIMIT) recentSentHashes.shift();
+    }
+
     function scheduleSave() {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(() => {
@@ -339,6 +354,7 @@ export default function MindMapCanvas({
           childIndex: JSON.parse(JSON.stringify(state.childIndex)),
           rootId: state.rootId,
         };
+        recordSentHash(JSON.stringify(data));
         onDataChangeRef.current?.(data);
       }, 800);
     }
@@ -1796,6 +1812,8 @@ export default function MindMapCanvas({
         }
         // touch reference so TS doesn't warn
         void draggedNode;
+        // Drain any realtime update that was deferred during the drag.
+        flushPendingRemoteDataRef.current?.();
       }
     }
 
@@ -2343,6 +2361,84 @@ export default function MindMapCanvas({
     setTimeout(fitToScreen, 50);
     rafRef.current = requestAnimationFrame(tickParticles);
 
+    // ---- Realtime data sync ----
+    // Subscribe to Postgres UPDATE events on the mindmaps row. When a
+    // collaborator saves new `data`, merge it into local state.
+    //
+    // Three edge cases:
+    //  1. Echo: our own save broadcasts back to us. Dropped via the recent-
+    //     hashes set populated by scheduleSave.
+    //  2. Mid-drag: if a remote update lands while the user is dragging,
+    //     apply would clobber the in-flight position. Queue the update and
+    //     replay on mouseup (handled in onWindowMouseUp).
+    //  3. Detail view open: preserve state.detailId across the apply so the
+    //     user's detail card stays visible (rebuilt with fresh data).
+    let pendingRemoteData: MindMapData | null = null;
+
+    function applyRemoteData(incoming: MindMapData) {
+      state.nodes = JSON.parse(JSON.stringify(incoming.nodes || {}));
+      state.childIndex = JSON.parse(JSON.stringify(incoming.childIndex || {}));
+      state.rootId = incoming.rootId ?? null;
+      // Preserve detail/selection if the referenced node still exists.
+      if (state.detailId && !state.nodes[state.detailId]) {
+        state.detailId = null;
+      }
+      if (state.selectedId && !state.nodes[state.selectedId]) {
+        state.selectedId = state.rootId;
+      }
+      nextIdRef.current = nextIdFromNodes(state.nodes);
+      renderAll();
+    }
+
+    // Expose pendingRemoteData consumer for the drag-end path. Stored on the
+    // closure so onWindowMouseUp (defined above) can pick it up.
+    flushPendingRemoteDataRef.current = () => {
+      const pending = pendingRemoteData;
+      pendingRemoteData = null;
+      if (pending) applyRemoteData(pending);
+    };
+
+    const realtimeClient = createBrowserSupabase();
+    const dataChannel = realtimeClient
+      .channel(`map:${mindmapId}:data`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'mindmaps',
+          filter: `id=eq.${mindmapId}`,
+        },
+        (payload) => {
+          const next = payload.new as { data?: MindMapData } | null;
+          const incoming = next?.data;
+          if (!incoming || typeof incoming !== 'object') return;
+
+          // Echo prevention: matches one of our recent local saves.
+          const incomingHash = JSON.stringify({
+            nodes: incoming.nodes || {},
+            childIndex: incoming.childIndex || {},
+            rootId: incoming.rootId ?? null,
+          });
+          if (recentSentHashes.includes(incomingHash)) return;
+
+          // No-op if already in sync (e.g. two clients converged).
+          const localHash = JSON.stringify({
+            nodes: state.nodes,
+            childIndex: state.childIndex,
+            rootId: state.rootId,
+          });
+          if (incomingHash === localHash) return;
+
+          if (dragNode) {
+            pendingRemoteData = incoming;
+            return;
+          }
+          applyRemoteData(incoming);
+        },
+      )
+      .subscribe();
+
     // ---- Squishy voice command handler ----
     // Read-only viewers (share/[token]) still register the handler so list /
     // focus / fit work, but mutation commands return a clean error.
@@ -2626,6 +2722,12 @@ export default function MindMapCanvas({
     // ---- Cleanup ----
     return () => {
       unregisterCanvasHandler();
+      try {
+        dataChannel.unsubscribe();
+      } catch {
+        /* ignore */
+      }
+      flushPendingRemoteDataRef.current = null;
       cancelledRef.current = true;
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
