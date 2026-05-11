@@ -17,6 +17,20 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v2.9',
+    title: 'Templates, Drag-to-Move, Voice Themes',
+    date: 'May 2026',
+    commit: '1d76feb',
+    highlights: [
+      'Eight starter templates so a blank brain isn’t the first sight',
+      '“+ New map” opens a picker — project planning, brainstorm, OKRs, more',
+      'Drag a branch onto another node to re-parent the whole subtree',
+      'Ask Squishy to switch themes — aurora, sunrise, forest, mono',
+      'Apply a template by voice; Cmd+Z reverts the whole map',
+    ],
+    squishyNote: 'Pick a template, darling. Or don’t. I work with what you give me.',
+  },
+  {
     version: 'v2.8',
     title: 'Squishy Knows You',
     date: 'May 2026',
@@ -114,18 +128,6 @@ export const roadmap: RoadmapEntry[] = [
     status: 'next',
   },
   {
-    title: 'Drag to re-parent',
-    description:
-      'Drag a branch onto a different parent and watch the whole subtree relocate. The data model already supports it; this lights it up in the UI.',
-    status: 'next',
-  },
-  {
-    title: 'AI text expansion',
-    description:
-      'A silent ✨ button on any node generates 5–8 suggested children. For when you do not want to talk to her.',
-    status: 'soon',
-  },
-  {
     title: 'Real-time collaboration',
     description:
       'Multi-cursor, “X is editing this node” indicators, email invites for editors and commenters. Maps become team artifacts.',
@@ -138,10 +140,10 @@ export const roadmap: RoadmapEntry[] = [
     status: 'soon',
   },
   {
-    title: 'Templates',
+    title: 'PNG and PDF export',
     description:
-      'Pre-built starting points — brainstorm, project planning, knowledge base, OKRs. Squishy can suggest one when you start a fresh map.',
-    status: 'considering',
+      'JSON export already works. Next: clean PNG of the whole canvas and a printable PDF, so you can drop a map into a slide or send it to someone who won’t sign up.',
+    status: 'soon',
   },
   {
     title: 'Public gallery',
@@ -150,15 +152,15 @@ export const roadmap: RoadmapEntry[] = [
     status: 'considering',
   },
   {
-    title: 'Voice-driven themes',
-    description:
-      '“Squishy, switch to forest.” She does. Possibly the lowest-effort highest-charm feature on this list.',
-    status: 'considering',
-  },
-  {
     title: 'Mobile optimization',
     description:
       'A focused pass for touch interactions, smaller node sizing, simplified UI. The canvas works on mobile but is not yet polished.',
+    status: 'considering',
+  },
+  {
+    title: 'More templates, more often',
+    description:
+      'Curated additions to the template picker as patterns emerge — retros, weekly reviews, study guides. Templates aren’t a one-and-done.',
     status: 'considering',
   },
 ];
