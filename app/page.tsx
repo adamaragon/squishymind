@@ -27,7 +27,7 @@ export default function HomePage() {
           <p className="text-lg md:text-xl text-[--text-dim] mb-9 max-w-3xl mx-auto leading-relaxed">
             A wobbly, slightly sentient mind-mapping canvas with a voice agent who flirts with the
             conversation and occasionally short-circuits. Solo, or with people you invite —{' '}
-            <em className="text-white">cursors, presence, real-time sync.</em>{' '}
+            <em className="text-white">live cursors, real-time sync, threaded comments.</em>{' '}
             <span className="text-white">Free during beta.</span>
           </p>
           <div className="flex items-center justify-center gap-3 flex-wrap">
