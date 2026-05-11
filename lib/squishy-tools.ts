@@ -16,6 +16,9 @@ export const CANVAS_TOOLS = [
   'fit_to_screen',
   'open_detail_view',
   'close_detail_view',
+  'switch_theme',
+  'list_templates',
+  'apply_template',
 ] as const;
 
 type ToolParams = Record<string, unknown>;
@@ -148,6 +151,32 @@ export async function executeSquishyTool(
     case 'close_detail_view':
       command = { type: 'close_detail_view' };
       break;
+
+    case 'switch_theme': {
+      const theme = asString(params.theme)?.toLowerCase();
+      const valid = ['aurora', 'sunrise', 'forest', 'mono'] as const;
+      if (!theme || !(valid as readonly string[]).includes(theme)) {
+        return {
+          success: false,
+          error: `switch_theme requires theme to be one of: ${valid.join(', ')}`,
+        };
+      }
+      command = { type: 'switch_theme', theme: theme as (typeof valid)[number] };
+      break;
+    }
+
+    case 'list_templates':
+      command = { type: 'list_templates' };
+      break;
+
+    case 'apply_template': {
+      const template_id = asString(params.template_id);
+      if (!template_id) {
+        return { success: false, error: 'apply_template requires template_id' };
+      }
+      command = { type: 'apply_template', template_id };
+      break;
+    }
 
     default:
       return { success: false, error: `Unknown tool: ${toolName}` };

@@ -4,24 +4,9 @@ import { revalidatePath } from 'next/cache';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import DeleteMapButton from '@/components/DeleteMapButton';
+import NewMapButton from '@/components/NewMapButton';
 import { createClient } from '@/lib/supabase/server';
 import type { Mindmap } from '@/lib/types';
-
-async function createMindmap() {
-  'use server';
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
-
-  const { data, error } = await supabase
-    .from('mindmaps')
-    .insert({ owner_id: user.id, title: 'Untitled mind map' })
-    .select('id')
-    .single();
-  if (error) throw new Error(error.message);
-  revalidatePath('/dashboard');
-  redirect(`/m/${data.id}`);
-}
 
 async function deleteMindmap(formData: FormData) {
   'use server';
@@ -47,19 +32,15 @@ export default async function DashboardPage() {
       <main className="max-w-5xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-semibold">Your mind maps</h1>
-          <form action={createMindmap}>
-            <button type="submit" className="btn btn-primary">+ New map</button>
-          </form>
+          <NewMapButton />
         </div>
 
         {(!maps || maps.length === 0) ? (
           <div className="glass rounded-2xl p-10 text-center">
             <img src="/brain.svg" alt="" width={80} height={80} className="mx-auto mb-4 opacity-80" />
             <p className="text-lg mb-2">No maps yet — your brain is empty.</p>
-            <p className="text-sm text-[--text-dim] mb-5">(In a healthy way. Let's fix that.)</p>
-            <form action={createMindmap}>
-              <button type="submit" className="btn btn-primary">Create your first mind map</button>
-            </form>
+            <p className="text-sm text-[--text-dim] mb-5">(In a healthy way. Let&apos;s fix that.)</p>
+            <NewMapButton label="Create your first mind map" />
           </div>
         ) : (
           <ul className="grid md:grid-cols-2 gap-4">

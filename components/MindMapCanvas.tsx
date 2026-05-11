@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MindMapData, MindMapNode } from '@/lib/types';
 import { registerCanvasHandler, type CanvasResult } from '@/lib/canvas-bus';
+import { templates as TEMPLATES } from '@/lib/templates';
 
 export type MindMapCanvasProps = {
   mindmapId: string;
@@ -1575,6 +1576,8 @@ export default function MindMapCanvas({
       originX: number;
       originY: number;
       descendants: { id: string; originX: number; originY: number }[];
+      originalParentId: string | null;
+      dropTargetId: string | null;
     } | null = null;
     let movedDuringClick = 0;
 
@@ -1601,6 +1604,8 @@ export default function MindMapCanvas({
             originX: n.x,
             originY: n.y,
             descendants: [],
+            originalParentId: n.parentId,
+            dropTargetId: null,
           };
           movedDuringClick = 0;
           return;
@@ -1616,6 +1621,8 @@ export default function MindMapCanvas({
             originX: state.nodes[did].x,
             originY: state.nodes[did].y,
           })),
+          originalParentId: n.parentId,
+          dropTargetId: null,
         };
         movedDuringClick = 0;
       } else {
@@ -1663,6 +1670,38 @@ export default function MindMapCanvas({
               dEl.style.left = dn.x + 'px';
               dEl.style.top = dn.y + 'px';
             }
+          }
+
+          // Drop-target detection: any other node under the cursor that isn't
+          // the dragged node, the current parent, or one of its descendants.
+          const descendantIds = new Set(dragNode.descendants.map((d) => d.id));
+          const stack = document.elementsFromPoint(e.clientX, e.clientY);
+          let newTargetId: string | null = null;
+          for (const el of stack) {
+            if (!(el instanceof HTMLElement)) continue;
+            if (!el.classList.contains('node')) continue;
+            const tid = el.dataset.id || '';
+            if (!tid || tid === dragNode.id) continue;
+            if (descendantIds.has(tid)) continue;
+            if (tid === dragNode.originalParentId) continue; // already its parent
+            newTargetId = tid;
+            break;
+          }
+
+          if (newTargetId !== dragNode.dropTargetId) {
+            if (dragNode.dropTargetId) {
+              const prev = nodesLayer.querySelector(
+                `[data-id="${dragNode.dropTargetId}"]`,
+              );
+              prev?.classList.remove('drop-target');
+            }
+            if (newTargetId) {
+              const next = nodesLayer.querySelector(
+                `[data-id="${newTargetId}"]`,
+              );
+              next?.classList.add('drop-target');
+            }
+            dragNode.dropTargetId = newTargetId;
           }
         }
       }
@@ -1713,16 +1752,47 @@ export default function MindMapCanvas({
             focusOnNode(id);
           }
         } else if (!readonlyRef.current) {
-          if (el) {
-            el.classList.remove('dropped');
-            void el.offsetWidth;
-            el.classList.add('dropped');
-            setTimeout(
-              () => el && el.classList.remove('dropped'),
-              600,
+          // Clear any lingering drop-target highlight.
+          if (draggedNode.dropTargetId) {
+            const targetEl = nodesLayer.querySelector(
+              `[data-id="${draggedNode.dropTargetId}"]`,
             );
+            targetEl?.classList.remove('drop-target');
           }
-          scheduleSave();
+
+          if (draggedNode.dropTargetId) {
+            // Reparent under the drop target. reparent() handles cycle
+            // prevention and depth recompute. Capture the original parent
+            // for undo.
+            const originalParentId = draggedNode.originalParentId;
+            const result = reparent(id, draggedNode.dropTargetId);
+            if (result.success) {
+              const label = state.nodes[id]?.label || 'node';
+              playSfx('pop');
+              pushHistory({
+                description: `Moved "${label}"`,
+                undo: () => {
+                  if (originalParentId) reparent(id, originalParentId);
+                },
+              });
+              renderAll();
+            } else {
+              // reparent refused (cycle, etc.) — leave node where the user
+              // dropped it and just persist the position change.
+            }
+            scheduleSave();
+          } else {
+            if (el) {
+              el.classList.remove('dropped');
+              void el.offsetWidth;
+              el.classList.add('dropped');
+              setTimeout(
+                () => el && el.classList.remove('dropped'),
+                600,
+              );
+            }
+            scheduleSave();
+          }
         }
         // touch reference so TS doesn't warn
         void draggedNode;
@@ -2485,6 +2555,71 @@ export default function MindMapCanvas({
         return { success: true };
       }
 
+      if (cmd.type === 'switch_theme') {
+        applyThemeAttr(cmd.theme);
+        return { success: true, data: { theme: cmd.theme } };
+      }
+
+      if (cmd.type === 'list_templates') {
+        const summaries = TEMPLATES.map((t) => ({
+          id: t.id,
+          name: t.name,
+          description: t.description,
+        }));
+        return { success: true, data: { templates: summaries, count: summaries.length } };
+      }
+
+      if (cmd.type === 'apply_template') {
+        const template = TEMPLATES.find((t) => t.id === cmd.template_id);
+        if (!template) {
+          return { success: false, error: `No template with id ${cmd.template_id}` };
+        }
+        // Snapshot the entire current map so the user can Cmd+Z back to it.
+        const before = {
+          nodes: JSON.parse(JSON.stringify(state.nodes)) as typeof state.nodes,
+          childIndex: JSON.parse(JSON.stringify(state.childIndex)) as typeof state.childIndex,
+          rootId: state.rootId,
+          selectedId: state.selectedId,
+        };
+        const fresh = JSON.parse(JSON.stringify(template.data)) as typeof template.data;
+        state.nodes = fresh.nodes;
+        state.childIndex = fresh.childIndex;
+        state.rootId = fresh.rootId;
+        state.selectedId = fresh.rootId;
+        state.detailId = null;
+        nextIdRef.current = nextIdFromNodes(state.nodes);
+        // Push title up to the parent so the editor toolbar shows the template name.
+        if (fresh.rootId && state.nodes[fresh.rootId]) {
+          onTitleChangeRef.current?.(state.nodes[fresh.rootId].label);
+        }
+        scheduleSave();
+        renderAll();
+        setTimeout(fitToScreen, 50);
+        playSfx('pop');
+        pushHistory({
+          description: `Applied "${template.name}" template`,
+          undo: () => {
+            state.nodes = before.nodes;
+            state.childIndex = before.childIndex;
+            state.rootId = before.rootId;
+            state.selectedId = before.selectedId;
+            state.detailId = null;
+            nextIdRef.current = nextIdFromNodes(state.nodes);
+            if (before.rootId && state.nodes[before.rootId]) {
+              onTitleChangeRef.current?.(state.nodes[before.rootId].label);
+            }
+          },
+        });
+        return {
+          success: true,
+          data: {
+            template_id: template.id,
+            template_name: template.name,
+            node_count: Object.keys(template.data.nodes).length,
+          },
+        };
+      }
+
       return { success: false, error: 'Unknown command type' };
     });
 
@@ -2931,6 +3066,11 @@ export default function MindMapCanvas({
             0 0 0 3px color-mix(in srgb, var(--selection) 35%, transparent),
             0 0 24px color-mix(in srgb, var(--selection) 25%, transparent);
           animation: smm-pulse 2.4s ease-in-out infinite;
+        }
+        .smm-root :global(.node.drop-target) {
+          outline: 2px dashed var(--selection);
+          outline-offset: 6px;
+          transition: outline 0.12s ease;
         }
         @keyframes smm-pulse {
           0%,

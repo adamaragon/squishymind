@@ -29,7 +29,10 @@ export type CanvasCommand =
   | { type: 'focus_node'; node_id: string }
   | { type: 'fit_to_screen' }
   | { type: 'open_detail_view'; node_id: string }
-  | { type: 'close_detail_view' };
+  | { type: 'close_detail_view' }
+  | { type: 'switch_theme'; theme: 'aurora' | 'sunrise' | 'forest' | 'mono' }
+  | { type: 'list_templates' }
+  | { type: 'apply_template'; template_id: string };
 
 export type CanvasResult =
   | { success: true; data?: unknown }
