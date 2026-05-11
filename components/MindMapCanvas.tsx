@@ -1496,6 +1496,10 @@ export default function MindMapCanvas({
       animateCamera(-n.x * z, -n.y * z, z, 350);
       renderAll();
       ensureBackdrop(true);
+      // Tell other collaborators we're now editing this node so their
+      // edit-awareness badges light up immediately (without waiting for the
+      // next mousemove broadcast).
+      broadcastPresenceState();
       setTimeout(() => {
         const el = nodesLayer.querySelector(
           `[data-id="${id}"] .detail-label`,
@@ -1508,6 +1512,7 @@ export default function MindMapCanvas({
       state.detailId = null;
       ensureBackdrop(false);
       renderAll();
+      broadcastPresenceState();
     }
 
     function ensureBackdrop(show: boolean) {
@@ -1658,6 +1663,8 @@ export default function MindMapCanvas({
         setTimeout(() => el.classList.remove('entering'), 420);
       });
       renderActionChip();
+      // Reapply any collaborator-edit chips after the node DOM is rebuilt.
+      applyEditingBadges();
     }
 
     function renderEdges() {
@@ -2714,18 +2721,39 @@ export default function MindMapCanvas({
         });
     }
 
+    // Cache the last cursor coords so non-mousemove broadcasts (detail
+    // open/close → editing_node_id change) can resend without losing position.
+    let lastCursorWorldX: number | undefined;
+    let lastCursorWorldY: number | undefined;
+
     function broadcastCursor(clientX: number, clientY: number) {
       if (!presenceChannel || !currentUserId) return;
       const now = Date.now();
       if (now - lastCursorBroadcast < 33) return; // ~30Hz
       lastCursorBroadcast = now;
       const w = screenToWorld(clientX, clientY);
+      lastCursorWorldX = w.x;
+      lastCursorWorldY = w.y;
       presenceChannel.track({
         user_id: currentUserId,
         display_name: myName,
         color: myColor,
         cursor_world_x: w.x,
         cursor_world_y: w.y,
+        editing_node_id: state.detailId || null,
+      } satisfies PresenceState);
+    }
+
+    // Re-broadcast presence outside the mousemove path — used when state.detailId
+    // changes (detail open/close) so edit-awareness badges update immediately.
+    function broadcastPresenceState() {
+      if (!presenceChannel || !currentUserId) return;
+      presenceChannel.track({
+        user_id: currentUserId,
+        display_name: myName,
+        color: myColor,
+        cursor_world_x: lastCursorWorldX,
+        cursor_world_y: lastCursorWorldY,
         editing_node_id: state.detailId || null,
       } satisfies PresenceState);
     }
@@ -2778,6 +2806,46 @@ export default function MindMapCanvas({
       presenceLayer.querySelectorAll('[data-uid]').forEach((el) => {
         const uid = (el as HTMLElement).dataset.uid || '';
         if (!seen.has(uid)) el.remove();
+      });
+      // Edit-awareness chips on nodes refresh whenever presence changes.
+      applyEditingBadges();
+    }
+
+    // Look at otherPresence, paint a small chip on each node currently in
+    // another user's detail view. Called from renderPresence (on presence sync)
+    // and from the end of renderNodes (so badges survive a full DOM rebuild).
+    function applyEditingBadges() {
+      const byNode = new Map<string, PresenceState[]>();
+      for (const p of Object.values(otherPresence)) {
+        if (p.editing_node_id) {
+          const list = byNode.get(p.editing_node_id) || [];
+          list.push(p);
+          byNode.set(p.editing_node_id, list);
+        }
+      }
+      const nodes = nodesLayer.querySelectorAll<HTMLElement>('.node');
+      nodes.forEach((el) => {
+        const id = el.dataset.id || '';
+        const editors = byNode.get(id) || [];
+        let badge = el.querySelector('.editing-badge') as HTMLElement | null;
+        if (editors.length === 0) {
+          if (badge) badge.remove();
+          return;
+        }
+        if (!badge) {
+          badge = document.createElement('div');
+          badge.className = 'editing-badge';
+          el.appendChild(badge);
+        }
+        badge.style.background = editors[0].color;
+        badge.textContent =
+          editors.length === 1
+            ? `${editors[0].display_name} editing`
+            : `${editors.length} editing`;
+        badge.title =
+          editors.length > 1
+            ? editors.map((e) => e.display_name).join(', ')
+            : '';
       });
     }
 
@@ -3880,6 +3948,22 @@ export default function MindMapCanvas({
         .smm-root :global(.detail-comments-actions) {
           display: flex;
           justify-content: flex-end;
+        }
+
+        .smm-root :global(.editing-badge) {
+          position: absolute;
+          top: -10px;
+          right: -10px;
+          padding: 2px 8px;
+          border-radius: 999px;
+          font-size: 10px;
+          font-weight: 600;
+          line-height: 1.1;
+          color: white;
+          white-space: nowrap;
+          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+          pointer-events: none;
+          z-index: 4;
         }
 
         .smm-root :global(.smm-cursor) {
