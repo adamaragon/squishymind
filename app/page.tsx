@@ -26,8 +26,8 @@ export default function HomePage() {
           </h1>
           <p className="text-lg md:text-xl text-[--text-dim] mb-9 max-w-3xl mx-auto leading-relaxed">
             A wobbly, slightly sentient mind-mapping canvas with a voice agent who flirts with the
-            conversation and occasionally short-circuits. Or just{' '}
-            <em className="text-white">click and drag</em> like a normal person — both work.{' '}
+            conversation and occasionally short-circuits. Solo, or with people you invite —{' '}
+            <em className="text-white">cursors, presence, real-time sync.</em>{' '}
             <span className="text-white">Free during beta.</span>
           </p>
           <div className="flex items-center justify-center gap-3 flex-wrap">
@@ -61,8 +61,8 @@ export default function HomePage() {
             body="Every node breathes. Every edge wiggles. The brain in the middle pulses gently. It feels alive because we put a lot of work into making it feel alive. We have priorities."
           />
           <Feature
-            title="Mouse and keyboard work too"
-            body="Voice is a feature, not a requirement. Click, drag, type, ignore Squishy entirely if that's your preference. SquishyMind is a perfectly good mind-mapping tool with a strange friend in the corner."
+            title="Bring people in"
+            body="Invite collaborators by email as Editors or Commenters. See their cursors moving on your canvas in real time. When they add a branch, it shows up on your screen. When you're both editing, you can tell. It's a brain you can share."
           />
           <Feature
             title="Auto-coloured branches"

@@ -17,6 +17,20 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v2.10',
+    title: 'Two Brains',
+    date: 'May 2026',
+    commit: 'c8e28ef',
+    highlights: [
+      'Invite people by email as Editor or Commenter, all from the editor',
+      'See each other’s cursors moving on the canvas in real time',
+      'Edits sync between browsers in about a second — no refresh',
+      'Members panel for owners to change roles or remove access',
+      'More v3 collaboration features (edit awareness, comments) on the way',
+    ],
+    squishyNote: 'Two brains are weirder than one, darling. Bring a friend.',
+  },
+  {
     version: 'v2.9',
     title: 'Templates, Drag-to-Move, Voice Themes',
     date: 'May 2026',
@@ -128,16 +142,10 @@ export const roadmap: RoadmapEntry[] = [
     status: 'next',
   },
   {
-    title: 'Real-time collaboration',
+    title: 'Finishing v3 collaboration',
     description:
-      'Multi-cursor, “X is editing this node” indicators, email invites for editors and commenters. Maps become team artifacts.',
-    status: 'soon',
-  },
-  {
-    title: 'Comments on nodes',
-    description:
-      'Threaded discussions attached to specific concepts. For commenters who want to give feedback without modifying structure.',
-    status: 'soon',
+      'The core just shipped — invites, presence, real-time sync. Still to come in v3.0 proper: “X is editing this node” badges, threaded comments on nodes, and Squishy noticing when other people are in the map with you.',
+    status: 'next',
   },
   {
     title: 'PNG and PDF export',

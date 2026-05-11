@@ -8,6 +8,14 @@ const faqs = [
     a: "Absolutely not. Squishy is a feature, not a religion. Click and drag works, keyboard shortcuts work, the whole tool functions perfectly without ever talking to her. She's there if you want her, muted if you don't.",
   },
   {
+    q: 'Can I share a map with my team?',
+    a: 'Yes. Open any map you own, click Members, invite people by email as Editor (full edit) or Commenter (read-only + comments). Recipients get a magic-link email. Once they accept, you see each other’s cursors live on the canvas, and edits sync between browsers in about a second.',
+  },
+  {
+    q: 'What’s the difference between Editor and Commenter?',
+    a: 'Editors can do anything you can — add, move, delete, rename, edit notes. Commenters can view but not change the canvas. Comment threads on specific nodes are landing in the next release; for now Commenter is the right role to give a reviewer.',
+  },
+  {
     q: 'How long is the beta?',
     a: "As long as it takes us to feel proud of it. Probably a few months. We'll let you know clearly before it ends — we'd rather not spring pricing on you like a trapdoor.",
   },
