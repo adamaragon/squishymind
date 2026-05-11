@@ -5,12 +5,21 @@ import type { MindMapData, MindMapNode } from '@/lib/types';
 import { registerCanvasHandler, type CanvasResult } from '@/lib/canvas-bus';
 import { templates as TEMPLATES } from '@/lib/templates';
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
+import {
+  colorForUser,
+  presenceChannelName,
+  type PresenceState,
+} from '@/lib/realtime';
 
 export type MindMapCanvasProps = {
   mindmapId: string;
   initialData: MindMapData;
   initialTitle: string;
   readonly?: boolean;
+  /** Owner/collaborator identity; required for presence + comments. Anonymous
+   *  share viewers can leave these undefined and presence simply won't init. */
+  currentUserId?: string;
+  currentUserName?: string;
   onTitleChange?: (title: string) => void;
   onDataChange?: (data: MindMapData) => void;
 };
@@ -54,6 +63,8 @@ export default function MindMapCanvas({
   initialData,
   initialTitle,
   readonly = false,
+  currentUserId,
+  currentUserName,
   onTitleChange,
   onDataChange,
 }: MindMapCanvasProps) {
@@ -1502,6 +1513,14 @@ export default function MindMapCanvas({
       grid.style.backgroundPosition = `${state.pan.x}px ${state.pan.y}px, ${state.pan.x}px ${state.pan.y}px`;
       zoomLabel.textContent = Math.round(state.zoom * 100) + '%';
       drawMinimap();
+      // Keep presence cursors at a constant visual size by inverse-scaling them.
+      const inv = 1 / state.zoom;
+      const cursors = world.querySelectorAll<HTMLElement>(
+        '#smm-presence-layer [data-uid]',
+      );
+      cursors.forEach((el) => {
+        el.style.transform = `scale(${inv})`;
+      });
     }
 
     renderAllRef.current = () => renderAll();
@@ -1653,6 +1672,9 @@ export default function MindMapCanvas({
     }
 
     function onWindowMouseMove(e: MouseEvent) {
+      // Broadcast our cursor for presence. Throttled inside.
+      broadcastCursor(e.clientX, e.clientY);
+
       if (panState) {
         state.pan.x = panState.originX + (e.clientX - panState.startX);
         state.pan.y = panState.originY + (e.clientY - panState.startY);
@@ -2439,6 +2461,113 @@ export default function MindMapCanvas({
       )
       .subscribe();
 
+    // ---- Presence (live cursors + edit awareness) ----
+    // Only authenticated viewers/editors join presence. Anonymous share
+    // viewers (no currentUserId) skip this entirely.
+    let presenceChannel: ReturnType<typeof realtimeClient.channel> | null = null;
+    let otherPresence: Record<string, PresenceState> = {};
+    let lastCursorBroadcast = 0;
+    const myColor = currentUserId ? colorForUser(currentUserId) : '#888888';
+    const myName = currentUserName || 'someone';
+
+    if (currentUserId) {
+      presenceChannel = realtimeClient.channel(presenceChannelName(mindmapId), {
+        config: { presence: { key: currentUserId } },
+      });
+
+      presenceChannel
+        .on('presence', { event: 'sync' }, () => {
+          const presenceState = presenceChannel!.presenceState();
+          const next: Record<string, PresenceState> = {};
+          for (const entries of Object.values(presenceState)) {
+            for (const entry of entries as unknown as PresenceState[]) {
+              if (!entry || typeof entry !== 'object') continue;
+              if (entry.user_id && entry.user_id !== currentUserId) {
+                next[entry.user_id] = entry;
+              }
+            }
+          }
+          otherPresence = next;
+          renderPresence();
+        })
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await presenceChannel!.track({
+              user_id: currentUserId,
+              display_name: myName,
+              color: myColor,
+            } satisfies PresenceState);
+          }
+        });
+    }
+
+    function broadcastCursor(clientX: number, clientY: number) {
+      if (!presenceChannel || !currentUserId) return;
+      const now = Date.now();
+      if (now - lastCursorBroadcast < 33) return; // ~30Hz
+      lastCursorBroadcast = now;
+      const w = screenToWorld(clientX, clientY);
+      presenceChannel.track({
+        user_id: currentUserId,
+        display_name: myName,
+        color: myColor,
+        cursor_world_x: w.x,
+        cursor_world_y: w.y,
+        editing_node_id: state.detailId || null,
+      } satisfies PresenceState);
+    }
+
+    // Imperative cursor layer — siblings of the nodes layer inside #world so
+    // pan/zoom moves them naturally. Each cursor element is inverse-scaled in
+    // applyTransform so the visual stays a constant size regardless of zoom.
+    const presenceLayer = document.createElement('div');
+    presenceLayer.id = 'smm-presence-layer';
+    presenceLayer.style.position = 'absolute';
+    presenceLayer.style.inset = '0';
+    presenceLayer.style.pointerEvents = 'none';
+    presenceLayer.style.zIndex = '6';
+    world.appendChild(presenceLayer);
+
+    function renderPresence() {
+      const seen = new Set<string>();
+      for (const [uid, p] of Object.entries(otherPresence)) {
+        if (p.cursor_world_x == null || p.cursor_world_y == null) continue;
+        seen.add(uid);
+        let el = presenceLayer.querySelector(
+          `[data-uid="${uid}"]`,
+        ) as HTMLDivElement | null;
+        if (!el) {
+          el = document.createElement('div');
+          el.dataset.uid = uid;
+          el.className = 'smm-cursor';
+          el.innerHTML = `
+            <svg viewBox="0 0 22 22" width="22" height="22" style="display:block">
+              <path d="M3 3 L3 17 L7 13 L10 18 L13 17 L10 12 L17 12 Z"
+                fill="" stroke="white" stroke-width="1.5"/>
+            </svg>
+            <div class="smm-cursor-label"></div>
+          `;
+          presenceLayer.appendChild(el);
+        }
+        const path = el.querySelector('path');
+        if (path) path.setAttribute('fill', p.color);
+        const label = el.querySelector('.smm-cursor-label') as HTMLDivElement;
+        if (label) {
+          label.textContent = p.display_name;
+          label.style.background = p.color;
+        }
+        el.style.left = p.cursor_world_x + 'px';
+        el.style.top = p.cursor_world_y + 'px';
+        // Inverse scale so the cursor visual stays constant regardless of zoom.
+        el.style.transform = `scale(${1 / state.zoom})`;
+      }
+      // Remove cursors for users no longer present.
+      presenceLayer.querySelectorAll('[data-uid]').forEach((el) => {
+        const uid = (el as HTMLElement).dataset.uid || '';
+        if (!seen.has(uid)) el.remove();
+      });
+    }
+
     // ---- Squishy voice command handler ----
     // Read-only viewers (share/[token]) still register the handler so list /
     // focus / fit work, but mutation commands return a clean error.
@@ -2724,6 +2853,11 @@ export default function MindMapCanvas({
       unregisterCanvasHandler();
       try {
         dataChannel.unsubscribe();
+      } catch {
+        /* ignore */
+      }
+      try {
+        presenceChannel?.unsubscribe();
       } catch {
         /* ignore */
       }
@@ -3449,6 +3583,30 @@ export default function MindMapCanvas({
           80% {
             transform: scale(1.04) rotate(-2deg) skewX(-2deg);
           }
+        }
+        .smm-root :global(.smm-cursor) {
+          position: absolute;
+          pointer-events: none;
+          transform-origin: 0 0;
+          z-index: 6;
+          transition: left 0.06s linear, top 0.06s linear;
+          will-change: left, top, transform;
+        }
+        .smm-root :global(.smm-cursor svg) {
+          filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
+        }
+        .smm-root :global(.smm-cursor-label) {
+          position: absolute;
+          top: 18px;
+          left: 12px;
+          color: white;
+          font-size: 11px;
+          font-weight: 500;
+          line-height: 1;
+          padding: 3px 7px;
+          border-radius: 4px;
+          white-space: nowrap;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
         }
         .smm-root :global(.brain-label) {
           font-weight: 600;

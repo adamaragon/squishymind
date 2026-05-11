@@ -24,6 +24,7 @@ export default function EditorShell({
   initialShareToken,
   initialData,
   currentUserId,
+  currentUserName,
   ownerId,
 }: {
   id: string;
@@ -33,6 +34,7 @@ export default function EditorShell({
   initialShareToken: string;
   initialData: MindMapData;
   currentUserId: string;
+  currentUserName: string;
   ownerId: string;
 }) {
   const isOwner = currentUserId === ownerId;
@@ -266,6 +268,8 @@ export default function EditorShell({
           mindmapId={id}
           initialData={initialData}
           initialTitle={title}
+          currentUserId={currentUserId}
+          currentUserName={currentUserName}
           onDataChange={onDataChange}
           onTitleChange={(next) => {
             setTitle(next);

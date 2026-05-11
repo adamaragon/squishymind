@@ -21,6 +21,8 @@ export default async function EditorPage({ params }: { params: Promise<{ id: str
     redirect(`/m/${mindmap.slug}`);
   }
 
+  const displayName = user.email?.split('@')[0] || 'someone';
+
   return (
     <>
       <EditorShell
@@ -31,6 +33,7 @@ export default async function EditorPage({ params }: { params: Promise<{ id: str
         initialShareToken={mindmap.share_token}
         initialData={mindmap.data}
         currentUserId={user.id}
+        currentUserName={displayName}
         ownerId={mindmap.owner_id}
       />
       <Footer minimal />
