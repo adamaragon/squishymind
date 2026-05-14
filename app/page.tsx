@@ -77,6 +77,32 @@ export default function HomePage() {
           />
         </section>
 
+        {/* More good things — rotated-out feature cards live here */}
+        <details className="more-good-things max-w-6xl mx-auto px-6 pb-16 group">
+          <summary className="cursor-pointer text-center text-sm text-[--text-dim] hover:text-white transition-colors py-3 select-none list-none">
+            <span className="inline-flex items-center gap-2">
+              <span>More good things</span>
+              <span className="inline-block transition-transform duration-200 group-open:rotate-180">
+                ↓
+              </span>
+            </span>
+          </summary>
+          <div className="grid md:grid-cols-3 gap-5 mt-5">
+            <Feature
+              title="Wobbly by design"
+              body="Every node breathes. Every edge wiggles. The brain in the middle pulses gently. It feels alive because we put a lot of work into making it feel alive. We have priorities."
+            />
+            <Feature
+              title="Auto-coloured branches"
+              body="Every new child picks a colour different from its parent. Your maps look composed without you thinking about colour theory. We did the colour theory so you don't have to."
+            />
+            <Feature
+              title="Delete in two clicks"
+              body="When you're done with us, you're done. Account page, two clicks, no email confirmation, no exit interview. Your maps go with you. Reluctantly, on our end."
+            />
+          </div>
+        </details>
+
         {/* Recently shipped */}
         <RecentShipped />
 
@@ -110,6 +136,10 @@ export default function HomePage() {
           50%      { transform: scale(1.02) rotate(2deg); }
           75%      { transform: scale(1.08) rotate(3deg); }
         }
+        /* Hide the native disclosure triangle in Safari/old browsers so the
+           caret in the summary is the only indicator. */
+        .more-good-things summary::-webkit-details-marker { display: none; }
+        .more-good-things summary::marker { content: ''; }
       `}</style>
     </>
   );
