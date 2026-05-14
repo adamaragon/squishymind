@@ -1,5 +1,6 @@
 import type { MindMapData } from '../types';
 import { parseMarkdown } from './markdown';
+import { parseCsv } from './csv';
 
 export type ImportFormat = 'markdown' | 'csv' | 'opml' | 'json';
 export type ImportResult = { data: MindMapData; suggestedTitle: string };
@@ -35,7 +36,7 @@ export async function parseImport(
     case 'markdown':
       return parseMarkdown(contents, fileName);
     case 'csv':
-      throw new Error('CSV import is coming soon — for now use Markdown.');
+      return parseCsv(contents, fileName);
     case 'opml':
       throw new Error('OPML import is coming soon — for now use Markdown.');
     case 'json':

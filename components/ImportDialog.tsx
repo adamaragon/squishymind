@@ -73,7 +73,7 @@ export default function ImportDialog({ onClose }: { onClose: () => void }) {
           </button>
         </div>
         <p className="text-sm text-[--text-dim] mb-5">
-          Drop in a Markdown file or paste your outline. CSV, OPML and JSON support coming next.
+          Drop in a Markdown file or a CSV. OPML and JSON support coming next.
         </p>
 
         <div className="flex gap-1 mb-4 border-b border-white/10">
@@ -104,7 +104,7 @@ export default function ImportDialog({ onClose }: { onClose: () => void }) {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".md,.markdown,.txt"
+              accept=".md,.markdown,.txt,.csv"
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (f) handleFile(f);
@@ -118,10 +118,10 @@ export default function ImportDialog({ onClose }: { onClose: () => void }) {
               htmlFor="import-file"
               className={`btn btn-primary cursor-pointer ${busy ? 'pointer-events-none opacity-50' : ''}`}
             >
-              {busy ? 'Importing…' : 'Choose a Markdown file'}
+              {busy ? 'Importing…' : 'Choose a file'}
             </label>
             <p className="text-xs text-[--text-dim] mt-3">
-              .md, .markdown, .txt — up to 2&nbsp;MB
+              .md, .markdown, .txt, .csv — up to 2&nbsp;MB
             </p>
           </div>
         ) : (
@@ -145,12 +145,21 @@ export default function ImportDialog({ onClose }: { onClose: () => void }) {
 
         {error && <p className="text-sm text-red-300 mt-3">{error}</p>}
 
-        <div className="mt-6 pt-5 border-t border-white/10 text-xs text-[--text-dim] leading-relaxed">
-          <strong className="text-white">How it reads your Markdown:</strong>
-          {' '}headings nest into a tree (the topmost <code>#</code> becomes the
-          brain). Bullet and numbered lists become children of whichever
-          heading they sit under. Indented lists make a deeper tree. Plain
-          lines after a heading or bullet become that node’s note.
+        <div className="mt-6 pt-5 border-t border-white/10 text-xs text-[--text-dim] leading-relaxed space-y-2">
+          <div>
+            <strong className="text-white">Markdown:</strong> headings nest
+            into a tree (the topmost <code>#</code> becomes the brain). Bullet
+            and numbered lists become children. Indented lists make a deeper
+            tree. Plain lines after a heading or bullet become that node’s note.
+          </div>
+          <div>
+            <strong className="text-white">CSV:</strong> include either a
+            <code className="mx-1">label</code> + <code>parent_label</code>{' '}
+            column set, or a single <code>path</code> column with{' '}
+            <code>{`Parent > Child > Leaf`}</code> rows. Optional{' '}
+            <code>note</code> and <code>color_idx</code> (0–4) columns work
+            with both shapes.
+          </div>
         </div>
       </div>
     </div>
