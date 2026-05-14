@@ -8,6 +8,7 @@ import ShareDialog from '@/components/ShareDialog';
 import MembersPanel from '@/components/MembersPanel';
 import MindMapCanvas from '@/components/MindMapCanvas';
 import OutlineView from '@/components/views/OutlineView';
+import TreeView from '@/components/views/TreeView';
 import ViewSwitcher from '@/components/ViewSwitcher';
 import { loadViewMode, saveViewMode } from '@/lib/squishy';
 import type { MindMapData, ViewMode, Visibility } from '@/lib/types';
@@ -313,6 +314,20 @@ export default function EditorShell({
         ) : viewMode === 'outline' ? (
           <OutlineView
             key={`${id}-outline`}
+            mindmapId={id}
+            initialData={lastDataRef.current}
+            initialTitle={title}
+            readonly={!canEdit}
+            onDataChange={onDataChange}
+            onTitleChange={(next) => {
+              setTitle(next);
+              if (titleTimer.current) clearTimeout(titleTimer.current);
+              titleTimer.current = setTimeout(() => persistTitle(next || 'Untitled mind map'), 600);
+            }}
+          />
+        ) : viewMode === 'tree' ? (
+          <TreeView
+            key={`${id}-tree`}
             mindmapId={id}
             initialData={lastDataRef.current}
             initialTitle={title}

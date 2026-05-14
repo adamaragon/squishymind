@@ -10,7 +10,7 @@ const VIEWS: Array<{
 }> = [
   { id: 'canvas', label: 'Canvas', icon: '🧠' },
   { id: 'outline', label: 'Outline', icon: '📝' },
-  { id: 'tree', label: 'Tree', icon: '🌳', comingSoon: true },
+  { id: 'tree', label: 'Tree', icon: '🌳' },
   { id: 'table', label: 'Table', icon: '📊', comingSoon: true },
 ];
 
