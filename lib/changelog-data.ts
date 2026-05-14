@@ -47,7 +47,7 @@ export const shipped: ShippedEntry[] = [
   {
     version: 'v2.10',
     title: 'Two Brains',
-    date: 'May 2026',
+    date: 'April 2026',
     commit: 'c8e28ef',
     highlights: [
       'Invite people by email as Editor or Commenter, all from the editor',
@@ -61,7 +61,7 @@ export const shipped: ShippedEntry[] = [
   {
     version: 'v2.9',
     title: 'Templates, Drag-to-Move, Voice Themes',
-    date: 'May 2026',
+    date: 'April 2026',
     commit: '1d76feb',
     highlights: [
       'Eight starter templates so a blank brain isn’t the first sight',
@@ -75,7 +75,7 @@ export const shipped: ShippedEntry[] = [
   {
     version: 'v2.8',
     title: 'Squishy Knows You',
-    date: 'May 2026',
+    date: 'March 2026',
     commit: 'ebf3ac4',
     highlights: [
       'Squishy now knows whether you’re signed in or not',
@@ -87,7 +87,7 @@ export const shipped: ShippedEntry[] = [
   {
     version: 'v2.7',
     title: 'Beta Launch & New Home',
-    date: 'May 2026',
+    date: 'March 2026',
     commit: 'e26c412',
     highlights: [
       'Refreshed home page that actually shows what we built',
@@ -100,7 +100,7 @@ export const shipped: ShippedEntry[] = [
   {
     version: 'v2.6',
     title: 'Changelog Page Added',
-    date: 'May 2026',
+    date: 'February 2026',
     commit: 'bb8be1c',
     highlights: [
       'New changelog page to track updates',
@@ -111,7 +111,7 @@ export const shipped: ShippedEntry[] = [
   {
     version: 'v2.5',
     title: 'Voice-Driven Canvas Control',
-    date: 'May 2026',
+    date: 'February 2026',
     commit: 'a748164',
     highlights: [
       'Squishy can create, edit, move, and delete nodes by voice',
@@ -126,7 +126,7 @@ export const shipped: ShippedEntry[] = [
   {
     version: 'v2.4',
     title: 'Squishy, the Voice Agent',
-    date: 'April 2026',
+    date: 'January 2026',
     highlights: [
       'Persistent voice agent across page navigation',
       'Page-aware — she knows where you are',
@@ -139,7 +139,7 @@ export const shipped: ShippedEntry[] = [
   {
     version: 'v2.0',
     title: 'The Backbone',
-    date: 'March 2026',
+    date: 'December 2025',
     highlights: [
       'Server-synced editing — your maps work across devices',
       'Real share links with public, unlisted, and private visibility',
@@ -150,7 +150,7 @@ export const shipped: ShippedEntry[] = [
   {
     version: 'v1.0',
     title: 'Hello, brain',
-    date: 'February 2026',
+    date: 'November 2025',
     highlights: [
       'Squishy mind-map canvas with wobbly nodes and wiggly edges',
       'Pulsing pink brain at the center of every map',
