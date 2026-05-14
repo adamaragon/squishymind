@@ -73,7 +73,7 @@ export default function ImportDialog({ onClose }: { onClose: () => void }) {
           </button>
         </div>
         <p className="text-sm text-[--text-dim] mb-5">
-          Drop in a Markdown file or a CSV. OPML and JSON support coming next.
+          Drop in a file — we read Markdown, CSV, OPML, and SquishyMind JSON exports.
         </p>
 
         <div className="flex gap-1 mb-4 border-b border-white/10">
@@ -104,7 +104,7 @@ export default function ImportDialog({ onClose }: { onClose: () => void }) {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".md,.markdown,.txt,.csv"
+              accept=".md,.markdown,.txt,.csv,.opml,.xml,.json"
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (f) handleFile(f);
@@ -121,7 +121,7 @@ export default function ImportDialog({ onClose }: { onClose: () => void }) {
               {busy ? 'Importing…' : 'Choose a file'}
             </label>
             <p className="text-xs text-[--text-dim] mt-3">
-              .md, .markdown, .txt, .csv — up to 2&nbsp;MB
+              .md, .markdown, .txt, .csv, .opml, .xml, .json — up to 2&nbsp;MB
             </p>
           </div>
         ) : (
@@ -159,6 +159,17 @@ export default function ImportDialog({ onClose }: { onClose: () => void }) {
             <code>{`Parent > Child > Leaf`}</code> rows. Optional{' '}
             <code>note</code> and <code>color_idx</code> (0–4) columns work
             with both shapes.
+          </div>
+          <div>
+            <strong className="text-white">OPML:</strong> any outliner export
+            with <code>{`<outline text="…">`}</code> elements. <code>{`<head><title>`}</code>{' '}
+            becomes the brain label; the <code>_note</code> attribute on each
+            outline becomes that node’s note.
+          </div>
+          <div>
+            <strong className="text-white">JSON:</strong> a SquishyMind export
+            (the one you get from the Export button on the canvas). Positions,
+            colours, and notes restore exactly.
           </div>
         </div>
       </div>
