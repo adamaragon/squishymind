@@ -19,6 +19,7 @@ export const CANVAS_TOOLS = [
   'switch_theme',
   'list_templates',
   'apply_template',
+  'switch_view',
 ] as const;
 
 type ToolParams = Record<string, unknown>;
@@ -175,6 +176,19 @@ export async function executeSquishyTool(
         return { success: false, error: 'apply_template requires template_id' };
       }
       command = { type: 'apply_template', template_id };
+      break;
+    }
+
+    case 'switch_view': {
+      const mode = asString(params.mode)?.toLowerCase();
+      const valid = ['canvas', 'tree', 'outline', 'table'] as const;
+      if (!mode || !(valid as readonly string[]).includes(mode)) {
+        return {
+          success: false,
+          error: `switch_view requires mode to be one of: ${valid.join(', ')}`,
+        };
+      }
+      command = { type: 'switch_view', mode: mode as (typeof valid)[number] };
       break;
     }
 

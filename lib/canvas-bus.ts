@@ -32,7 +32,8 @@ export type CanvasCommand =
   | { type: 'close_detail_view' }
   | { type: 'switch_theme'; theme: 'aurora' | 'sunrise' | 'forest' | 'mono' }
   | { type: 'list_templates' }
-  | { type: 'apply_template'; template_id: string };
+  | { type: 'apply_template'; template_id: string }
+  | { type: 'switch_view'; mode: 'canvas' | 'tree' | 'outline' | 'table' };
 
 export type CanvasResult =
   | { success: true; data?: unknown }
@@ -85,12 +86,19 @@ export function dispatchCanvasCommand(
 
 /**
  * Mount a canvas-side handler that processes incoming commands. Returns an
- * unregister function for cleanup. Multiple canvases shouldn't be mounted at
- * once but if they are, all of them will respond — first response wins on
- * the dispatcher side.
+ * unregister function for cleanup.
+ *
+ * Multiple handlers can coexist (e.g. the imperative canvas registers one
+ * for editing commands while the editor shell registers another for view-
+ * mode switching). Each handler may return `undefined` to mean "not my
+ * command — let another handler respond." Only handlers that return a
+ * concrete CanvasResult emit a result event, so there's no race between
+ * a real success and a stale "unknown command type" error.
  */
 export function registerCanvasHandler(
-  handle: (cmd: CanvasCommand) => Promise<CanvasResult> | CanvasResult,
+  handle: (
+    cmd: CanvasCommand,
+  ) => Promise<CanvasResult | undefined> | CanvasResult | undefined,
 ): () => void {
   if (typeof window === 'undefined') return () => {};
   const listener = async (e: Event) => {
@@ -98,13 +106,14 @@ export function registerCanvasHandler(
     if (!detail) return;
     const { correlationId, ...rest } = detail;
     const command = rest as CanvasCommand;
-    let result: CanvasResult;
+    let result: CanvasResult | undefined;
     try {
       result = await handle(command);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       result = { success: false, error: msg };
     }
+    if (result === undefined) return;
     window.dispatchEvent(
       new CustomEvent<ResultPayload>(RESULT_EVENT, {
         detail: { correlationId, result },

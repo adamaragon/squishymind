@@ -2864,7 +2864,7 @@ export default function MindMapCanvas({
     // ---- Squishy voice command handler ----
     // Read-only viewers (share/[token]) still register the handler so list /
     // focus / fit work, but mutation commands return a clean error.
-    const unregisterCanvasHandler = registerCanvasHandler((cmd): CanvasResult => {
+    const unregisterCanvasHandler = registerCanvasHandler((cmd): CanvasResult | undefined => {
       const isMutation =
         cmd.type === 'create_node' ||
         cmd.type === 'create_nodes_batch' ||
@@ -3138,7 +3138,9 @@ export default function MindMapCanvas({
         };
       }
 
-      return { success: false, error: 'Unknown command type' };
+      // Decline commands this handler doesn't know — another handler (e.g.
+      // the EditorShell-level switch_view bridge) may pick them up.
+      return undefined;
     });
 
     // ---- Cleanup ----

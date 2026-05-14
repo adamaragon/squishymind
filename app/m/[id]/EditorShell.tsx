@@ -12,6 +12,7 @@ import TreeView from '@/components/views/TreeView';
 import TableView from '@/components/views/TableView';
 import ViewSwitcher from '@/components/ViewSwitcher';
 import { loadViewMode, saveViewMode } from '@/lib/squishy';
+import { registerCanvasHandler } from '@/lib/canvas-bus';
 import type { MindMapData, ViewMode, Visibility } from '@/lib/types';
 
 function toSlug(s: string) {
@@ -75,6 +76,27 @@ export default function EditorShell({
     setViewMode(next);
     saveViewMode(next);
   }
+
+  // Squishy's switch_view tool needs a handler that's mounted regardless of
+  // which view component is currently rendered. The canvas registers its
+  // own (large) handler when mounted — that one declines switch_view by
+  // returning undefined, so this lightweight bridge always gets the call.
+  const handleViewChangeRef = useRef(handleViewChange);
+  handleViewChangeRef.current = handleViewChange;
+  useEffect(() => {
+    return registerCanvasHandler((cmd) => {
+      if (cmd.type !== 'switch_view') return undefined;
+      const valid: ViewMode[] = ['canvas', 'tree', 'outline', 'table'];
+      if (!valid.includes(cmd.mode)) {
+        return {
+          success: false,
+          error: `Unknown view mode: ${cmd.mode}`,
+        };
+      }
+      handleViewChangeRef.current(cmd.mode);
+      return { success: true, data: { mode: cmd.mode } };
+    });
+  }, []);
 
   const titleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const slugTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
