@@ -9,6 +9,7 @@ import MembersPanel from '@/components/MembersPanel';
 import MindMapCanvas from '@/components/MindMapCanvas';
 import OutlineView from '@/components/views/OutlineView';
 import TreeView from '@/components/views/TreeView';
+import TableView from '@/components/views/TableView';
 import ViewSwitcher from '@/components/ViewSwitcher';
 import { loadViewMode, saveViewMode } from '@/lib/squishy';
 import type { MindMapData, ViewMode, Visibility } from '@/lib/types';
@@ -338,6 +339,15 @@ export default function EditorShell({
               if (titleTimer.current) clearTimeout(titleTimer.current);
               titleTimer.current = setTimeout(() => persistTitle(next || 'Untitled mind map'), 600);
             }}
+          />
+        ) : viewMode === 'table' ? (
+          <TableView
+            key={`${id}-table`}
+            mindmapId={id}
+            initialData={lastDataRef.current}
+            initialTitle={title}
+            readonly={!canEdit}
+            onSwitchView={handleViewChange}
           />
         ) : null}
       </div>
