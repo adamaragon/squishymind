@@ -5,6 +5,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import DeleteMapButton from '@/components/DeleteMapButton';
 import NewMapButton from '@/components/NewMapButton';
+import ImportButton from '@/components/ImportButton';
 import { createClient } from '@/lib/supabase/server';
 import type { Mindmap } from '@/lib/types';
 
@@ -30,9 +31,12 @@ export default async function DashboardPage() {
     <>
       <Header />
       <main className="max-w-5xl mx-auto px-6 py-10">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
           <h1 className="text-3xl font-semibold">Your mind maps</h1>
-          <NewMapButton />
+          <div className="flex items-center gap-2">
+            <ImportButton />
+            <NewMapButton />
+          </div>
         </div>
 
         {(!maps || maps.length === 0) ? (
