@@ -25,9 +25,8 @@ export default function HomePage() {
             <span className="gradient-text">squishier</span>.
           </h1>
           <p className="text-lg md:text-xl text-[--text-dim] mb-9 max-w-3xl mx-auto leading-relaxed">
-            A wobbly, slightly sentient mind-mapping canvas with a voice agent who flirts with the
-            conversation and occasionally short-circuits. Solo, or with people you invite —{' '}
-            <em className="text-white">live cursors, real-time sync, threaded comments.</em>{' '}
+            A wobbly, slightly sentient mind-mapping canvas you can talk to, build with friends, or
+            click and drag like a normal person.{' '}
             <span className="text-white">Free during beta.</span>
           </p>
           <div className="flex items-center justify-center gap-3 flex-wrap">
@@ -54,27 +53,27 @@ export default function HomePage() {
         >
           <Feature
             title="She talks back"
-            body="Squishy creates branches, moves them around, summarizes your structure, builds entire subtrees on command. Or you can ignore her. She copes."
+            body="Squishy creates branches, moves them, summarizes your structure, builds entire subtrees on command. Or argues with you. She's been argued with."
           />
           <Feature
-            title="Wobbly by design"
-            body="Every node breathes. Every edge wiggles. The brain in the middle pulses gently. It feels alive because we put a lot of work into making it feel alive. We have priorities."
+            title="Start from a template"
+            body="Eight pre-built starting points — project plans, decision trees, second brains. Squishy can suggest one when you stare at an empty brain too long."
           />
           <Feature
-            title="Bring people in (Premium · free during beta)"
-            body="Invite collaborators by email as Editors or Commenters. See their cursors moving in real time, watch their edits appear, leave threaded comments on any node. Will be a paid feature after beta — free forever for you if you signed up while the banner was up."
-          />
-          <Feature
-            title="Auto-coloured branches"
-            body="Every new child picks a colour different from its parent. Your maps look composed without you thinking about colour theory. We did the colour theory so you don't have to."
+            title="Build together, live"
+            body="Invite teammates as editors or commenters. See their cursors, watch their edits land in real time. Threaded comments on every node."
           />
           <Feature
             title="Yours across devices"
             body="Sign up once, your maps follow you to any browser. Sharing works with public, unlisted, and private links. Like a haunted notebook, but useful."
           />
           <Feature
-            title="Free during beta. Actually forever."
-            body="Sign up while the banner's still up and it stays free for you, regardless of what we charge later. Even if our future investors get ideas. We've put it in writing."
+            title="Voice optional"
+            body="Click, drag, type, ignore Squishy entirely if that's your preference. SquishyMind is a perfectly good mind-mapping tool with a strange friend in the corner."
+          />
+          <Feature
+            title="Free during beta. Forever."
+            body="Sign up while the banner's still up and it stays free for you, regardless of what we charge later. Even if our future investors get ideas."
           />
         </section>
 

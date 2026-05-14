@@ -179,4 +179,28 @@ export const roadmap: RoadmapEntry[] = [
       'Curated additions to the template picker as patterns emerge — retros, weekly reviews, study guides. Templates aren’t a one-and-done.',
     status: 'considering',
   },
+  {
+    title: 'Mobile app',
+    description:
+      'Native iOS and Android, optimized for thumb-driven editing. Different beast from the in-browser mobile polish above — a real app on your home screen.',
+    status: 'considering',
+  },
+  {
+    title: 'Voice tours',
+    description:
+      'Squishy walks new users through their first map in a guided session — narrating, demoing, building example branches with them as they go.',
+    status: 'considering',
+  },
+  {
+    title: 'Webhook integrations',
+    description:
+      'Pipe events to Zapier, Slack, anywhere. Node created, comment added, map updated — anything you’d want to plug into your own automation.',
+    status: 'considering',
+  },
+  {
+    title: 'Custom themes',
+    description:
+      'Define your own colour palette beyond the four built-ins. Bring your brand to your brain, or just pick the colours your eyes actually like.',
+    status: 'considering',
+  },
 ];
