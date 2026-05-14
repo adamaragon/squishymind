@@ -17,6 +17,20 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v3.1',
+    title: 'Imports & Four Views',
+    date: 'May 2026',
+    commit: '78d82d9',
+    highlights: [
+      'Bring existing notes in — paste or upload Markdown, CSV, OPML, or JSON',
+      'Three new views beside the wobbly Canvas: Outline, Tree, Table',
+      'Toggle from the toolbar; your last view sticks across sessions',
+      'Same data rendered four ways — nothing converts on switch',
+      'Squishy switches view by voice — “show me as a tree”',
+    ],
+    squishyNote: 'Bring your old stuff in, darling. I’ll make it look gorgeous.',
+  },
+  {
     version: 'v3.0',
     title: 'Collaboration. Done.',
     date: 'May 2026',
