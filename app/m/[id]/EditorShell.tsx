@@ -7,7 +7,10 @@ import { createClient } from '@/lib/supabase/client';
 import ShareDialog from '@/components/ShareDialog';
 import MembersPanel from '@/components/MembersPanel';
 import MindMapCanvas from '@/components/MindMapCanvas';
-import type { MindMapData, Visibility } from '@/lib/types';
+import OutlineView from '@/components/views/OutlineView';
+import ViewSwitcher from '@/components/ViewSwitcher';
+import { loadViewMode, saveViewMode } from '@/lib/squishy';
+import type { MindMapData, ViewMode, Visibility } from '@/lib/types';
 
 function toSlug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
@@ -59,6 +62,17 @@ export default function EditorShell({
   const [, forceTick] = useState(0);
   const dataTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastDataRef = useRef<MindMapData>(initialData);
+  // View routing: the canvas owns its data internally; alternative views
+  // (Outline today; Tree + Table soon) seed from lastDataRef so a switch
+  // doesn't lose the most recent local state.
+  const [viewMode, setViewMode] = useState<ViewMode>('canvas');
+  useEffect(() => {
+    setViewMode(loadViewMode());
+  }, []);
+  function handleViewChange(next: ViewMode) {
+    setViewMode(next);
+    saveViewMode(next);
+  }
 
   const titleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const slugTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -228,6 +242,9 @@ export default function EditorShell({
         </div>
         )}
 
+        {/* view switcher */}
+        <ViewSwitcher current={viewMode} onChange={handleViewChange} />
+
         {/* members button — collaboration is a future premium feature; free during beta */}
         <button
           onClick={() => setMembersOpen(true)}
@@ -277,21 +294,37 @@ export default function EditorShell({
       </div>
 
       <div className="flex-1 min-h-0 relative">
-        <MindMapCanvas
-          key={id}
-          mindmapId={id}
-          initialData={initialData}
-          initialTitle={title}
-          currentUserId={currentUserId}
-          currentUserName={currentUserName}
-          readonly={!canEdit}
-          onDataChange={onDataChange}
-          onTitleChange={(next) => {
-            setTitle(next);
-            if (titleTimer.current) clearTimeout(titleTimer.current);
-            titleTimer.current = setTimeout(() => persistTitle(next || 'Untitled mind map'), 600);
-          }}
-        />
+        {viewMode === 'canvas' ? (
+          <MindMapCanvas
+            key={`${id}-canvas`}
+            mindmapId={id}
+            initialData={lastDataRef.current}
+            initialTitle={title}
+            currentUserId={currentUserId}
+            currentUserName={currentUserName}
+            readonly={!canEdit}
+            onDataChange={onDataChange}
+            onTitleChange={(next) => {
+              setTitle(next);
+              if (titleTimer.current) clearTimeout(titleTimer.current);
+              titleTimer.current = setTimeout(() => persistTitle(next || 'Untitled mind map'), 600);
+            }}
+          />
+        ) : viewMode === 'outline' ? (
+          <OutlineView
+            key={`${id}-outline`}
+            mindmapId={id}
+            initialData={lastDataRef.current}
+            initialTitle={title}
+            readonly={!canEdit}
+            onDataChange={onDataChange}
+            onTitleChange={(next) => {
+              setTitle(next);
+              if (titleTimer.current) clearTimeout(titleTimer.current);
+              titleTimer.current = setTimeout(() => persistTitle(next || 'Untitled mind map'), 600);
+            }}
+          />
+        ) : null}
       </div>
 
       {shareOpen && (

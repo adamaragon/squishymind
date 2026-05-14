@@ -41,3 +41,30 @@ export function clearConversationId(): void {
     /* ignore */
   }
 }
+
+// ---- View mode persistence (per-user via localStorage) ----
+import type { ViewMode } from './types';
+
+const VIEW_MODE_KEY = 'squishymind:view-mode';
+
+export function loadViewMode(): ViewMode {
+  if (typeof window === 'undefined') return 'canvas';
+  try {
+    const v = window.localStorage.getItem(VIEW_MODE_KEY);
+    if (v === 'canvas' || v === 'tree' || v === 'outline' || v === 'table') {
+      return v;
+    }
+  } catch {
+    /* ignore */
+  }
+  return 'canvas';
+}
+
+export function saveViewMode(mode: ViewMode): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(VIEW_MODE_KEY, mode);
+  } catch {
+    /* ignore */
+  }
+}
