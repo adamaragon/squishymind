@@ -153,6 +153,14 @@ export default function MindMapCanvas({
     const root = rootRef.current!;
 
     const state = stateRef.current;
+
+    // Presence state is read by renderNodes → applyEditingBadges, which fires
+    // during the initial renderAll() far below. Declare the `let` bindings up
+    // here so they're out of the temporal dead zone before any render runs.
+    // The realtime channel itself is wired up later, near the data channel.
+    let otherPresence: Record<string, PresenceState> = {};
+    let lastCursorBroadcast = 0;
+
     // Hydrate from initialData (only the persistent bits)
     const seed = cloneData(initialDataRef.current);
     state.nodes = seed.nodes || {};
@@ -2658,9 +2666,10 @@ export default function MindMapCanvas({
     // ---- Presence (live cursors + edit awareness) ----
     // Only authenticated viewers/editors join presence. Anonymous share
     // viewers (no currentUserId) skip this entirely.
+    // `otherPresence` + `lastCursorBroadcast` are declared above (out of
+    // TDZ so renderNodes' applyEditingBadges() can read otherPresence
+    // during the initial paint, before this point is reached).
     let presenceChannel: ReturnType<typeof realtimeClient.channel> | null = null;
-    let otherPresence: Record<string, PresenceState> = {};
-    let lastCursorBroadcast = 0;
     const myColor = currentUserId ? colorForUser(currentUserId) : '#888888';
     const myName = currentUserName || 'someone';
 
