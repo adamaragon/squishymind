@@ -542,10 +542,13 @@ export default function OutlineView({
                     />
                   )}
 
-                  {/* Disclosure triangle (or placeholder if leaf) */}
+                  {/* Disclosure chevron (SVG so it scales crisply; rotates
+                      from > folded to ∨ open). Placeholder dot for leaves. */}
                   <button
                     type="button"
-                    className={`ol-chev ${hasChildren ? '' : 'is-empty'} ${isCollapsed ? 'is-collapsed' : ''}`}
+                    className={`ol-chev ${hasChildren ? '' : 'is-empty'} ${
+                      isCollapsed ? 'is-folded' : 'is-open'
+                    }`}
                     onClick={() => hasChildren && toggleCollapse(id)}
                     aria-label={
                       hasChildren
@@ -558,7 +561,26 @@ export default function OutlineView({
                     disabled={!hasChildren}
                     tabIndex={hasChildren ? 0 : -1}
                   >
-                    {hasChildren ? (isCollapsed ? '▸' : '▾') : '•'}
+                    {hasChildren ? (
+                      <svg
+                        className="ol-chev-icon"
+                        viewBox="0 0 12 12"
+                        width="11"
+                        height="11"
+                        aria-hidden
+                      >
+                        <path
+                          d="M4 2.5 L8 6 L4 9.5"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    ) : (
+                      <span className="ol-leaf-dot" aria-hidden>·</span>
+                    )}
                   </button>
 
                   {/* Colour bullet */}
@@ -934,7 +956,7 @@ export default function OutlineView({
           pointer-events: none;
         }
 
-        /* Disclosure chevron */
+        /* Disclosure chevron — SVG, rotates 90deg when expanded */
         .ol-chev {
           flex-shrink: 0;
           width: 20px;
@@ -946,11 +968,11 @@ export default function OutlineView({
           color: var(--text-dim);
           border: none;
           border-radius: 4px;
-          font-size: 11px;
           cursor: pointer;
-          transition: all 0.12s;
+          transition: all 0.15s;
           position: relative;
           z-index: 1;
+          padding: 0;
         }
         .ol-chev:hover:not(.is-empty) {
           background: rgba(255, 255, 255, 0.08);
@@ -959,7 +981,17 @@ export default function OutlineView({
         .ol-chev.is-empty {
           color: rgba(255, 255, 255, 0.18);
           cursor: default;
-          font-size: 14px;
+        }
+        .ol-chev-icon {
+          display: block;
+          transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .ol-chev.is-open .ol-chev-icon {
+          transform: rotate(90deg);
+        }
+        .ol-leaf-dot {
+          font-size: 18px;
+          line-height: 0;
         }
 
         /* Colour bullet */

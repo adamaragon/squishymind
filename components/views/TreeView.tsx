@@ -898,20 +898,9 @@ function TreeNodeCard({
           className="tr-card-label"
           aria-label={`Node ${node.label || 'Untitled'}`}
         />
-        {node.note && (
-          <p className="tr-card-note" title={node.note}>
-            {node.note}
-          </p>
-        )}
-        {childCount > 0 && (
-          <div className="tr-card-meta">
-            <span className="tr-card-childcount">
-              {isCollapsed
-                ? `+${childCount} hidden`
-                : `${childCount} ${childCount === 1 ? 'child' : 'children'}`}
-            </span>
-          </div>
-        )}
+        {/* Flag chips live IN the card body, right under the title — so
+            "what's attached to this node" is the first thing you scan after
+            the label. Each chip carries its own data-tip tooltip. */}
         {(hasNote || hasImage || attachCount > 0) && (
           <div className="tr-card-flags">
             {hasNote && (
@@ -939,14 +928,29 @@ function TreeNodeCard({
             )}
           </div>
         )}
+        {node.note && (
+          <p className="tr-card-note" title={node.note}>
+            {node.note}
+          </p>
+        )}
+        {childCount > 0 && (
+          <div className="tr-card-meta">
+            <span className="tr-card-childcount">
+              {isCollapsed
+                ? `+${childCount} hidden`
+                : `${childCount} ${childCount === 1 ? 'child' : 'children'}`}
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Collapse toggle on parent cards — chevron, not plus/minus, so it
-          can't be mistaken for the add-child button. */}
+      {/* Collapse toggle — SVG chevron that rotates: > when collapsed,
+          rotates 90° to point down (∨) when expanded. Clearly a fold
+          indicator, can't be confused with the gradient "Add" pill. */}
       {childCount > 0 && (
         <button
           type="button"
-          className="tr-card-toggle"
+          className={`tr-card-toggle ${isCollapsed ? 'is-folded' : 'is-open'}`}
           onClick={(e) => {
             e.stopPropagation();
             onToggleCollapse();
@@ -954,9 +958,22 @@ function TreeNodeCard({
           aria-label={isCollapsed ? 'Expand subtree' : 'Collapse subtree'}
           data-tip={isCollapsed ? 'Expand subtree' : 'Collapse subtree'}
         >
-          <span className="tr-chev" aria-hidden>
-            {isCollapsed ? '▸' : '▾'}
-          </span>
+          <svg
+            className="tr-chev"
+            viewBox="0 0 12 12"
+            width="12"
+            height="12"
+            aria-hidden
+          >
+            <path
+              d="M4 2.5 L8 6 L4 9.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         </button>
       )}
 
@@ -1112,16 +1129,14 @@ function TreeNodeCard({
         .tr-card-meta {
           margin-top: 6px;
         }
-        /* Data flags live on their own row, beneath the child count, so a
-           reader sees structure (count) and content (flags) as two layers
-           rather than one mixed strip. */
+        /* Flag chips sit directly under the title, before the note text,
+           as a quick content scan. Tight 5px top margin so they read as
+           "metadata of the label" rather than a separate section. */
         .tr-card-flags {
           display: flex;
           flex-wrap: wrap;
           gap: 4px;
-          margin-top: 6px;
-          padding-top: 6px;
-          border-top: 1px dashed rgba(255, 255, 255, 0.06);
+          margin-top: 5px;
         }
         .tr-card-flag {
           display: inline-flex;
@@ -1167,9 +1182,6 @@ function TreeNodeCard({
           color: white;
         }
         .is-root .tr-card-flag .tr-card-flag-icon { color: white; }
-        .is-root .tr-card-flags {
-          border-top-color: rgba(255, 255, 255, 0.18);
-        }
         .tr-card-childcount {
           font-size: 10px;
           font-weight: 600;
@@ -1192,46 +1204,48 @@ function TreeNodeCard({
           color: white;
         }
 
-        /* Collapse toggle — chevron, not a plus/minus. Visually a folder
-           indicator so it can't be confused with the add-child pill. */
+        /* Collapse toggle — SVG chevron, rotates from > (folded) to ∨
+           (open). Accordion-style fold indicator. */
         .tr-card-toggle {
           position: absolute;
           right: -10px;
           top: 10px;
-          width: 22px;
-          height: 22px;
+          width: 24px;
+          height: 24px;
           border-radius: 50%;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           background: rgba(15, 17, 36, 0.95);
-          color: var(--text);
+          color: color-mix(in srgb, var(--tr-accent) 75%, white);
           border: 1px solid color-mix(in srgb, var(--tr-accent) 55%, rgba(255, 255, 255, 0.1));
           cursor: pointer;
-          transition: all 0.15s;
+          transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
           box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
           z-index: 2;
           padding: 0;
         }
         .tr-chev {
-          font-size: 11px;
-          line-height: 1;
-          color: color-mix(in srgb, var(--tr-accent) 80%, white);
-          transition: transform 0.15s;
+          display: block;
+          transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+          /* Slight nudge to optically centre the chevron path inside the
+             circle (its visual centre sits a hair right of geometric). */
+          margin-left: 1px;
+        }
+        .tr-card-toggle.is-open .tr-chev {
+          transform: rotate(90deg);
+          margin-left: 0;
+          margin-top: 1px;
         }
         .tr-card-toggle:hover {
           background: var(--tr-accent);
           color: white;
           transform: scale(1.1);
-        }
-        .tr-card-toggle:hover .tr-chev {
-          color: white;
+          border-color: color-mix(in srgb, var(--tr-accent) 90%, white);
         }
         .is-root .tr-card-toggle {
           background: rgba(0, 0, 0, 0.45);
           border-color: rgba(255, 255, 255, 0.4);
-        }
-        .is-root .tr-chev {
           color: white;
         }
 
