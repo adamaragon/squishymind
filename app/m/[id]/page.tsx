@@ -10,10 +10,20 @@ export default async function EditorPage({ params }: { params: Promise<{ id: str
   if (!user) redirect('/login');
 
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-  const query = supabase
-    .from('mindmaps')
-    .select('id, title, visibility, share_token, owner_id, slug, data');
-  const { data: mindmap } = await (isUuid ? query.eq('id', id) : query.eq('slug', id)).single();
+
+  // Fetch the mindmap. Wrapped in try/catch so a Supabase failure surfaces
+  // as a clean 404 rather than the generic Vercel "page couldn't load".
+  let mindmap;
+  try {
+    const query = supabase
+      .from('mindmaps')
+      .select('id, title, visibility, share_token, owner_id, slug, data');
+    const result = await (isUuid ? query.eq('id', id) : query.eq('slug', id)).single();
+    mindmap = result.data;
+  } catch (err) {
+    console.error('[m/[id]] mindmap fetch failed', err);
+    notFound();
+  }
   if (!mindmap) notFound();
 
   // Canonical URL: when a slug is set, the address bar should use it.
@@ -23,26 +33,38 @@ export default async function EditorPage({ params }: { params: Promise<{ id: str
 
   const displayName = user.email?.split('@')[0] || 'someone';
 
-  // Determine the viewer's role on this map. Owner trumps everything; otherwise
-  // look up the collaborators row. RLS already restricts who can read the map
-  // at all, so the only valid roles reaching this point are owner, editor, or
-  // commenter — but we default to commenter (least privilege) if anything's
-  // unexpected.
+  // Determine the viewer's role. Owner check is local (no query). Collaborator
+  // lookup is wrapped in try/catch and falls back to 'commenter' so an RLS
+  // hiccup, transient DB error, or unexpected shape doesn't crash the page.
   const isOwner = mindmap.owner_id === user.id;
   let role: 'owner' | 'editor' | 'commenter' = 'commenter';
   if (isOwner) {
     role = 'owner';
   } else {
-    const { data: collab } = await supabase
-      .from('collaborators')
-      .select('role')
-      .eq('mindmap_id', mindmap.id)
-      .eq('user_id', user.id)
-      .maybeSingle();
-    if (collab?.role === 'editor') role = 'editor';
-    else if (collab?.role === 'commenter') role = 'commenter';
+    try {
+      const { data: collab } = await supabase
+        .from('collaborators')
+        .select('role')
+        .eq('mindmap_id', mindmap.id)
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (collab?.role === 'editor') role = 'editor';
+      else if (collab?.role === 'commenter') role = 'commenter';
+    } catch (err) {
+      console.error('[m/[id]] collaborators lookup failed', err);
+      // Fall through with role='commenter' — least-privilege default.
+    }
   }
   const canEdit = role === 'owner' || role === 'editor';
+
+  // Defensive: if the data column is somehow null or wrong shape, give the
+  // canvas an empty seed instead of letting the client-side JSON access bomb.
+  const safeData =
+    mindmap.data &&
+    typeof mindmap.data === 'object' &&
+    'nodes' in mindmap.data
+      ? mindmap.data
+      : { nodes: {}, childIndex: {}, rootId: null };
 
   return (
     <>
@@ -52,7 +74,7 @@ export default async function EditorPage({ params }: { params: Promise<{ id: str
         initialSlug={mindmap.slug ?? ''}
         initialVisibility={mindmap.visibility}
         initialShareToken={mindmap.share_token}
-        initialData={mindmap.data}
+        initialData={safeData}
         currentUserId={user.id}
         currentUserName={displayName}
         ownerId={mindmap.owner_id}
