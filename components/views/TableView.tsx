@@ -700,9 +700,11 @@ export default function TableView({
           box-shadow: inset 3px 0 0 #ec4899;
         }
 
-        /* Cells */
+        /* Cells — densities are real: comfy gets roomy 16px/18px padding
+           with bigger line-height; compact gets a tight 4px/12px so the
+           toggle reads as "spreadsheet" vs "data grid". */
         .tv-cell {
-          padding: 10px 14px;
+          padding: 14px 16px;
           border-bottom: 1px solid rgba(255, 255, 255, 0.04);
           border-right: 1px solid rgba(255, 255, 255, 0.025);
           vertical-align: top;
@@ -710,16 +712,39 @@ export default function TableView({
           min-width: 160px;
           max-width: 260px;
           color: var(--text);
-          line-height: 1.4;
+          line-height: 1.5;
+          font-size: 13px;
         }
         .tv-cell:last-child {
           border-right: none;
         }
+        .comfy .tv-cell {
+          padding: 16px 18px;
+          line-height: 1.55;
+          font-size: 13.5px;
+        }
+        .comfy .tv-th {
+          padding: 16px 18px;
+          font-size: 11px;
+        }
         .compact .tv-cell {
-          padding: 6px 14px;
+          padding: 4px 12px;
+          line-height: 1.35;
+          font-size: 12px;
         }
         .compact .tv-th {
-          padding: 8px 14px;
+          padding: 6px 12px;
+          font-size: 9.5px;
+        }
+        /* Compact also tightens the per-row data column so rows feel
+           genuinely dense rather than just shorter. */
+        .compact .tv-row-details-btn {
+          padding: 4px 8px;
+          font-size: 10px;
+        }
+        .compact .tv-row-flag {
+          padding: 1px 6px 1px 5px;
+          font-size: 9.5px;
         }
 
         .tv-cell-rowno {
