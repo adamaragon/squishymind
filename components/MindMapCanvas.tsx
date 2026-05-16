@@ -741,24 +741,17 @@ export default function MindMapCanvas({
       t = 0,
       phase = 0,
     ) {
-      // Cleaner, more professional curve: control points pulled in at 35 %
-      // of the span (instead of midpoint) so the curve has a softer S
-      // shape — and a much tamer perpendicular wiggle amplitude.
-      const dx = (x2 - x1) * 0.35;
-      const dy = (y2 - y1) * 0.35;
+      const dx = (x2 - x1) * 0.5;
       const length = Math.hypot(x2 - x1, y2 - y1);
-      // Was Math.min(18, length * 0.07) — almost 3× too wavy. Tone it down
-      // so the edge looks alive, not seasick. Also slow the temporal
-      // frequency so motion is more breathing than swimming.
-      const amp = Math.min(6, length * 0.025);
+      const amp = Math.min(18, length * 0.07);
       const nx = -(y2 - y1) / (length || 1);
       const ny = (x2 - x1) / (length || 1);
-      const w1 = Math.sin(t * 0.6 + phase) * amp;
-      const w2 = Math.sin(t * 0.7 + phase + 1.5) * amp;
+      const w1 = Math.sin(t * 1.2 + phase) * amp;
+      const w2 = Math.sin(t * 1.5 + phase + 1.7) * amp;
       const c1x = x1 + dx + nx * w1;
-      const c1y = y1 + dy + ny * w1;
+      const c1y = y1 + 0 + ny * w1;
       const c2x = x2 - dx + nx * w2;
-      const c2y = y2 - dy + ny * w2;
+      const c2y = y2 - 0 + ny * w2;
       return `M ${x1} ${y1} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${x2} ${y2}`;
     }
 
@@ -4113,7 +4106,8 @@ export default function MindMapCanvas({
           right: -22px;
         }
 
-        /* Action chip */
+        /* Action chip — softer rectangle (14px) instead of a full pill,
+           reads as a deliberate menu rather than a floating button group. */
         .smm-root :global(.action-chip) {
           position: absolute;
           transform: translate(-50%, 0);
@@ -4122,7 +4116,7 @@ export default function MindMapCanvas({
           padding: 5px;
           background: var(--ui-bg);
           border: 1px solid var(--ui-border);
-          border-radius: 24px;
+          border-radius: 14px;
           box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
@@ -4147,7 +4141,9 @@ export default function MindMapCanvas({
           font-size: 14px;
           width: 30px;
           height: 30px;
-          border-radius: 50%;
+          /* Square buttons with a soft 9px corner — sits inside the 14px
+             chip with a consistent visual hierarchy (chip > buttons). */
+          border-radius: 9px;
           cursor: pointer;
           display: flex;
           align-items: center;
@@ -4159,7 +4155,7 @@ export default function MindMapCanvas({
         }
         .smm-root :global(.action-chip button:hover) {
           background: color-mix(in srgb, var(--selection) 25%, transparent);
-          transform: scale(1.12);
+          transform: scale(1.08);
         }
 
         /* Detail mode dim */
