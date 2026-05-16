@@ -741,17 +741,24 @@ export default function MindMapCanvas({
       t = 0,
       phase = 0,
     ) {
-      const dx = (x2 - x1) * 0.5;
+      // Cleaner, more professional curve: control points pulled in at 35 %
+      // of the span (instead of midpoint) so the curve has a softer S
+      // shape — and a much tamer perpendicular wiggle amplitude.
+      const dx = (x2 - x1) * 0.35;
+      const dy = (y2 - y1) * 0.35;
       const length = Math.hypot(x2 - x1, y2 - y1);
-      const amp = Math.min(18, length * 0.07);
+      // Was Math.min(18, length * 0.07) — almost 3× too wavy. Tone it down
+      // so the edge looks alive, not seasick. Also slow the temporal
+      // frequency so motion is more breathing than swimming.
+      const amp = Math.min(6, length * 0.025);
       const nx = -(y2 - y1) / (length || 1);
       const ny = (x2 - x1) / (length || 1);
-      const w1 = Math.sin(t * 1.2 + phase) * amp;
-      const w2 = Math.sin(t * 1.5 + phase + 1.7) * amp;
+      const w1 = Math.sin(t * 0.6 + phase) * amp;
+      const w2 = Math.sin(t * 0.7 + phase + 1.5) * amp;
       const c1x = x1 + dx + nx * w1;
-      const c1y = y1 + 0 + ny * w1;
+      const c1y = y1 + dy + ny * w1;
       const c2x = x2 - dx + nx * w2;
-      const c2y = y2 - 0 + ny * w2;
+      const c2y = y2 - dy + ny * w2;
       return `M ${x1} ${y1} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${x2} ${y2}`;
     }
 
@@ -1440,14 +1447,33 @@ export default function MindMapCanvas({
         chip = document.createElement('div');
         chip.id = 'smm-action-chip';
         chip.className = 'action-chip';
+        // Three SVG icons, all 1.8px stroke + round caps so they share a
+        // visual family with the alt-view chips (chevron, ⓘ details).
+        // Order is colour · details · delete — same intent as before.
         chip.innerHTML =
-          '<button data-act="color" title="Cycle colour">🎨</button>' +
-          '<button data-act="open"  title="Expand (double-click)">' +
-          '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
-          '<path d="M6 2H2V6 M10 2H14V6 M6 14H2V10 M10 14H14V10"/>' +
+          // Colour: stylised palette drop
+          '<button data-act="color" title="Cycle colour" aria-label="Cycle colour">' +
+          '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+          '<path d="M8 2C4.7 2 2 4.7 2 8s2.7 6 6 6c1 0 1.5-.5 1.5-1.3 0-.4-.2-.7-.5-1-.3-.3-.5-.6-.5-1 0-.7.6-1.3 1.3-1.3H11c1.7 0 3-1.3 3-3 0-2.6-2.7-4.4-6-4.4z"/>' +
+          '<circle cx="5.5" cy="7" r="0.9" fill="currentColor"/>' +
+          '<circle cx="8" cy="5" r="0.9" fill="currentColor"/>' +
+          '<circle cx="11" cy="7" r="0.9" fill="currentColor"/>' +
           '</svg>' +
           '</button>' +
-          '<button data-act="delete" title="Delete (Del)">✕</button>';
+          // Details: matches the ⓘ used in alt-view "Details" chip
+          '<button data-act="open" title="Open details (double-click node)" aria-label="Open details">' +
+          '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+          '<circle cx="8" cy="8" r="6.2"/>' +
+          '<path d="M8 7.2v4.2"/>' +
+          '<circle cx="8" cy="5" r="0.6" fill="currentColor" stroke="none"/>' +
+          '</svg>' +
+          '</button>' +
+          // Delete: clean SVG × instead of unicode ✕
+          '<button data-act="delete" title="Delete (Del)" aria-label="Delete node">' +
+          '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+          '<path d="M4 4 L12 12 M12 4 L4 12"/>' +
+          '</svg>' +
+          '</button>';
         chip.addEventListener('mousedown', (e) => e.stopPropagation());
         chip.addEventListener('click', (e) => {
           const target = e.target as HTMLElement;
@@ -1458,7 +1484,9 @@ export default function MindMapCanvas({
         });
         nodesLayer.appendChild(chip);
       }
-      const yOffset = n.id === state.rootId ? 110 : 50;
+      // Pull the chip closer to the node — was 50/110, now 32/80. Sits
+      // just under the bottom edge instead of floating in space.
+      const yOffset = n.id === state.rootId ? 80 : 32;
       chip.style.left = n.x + 'px';
       chip.style.top = n.y + yOffset + 'px';
     }
@@ -1663,6 +1691,10 @@ export default function MindMapCanvas({
 
         if (n.id === state.detailId) {
           el.classList.add('in-detail');
+          // The node's own textContent (label) and the add-handle would
+          // sit above the detail panel — clear them so only the detail's
+          // editable title input represents the node in detail mode.
+          el.innerHTML = '';
           const detail = buildDetailContent(n);
           el.appendChild(detail);
         }
@@ -4154,14 +4186,38 @@ export default function MindMapCanvas({
         }
 
         .smm-root :global(.node.in-detail) {
-          width: 360px;
-          min-width: 320px;
-          max-width: 360px;
-          padding: 16px 18px !important;
+          width: 420px;
+          min-width: 360px;
+          max-width: 420px;
+          padding: 20px 22px 18px !important;
           cursor: default;
           z-index: 100;
-          animation: none !important;
+          animation: detailCardIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
           transform: translate(-50%, -50%) !important;
+          /* Override the accent gradient any normal node carries so the
+             detail card reads as a clean dark surface — the gradient was
+             washing out the title and making the card look fluorescent. */
+          background:
+            linear-gradient(180deg, rgba(20, 22, 44, 0.96) 0%, rgba(12, 13, 28, 0.98) 100%) !important;
+          border: 1px solid color-mix(in srgb, var(--selection) 24%, var(--node-border)) !important;
+          /* A focused glow, but a single tight ring rather than a wash. */
+          box-shadow:
+            0 1px 0 rgba(255, 255, 255, 0.05) inset,
+            0 0 0 1px color-mix(in srgb, var(--selection) 18%, transparent),
+            0 24px 60px rgba(0, 0, 0, 0.55),
+            0 0 80px color-mix(in srgb, var(--selection) 14%, transparent) !important;
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+        }
+        @keyframes detailCardIn {
+          from {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.94) !important;
+          }
+          to {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1) !important;
+          }
         }
         .smm-root :global(.node.in-detail:hover) {
           transform: translate(-50%, -50%) !important;
@@ -4170,28 +4226,38 @@ export default function MindMapCanvas({
           display: none;
         }
         .smm-root :global(.is-brain.in-detail) {
-          background: linear-gradient(
-            180deg,
-            var(--node-bg) 0%,
-            var(--node-bg-2) 100%
-          ) !important;
-          border: 1px solid var(--node-border) !important;
-          box-shadow:
-            0 1px 0 rgba(255, 255, 255, 0.04) inset,
-            0 12px 28px var(--node-shadow),
-            0 2px 6px var(--node-shadow) !important;
-          padding: 16px 18px !important;
+          background:
+            linear-gradient(180deg, rgba(20, 22, 44, 0.96) 0%, rgba(12, 13, 28, 0.98) 100%) !important;
         }
         .smm-root :global(.is-brain.in-detail .brain-svg-wrap),
         .smm-root :global(.is-brain.in-detail .brain-aura),
         .smm-root :global(.is-brain.in-detail .brain-label) {
           display: none !important;
         }
+        /* Thin accent rail at the very top of the card — matches the rest
+           of the system's "left rail = colour identity" pattern but
+           pulled to the top because the card is centred. */
+        .smm-root :global(.node.in-detail::before) {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 12%;
+          right: 12%;
+          height: 2px;
+          border-radius: 0 0 2px 2px;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            color-mix(in srgb, var(--selection) 75%, white),
+            transparent
+          );
+          opacity: 0.7;
+        }
 
         .smm-root :global(.detail-content) {
           display: flex;
           flex-direction: column;
-          gap: 10px;
+          gap: 14px;
           align-items: stretch;
           position: relative;
           width: 100%;
@@ -4199,117 +4265,168 @@ export default function MindMapCanvas({
         }
         .smm-root :global(.detail-close) {
           position: absolute;
-          top: -4px;
-          right: -4px;
-          background: transparent;
-          border: none;
-          color: var(--node-text);
+          top: -8px;
+          right: -8px;
+          width: 26px;
+          height: 26px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid var(--node-border);
+          color: var(--ui-text-dim);
           cursor: pointer;
-          font-size: 14px;
+          font-size: 13px;
           line-height: 1;
-          padding: 4px 6px;
-          opacity: 0.55;
-          transition: opacity 0.15s;
+          padding: 0;
+          border-radius: 50%;
+          transition: all 0.15s;
           z-index: 2;
         }
         .smm-root :global(.detail-close:hover) {
-          opacity: 1;
+          color: var(--node-text);
+          background: rgba(255, 255, 255, 0.08);
+          border-color: var(--ui-border);
         }
         .smm-root :global(.detail-label) {
           background: transparent;
-          border: none;
+          border: 1px solid transparent;
           outline: none;
           color: var(--node-text);
-          font-size: 17px;
-          font-weight: 600;
+          font-size: 19px;
+          font-weight: 700;
           font-family: inherit;
-          padding: 4px 0;
-          border-bottom: 1px solid var(--node-border);
-          margin-right: 22px;
-          width: calc(100% - 22px);
+          letter-spacing: -0.2px;
+          padding: 6px 10px;
+          margin: 0 -10px 2px;
+          width: calc(100% - 26px);
+          border-radius: 8px;
+          transition: all 0.15s;
+        }
+        .smm-root :global(.detail-label:hover) {
+          background: rgba(255, 255, 255, 0.03);
         }
         .smm-root :global(.detail-label:focus) {
-          border-bottom-color: var(--selection);
+          background: rgba(255, 255, 255, 0.05);
+          border-color: color-mix(in srgb, var(--selection) 40%, var(--node-border));
         }
         .smm-root :global(.detail-section-label) {
-          font-size: 11px;
+          font-size: 10px;
           text-transform: uppercase;
-          letter-spacing: 0.6px;
+          letter-spacing: 1px;
           color: var(--ui-text-dim);
           margin-top: 4px;
-          font-weight: 500;
+          margin-bottom: -6px;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .smm-root :global(.detail-section-label::before) {
+          content: '';
+          flex-shrink: 0;
+          width: 3px;
+          height: 12px;
+          border-radius: 2px;
+          background: color-mix(in srgb, var(--selection) 60%, transparent);
         }
         .smm-root :global(.detail-note) {
-          background: color-mix(in srgb, var(--node-bg) 70%, black 12%);
+          background: rgba(0, 0, 0, 0.25);
           border: 1px solid var(--node-border);
-          border-radius: 8px;
-          padding: 8px 10px;
+          border-radius: 10px;
+          padding: 10px 12px;
           color: var(--node-text);
           font-family: inherit;
           font-size: 13px;
           line-height: 1.55;
           resize: vertical;
-          min-height: 90px;
-          max-height: 280px;
+          min-height: 88px;
+          max-height: 260px;
           outline: none;
           box-sizing: border-box;
           width: 100%;
+          transition: border-color 0.15s, background 0.15s;
         }
         .smm-root :global(.detail-note:focus) {
-          border-color: color-mix(in srgb, var(--selection) 60%, transparent);
+          border-color: color-mix(in srgb, var(--selection) 55%, var(--node-border));
+          background: rgba(0, 0, 0, 0.35);
         }
         .smm-root :global(.detail-note::placeholder) {
-          color: var(--ui-text-dim);
+          color: rgba(232, 234, 255, 0.35);
+          font-style: italic;
         }
         .smm-root :global(.detail-colors) {
           display: flex;
-          gap: 8px;
+          gap: 10px;
+          padding: 2px 0;
         }
         .smm-root :global(.color-dot) {
-          width: 26px;
-          height: 26px;
+          width: 30px;
+          height: 30px;
           border-radius: 50%;
           border: 2px solid transparent;
           cursor: pointer;
           padding: 0;
+          position: relative;
           transition:
-            transform 0.12s,
-            border-color 0.12s;
-          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1),
+            box-shadow 0.18s;
+          box-shadow:
+            0 0 0 1px rgba(255, 255, 255, 0.06),
+            0 4px 12px rgba(0, 0, 0, 0.4);
         }
         .smm-root :global(.color-dot:hover) {
-          transform: scale(1.18);
+          transform: scale(1.14);
+          box-shadow:
+            0 0 0 1px rgba(255, 255, 255, 0.12),
+            0 8px 18px rgba(0, 0, 0, 0.55);
         }
         .smm-root :global(.color-dot.active) {
           border-color: var(--node-text);
-          transform: scale(1.12);
+          box-shadow:
+            0 0 0 1px rgba(255, 255, 255, 0.12),
+            0 0 0 4px color-mix(in srgb, var(--selection) 22%, transparent),
+            0 8px 20px rgba(0, 0, 0, 0.55);
         }
         .smm-root :global(.detail-stubs) {
           display: flex;
-          gap: 6px;
+          gap: 8px;
           margin-top: 4px;
         }
         .smm-root :global(.stub-btn) {
           flex: 1;
           background: transparent;
-          border: 1px dashed var(--node-border);
-          border-radius: 8px;
-          padding: 6px 8px;
+          border: 1px solid var(--node-border);
+          border-radius: 10px;
+          padding: 9px 10px;
           color: var(--ui-text-dim);
-          font-size: 11px;
+          font-size: 12px;
+          font-weight: 500;
           cursor: not-allowed;
           font-family: inherit;
         }
         .smm-root :global(.stub-btn.ai-btn) {
-          border-style: solid;
-          border-color: color-mix(in srgb, var(--selection) 35%, var(--node-border));
-          color: var(--ui-text);
+          background: linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--selection) 22%, transparent),
+            color-mix(in srgb, var(--selection) 8%, transparent)
+          );
+          border-color: color-mix(in srgb, var(--selection) 38%, var(--node-border));
+          color: var(--node-text);
           cursor: pointer;
-          transition: background 0.12s, border-color 0.12s;
+          transition:
+            background 0.15s,
+            border-color 0.15s,
+            transform 0.12s;
         }
         .smm-root :global(.stub-btn.ai-btn:hover:not(:disabled)) {
-          background: color-mix(in srgb, var(--selection) 12%, transparent);
-          border-color: var(--selection);
+          background: linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--selection) 32%, transparent),
+            color-mix(in srgb, var(--selection) 14%, transparent)
+          );
+          border-color: color-mix(in srgb, var(--selection) 60%, var(--node-border));
+          transform: translateY(-1px);
         }
         .smm-root :global(.stub-btn.ai-btn.ai-thinking) {
           animation: aiPulse 1.4s ease-in-out infinite;
