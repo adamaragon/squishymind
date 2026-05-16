@@ -15,8 +15,11 @@ type Props = {
 
 const SAVE_DEBOUNCE_MS = 800;
 const COLOR_COUNT = 5;
-const X_PER_DEPTH = 260;
-const CARD_WIDTH = 200;
+// 240 wide leaves enough room for the title plus the action chip row
+// (Details + flags + delete-×) without anything wrapping at typical
+// label lengths. 200 was tight the moment a card had 3 chips.
+const CARD_WIDTH = 240;
+const X_PER_DEPTH = 300;
 const PAD_X = 56;
 const PAD_Y = 56;
 
@@ -948,12 +951,9 @@ function TreeNodeCard({
               data-tip="Delete this node and its subtree"
               aria-label="Delete node"
             >
-              <span className="tr-card-delete-chip-icon" aria-hidden>
-                <svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 3 L9 9 M9 3 L3 9" />
-                </svg>
-              </span>
-              <span className="tr-card-delete-chip-label">Delete</span>
+              <svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M3 3 L9 9 M9 3 L3 9" />
+              </svg>
             </button>
           )}
           {hasNote && (
@@ -1382,42 +1382,37 @@ function TreeNodeCard({
           border-color: rgba(255, 255, 255, 0.5);
         }
 
-        /* Delete chip — same shape language as Details, danger styling.
-           Reveals only on hover/select so it doesn't crowd the row at
-           rest, but discoverable enough to replace the previous
-           keyboard-only delete path (Backspace-on-empty). */
+        /* Delete chip — icon-only round button (× is universally
+           readable so the label was costing horizontal space without
+           adding info). Danger styling, reveals on hover/select only,
+           hidden on root. */
         .tr-card-delete-chip {
           display: inline-flex;
           align-items: center;
-          gap: 4px;
-          font-size: 10px;
-          font-weight: 600;
-          letter-spacing: 0.2px;
-          padding: 2px 8px 2px 7px;
-          border-radius: 999px;
+          justify-content: center;
+          width: 22px;
+          height: 22px;
+          border-radius: 50%;
           background: rgba(239, 68, 68, 0.1);
           border: 1px solid rgba(239, 68, 68, 0.3);
           color: #fca5a5;
           cursor: pointer;
           transition: all 0.15s;
-          font-family: inherit;
+          padding: 0;
           opacity: 0;
           transform: scale(0.9);
+          line-height: 0;
         }
         .tr-card:hover .tr-card-delete-chip,
         .tr-card.is-selected .tr-card-delete-chip {
           opacity: 1;
           transform: scale(1);
         }
-        .tr-card-delete-chip-icon {
-          display: inline-flex;
-          align-items: center;
-          line-height: 0;
-        }
         .tr-card-delete-chip:hover {
-          background: rgba(239, 68, 68, 0.22);
-          border-color: rgba(239, 68, 68, 0.6);
+          background: rgba(239, 68, 68, 0.24);
+          border-color: rgba(239, 68, 68, 0.65);
           color: #fee2e2;
+          transform: scale(1.08);
         }
       `}</style>
     </div>
