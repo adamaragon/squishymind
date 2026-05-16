@@ -1732,6 +1732,15 @@ export default function MindMapCanvas({
           el.innerHTML = '';
           const detail = buildDetailContent(n);
           el.appendChild(detail);
+          // Inverse-scale the card so it appears at logical size
+          // regardless of how zoomed-in the world layer is. Without this,
+          // a 1.5× world zoom inflates the card and max-height: 85vh
+          // computes against a viewport the card has already overflowed.
+          el.style.setProperty(
+            'transform',
+            `translate(-50%, -50%) scale(${1 / state.zoom})`,
+            'important',
+          );
         }
 
         nodesLayer.appendChild(el);
@@ -1790,6 +1799,21 @@ export default function MindMapCanvas({
       cursors.forEach((el) => {
         el.style.transform = `scale(${inv})`;
       });
+      // Same inverse-scale trick on the detail card so its `max-height: 85vh`
+      // is meaningful (otherwise the world's 1.5× zoom multiplies the card
+      // to ~127vh visually and the internal scroll never engages).
+      if (state.detailId) {
+        const detailEl = nodesLayer.querySelector(
+          `[data-id="${CSS.escape(state.detailId)}"]`,
+        ) as HTMLElement | null;
+        if (detailEl) {
+          detailEl.style.setProperty(
+            'transform',
+            `translate(-50%, -50%) scale(${inv})`,
+            'important',
+          );
+        }
+      }
     }
 
     renderAllRef.current = () => renderAll();
