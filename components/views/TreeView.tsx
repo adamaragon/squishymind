@@ -357,6 +357,18 @@ export default function TreeView({
       onAddChild(id);
       return;
     }
+    // Cmd/Ctrl+Delete (or Cmd/Ctrl+Backspace) deletes the focused node and
+    // its subtree at any time, not just when the label is empty. Plain
+    // Backspace on an empty label still works as a quick-clear shortcut.
+    if (
+      (e.key === 'Delete' || e.key === 'Backspace') &&
+      (e.metaKey || e.ctrlKey) &&
+      id !== data.rootId
+    ) {
+      e.preventDefault();
+      onDelete(id);
+      return;
+    }
     if (e.key === 'Backspace') {
       const el = e.currentTarget;
       if (el.value === '' && id !== data.rootId) {
@@ -509,8 +521,14 @@ export default function TreeView({
                     x2="100%"
                     y2="0%"
                   >
-                    <stop offset="0%" stopColor={c} stopOpacity="0.55" />
-                    <stop offset="100%" stopColor={c} stopOpacity="0.18" />
+                    {/* Bumped opacity from 0.55→0.85 (start) and 0.18→0.45
+                        (end). On a busy map with many edges in the same
+                        column, the previous values made the connector fade
+                        to invisible against the dark canvas — looked like
+                        branches were missing when they were drawn but
+                        nearly transparent at the child end. */}
+                    <stop offset="0%" stopColor={c} stopOpacity="0.85" />
+                    <stop offset="100%" stopColor={c} stopOpacity="0.45" />
                   </linearGradient>
                 ))}
                 {ACCENT_PALETTE.map((c, i) => (
@@ -523,7 +541,7 @@ export default function TreeView({
                     y2="0%"
                   >
                     <stop offset="0%" stopColor={c} stopOpacity="1" />
-                    <stop offset="100%" stopColor={c} stopOpacity="0.6" />
+                    <stop offset="100%" stopColor={c} stopOpacity="0.75" />
                   </linearGradient>
                 ))}
               </defs>
@@ -533,7 +551,7 @@ export default function TreeView({
                   d={e.d}
                   fill="none"
                   stroke={`url(#tr-edge${e.isHighlight ? '-hl' : ''}-${e.colorIdx % 5})`}
-                  strokeWidth={e.isHighlight ? 2.5 : 1.6}
+                  strokeWidth={e.isHighlight ? 3 : 2.2}
                   strokeLinecap="round"
                   className={e.isHighlight ? 'tr-edge-hl' : ''}
                 />
@@ -576,6 +594,7 @@ export default function TreeView({
                   onAddChild={() => onAddChild(id)}
                   onToggleCollapse={() => toggleCollapse(id)}
                   onOpenDetails={() => setDetailNodeId(id)}
+                  onDelete={() => onDelete(id)}
                 />
               );
             })}
@@ -597,10 +616,10 @@ export default function TreeView({
       {/* Hint footer */}
       {!readonly && (
         <div className="tr-keyhint">
-          <kbd>Enter</kbd> adds child ·{' '}
-          <kbd>⌫</kbd> on empty removes ·{' '}
-          <kbd>▸</kbd> click to fold subtree ·{' '}
-          drag the canvas to pan
+          <kbd>Enter</kbd> child ·{' '}
+          <kbd>⌘⌫</kbd> delete selected ·{' '}
+          <kbd>▸</kbd> click to fold ·{' '}
+          hover a card for actions
         </div>
       )}
 
@@ -842,6 +861,7 @@ function TreeNodeCard({
   onAddChild,
   onToggleCollapse,
   onOpenDetails,
+  onDelete,
 }: {
   node: MindMapNode;
   x: number;
@@ -859,6 +879,7 @@ function TreeNodeCard({
   onAddChild: () => void;
   onToggleCollapse: () => void;
   onOpenDetails: () => void;
+  onDelete: () => void;
 }) {
   const hasNote = !!node.note?.trim();
   const hasImage = !!node.imageUrl;
@@ -916,6 +937,25 @@ function TreeNodeCard({
             <span className="tr-card-details-chip-icon" aria-hidden>ⓘ</span>
             <span className="tr-card-details-chip-label">Details</span>
           </button>
+          {!readonly && !isRoot && (
+            <button
+              type="button"
+              className="tr-card-delete-chip"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              data-tip="Delete this node and its subtree"
+              aria-label="Delete node"
+            >
+              <span className="tr-card-delete-chip-icon" aria-hidden>
+                <svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 3 L9 9 M9 3 L3 9" />
+                </svg>
+              </span>
+              <span className="tr-card-delete-chip-label">Delete</span>
+            </button>
+          )}
           {hasNote && (
             <span className="tr-card-flag has-note" data-tip="Has a note">
               <span className="tr-card-flag-icon" aria-hidden>≡</span>
@@ -1340,6 +1380,44 @@ function TreeNodeCard({
         .is-root .tr-card-details-chip:hover {
           background: rgba(255, 255, 255, 0.28);
           border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Delete chip — same shape language as Details, danger styling.
+           Reveals only on hover/select so it doesn't crowd the row at
+           rest, but discoverable enough to replace the previous
+           keyboard-only delete path (Backspace-on-empty). */
+        .tr-card-delete-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 10px;
+          font-weight: 600;
+          letter-spacing: 0.2px;
+          padding: 2px 8px 2px 7px;
+          border-radius: 999px;
+          background: rgba(239, 68, 68, 0.1);
+          border: 1px solid rgba(239, 68, 68, 0.3);
+          color: #fca5a5;
+          cursor: pointer;
+          transition: all 0.15s;
+          font-family: inherit;
+          opacity: 0;
+          transform: scale(0.9);
+        }
+        .tr-card:hover .tr-card-delete-chip,
+        .tr-card.is-selected .tr-card-delete-chip {
+          opacity: 1;
+          transform: scale(1);
+        }
+        .tr-card-delete-chip-icon {
+          display: inline-flex;
+          align-items: center;
+          line-height: 0;
+        }
+        .tr-card-delete-chip:hover {
+          background: rgba(239, 68, 68, 0.22);
+          border-color: rgba(239, 68, 68, 0.6);
+          color: #fee2e2;
         }
       `}</style>
     </div>
