@@ -15,9 +15,7 @@ type Props = {
 const SAVE_DEBOUNCE_MS = 800;
 const COLOR_COUNT = 5;
 const X_PER_DEPTH = 260;
-const Y_PER_LEAF = 64;
 const CARD_WIDTH = 200;
-const CARD_HEIGHT = 56;
 const PAD_X = 56;
 const PAD_Y = 56;
 
@@ -119,44 +117,93 @@ function removeNode(d: MindMapData, id: string): MindMapData | null {
 type Pos = { x: number; y: number };
 type Layout = {
   positions: Record<string, Pos>;
+  heights: Record<string, number>;
   width: number;
   height: number;
   order: string[];
 };
 
+// Per-node card height. Cards grow when they have a note (2-line clamp) and
+// when they have a meta pill ("3 children" or "+N hidden"). Computing the
+// height up front lets the layout reserve real vertical space so sibling
+// cards don't overlap even when one carries a note + a pill.
+const CARD_BASE = 56;
+const NOTE_BLOCK = 22; // ~2 lines of 11px text + small margin
+const META_BLOCK = 26; // pill + top margin
+const ROOT_EXTRA = 4;
+const ROW_GAP = 18;
+
+function cardHeightFor(
+  node: MindMapNode,
+  hasChildren: boolean,
+  isRoot: boolean,
+): number {
+  let h = CARD_BASE;
+  if (node.note && node.note.trim()) h += NOTE_BLOCK;
+  if (hasChildren) h += META_BLOCK;
+  if (isRoot) h += ROOT_EXTRA;
+  return h;
+}
+
 function computeLayout(d: MindMapData, collapsed: Set<string>): Layout {
   const positions: Record<string, Pos> = {};
+  const heights: Record<string, number> = {};
   const order: string[] = [];
-  let leafCount = 0;
+  let yCursor = 0;
 
-  function visit(id: string, depth: number): { topY: number; bottomY: number } {
+  function visit(id: string, depth: number): { centerY: number } {
     const node = d.nodes[id];
-    if (!node) return { topY: 0, bottomY: 0 };
+    if (!node) return { centerY: 0 };
     order.push(id);
-    const children = collapsed.has(id) ? [] : d.childIndex[id] || [];
-    if (children.length === 0) {
-      const y = leafCount * Y_PER_LEAF;
+    const rawChildren = d.childIndex[id] || [];
+    const hasChildren = rawChildren.length > 0;
+    const isCollapsed = collapsed.has(id);
+    const visibleChildren = isCollapsed ? [] : rawChildren;
+    const isRoot = id === d.rootId;
+    // hasChildren passed to height calc so a collapsed parent still reserves
+    // space for its meta pill (it shows "+N hidden" instead of "N children").
+    const myHeight = cardHeightFor(node, hasChildren, isRoot);
+    heights[id] = myHeight;
+
+    if (visibleChildren.length === 0) {
+      const y = yCursor;
       positions[id] = { x: depth * X_PER_DEPTH, y };
-      leafCount++;
-      return { topY: y, bottomY: y };
+      yCursor += myHeight + ROW_GAP;
+      return { centerY: y + myHeight / 2 };
     }
-    const ranges = children.map((cid) => visit(cid, depth + 1));
-    const top = ranges[0].topY;
-    const bottom = ranges[ranges.length - 1].bottomY;
-    positions[id] = { x: depth * X_PER_DEPTH, y: (top + bottom) / 2 };
-    return { topY: top, bottomY: bottom };
+
+    const centers = visibleChildren.map((cid) => visit(cid, depth + 1).centerY);
+    const center = (centers[0] + centers[centers.length - 1]) / 2;
+    // Parent sits in its own column at the vertical centre of its children.
+    // If the parent's card is taller than the span between first and last
+    // child centres, pin the parent so it never extends past the top of its
+    // first child (avoids the parent eating into the row above its subtree).
+    const idealTop = center - myHeight / 2;
+    const minTop = centers[0] - myHeight / 2; // can't sit above first child
+    const maxTop = centers[centers.length - 1] - myHeight / 2; // or below last
+    const y = Math.max(minTop, Math.min(maxTop, idealTop));
+    positions[id] = { x: depth * X_PER_DEPTH, y };
+    return { centerY: y + myHeight / 2 };
   }
 
   if (d.rootId) visit(d.rootId, 0);
 
-  const ys = Object.values(positions).map((p) => p.y);
+  // Width: rightmost column edge + a card width + side padding.
   const xs = Object.values(positions).map((p) => p.x);
   const maxX = xs.length ? Math.max(...xs) : 0;
-  const maxY = ys.length ? Math.max(...ys) : 0;
+
+  // Height: bottom edge of the lowest card + bottom padding.
+  let maxBottom = 0;
+  for (const id of Object.keys(positions)) {
+    const bottom = positions[id].y + (heights[id] ?? CARD_BASE);
+    if (bottom > maxBottom) maxBottom = bottom;
+  }
+
   return {
     positions,
+    heights,
     width: maxX + CARD_WIDTH + PAD_X * 2,
-    height: maxY + CARD_HEIGHT + PAD_Y * 2,
+    height: maxBottom + PAD_Y * 2,
     order,
   };
 }
@@ -322,10 +369,12 @@ export default function TreeView({
     for (const childId of kids) {
       const c = layout.positions[childId];
       if (!c) continue;
+      const parentH = layout.heights[parentId] ?? CARD_BASE;
+      const childH = layout.heights[childId] ?? CARD_BASE;
       const x1 = p.x + CARD_WIDTH + PAD_X;
-      const y1 = p.y + CARD_HEIGHT / 2 + PAD_Y;
+      const y1 = p.y + parentH / 2 + PAD_Y;
       const x2 = c.x + PAD_X;
-      const y2 = c.y + CARD_HEIGHT / 2 + PAD_Y;
+      const y2 = c.y + childH / 2 + PAD_Y;
       const cx = (x1 + x2) / 2;
       const isHighlight =
         selectedId === parentId ||
@@ -868,7 +917,7 @@ function TreeNodeCard({
       <style jsx>{`
         .tr-card {
           position: absolute;
-          min-height: ${CARD_HEIGHT}px;
+          min-height: ${CARD_BASE}px;
           background:
             linear-gradient(
               180deg,
