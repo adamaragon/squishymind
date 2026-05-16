@@ -17,6 +17,21 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v3.2',
+    title: 'Views, Dazzled',
+    date: 'May 2026',
+    commit: '549c2d1',
+    highlights: [
+      'Outline view now folds, shows tree guides, and counts hidden descendants',
+      'Tree view has zoom, fit-to-screen, gradient edges, and proper card lift',
+      'Table view gets row numbers, colour tags, stats, and a density toggle',
+      'Five-accent palette flows from Canvas into every other view',
+      'Fixed a crash that stopped the editor loading for everyone today',
+    ],
+    squishyNote:
+      'Same brain, four outfits. Pick the one that fits the mood.',
+  },
+  {
     version: 'v3.1',
     title: 'Imports & Four Views',
     date: 'May 2026',
