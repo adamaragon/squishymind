@@ -1741,6 +1741,13 @@ export default function MindMapCanvas({
             `translate(-50%, -50%) scale(${1 / state.zoom})`,
             'important',
           );
+          // Wheel events inside the card must NOT reach the stage's wheel
+          // handler — otherwise the canvas pans/zooms instead of the card
+          // scrolling its own content. Stopping propagation lets the
+          // browser's default scroll on the overflow:auto container work.
+          el.addEventListener('wheel', (e) => {
+            e.stopPropagation();
+          });
         }
 
         nodesLayer.appendChild(el);
