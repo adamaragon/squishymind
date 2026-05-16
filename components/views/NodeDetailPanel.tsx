@@ -11,6 +11,9 @@ type Props = {
    *  imageUrl, attachments). Parent view is expected to merge it into the
    *  MindMapData tree and call onDataChange. */
   onChange: (next: MindMapNode) => void;
+  /** Optional — when provided, a delete control is shown for non-root nodes.
+   *  Parent is expected to remove the node + its subtree and close the panel. */
+  onDelete?: () => void;
   onClose: () => void;
   isRoot: boolean;
 };
@@ -62,6 +65,7 @@ export default function NodeDetailPanel({
   readonly = false,
   accentColor,
   onChange,
+  onDelete,
   onClose,
   isRoot,
 }: Props) {
@@ -417,6 +421,35 @@ export default function NodeDetailPanel({
             <div className="nd-error" role="alert">
               {error}
             </div>
+          )}
+
+          {/* Delete — only for non-root nodes when the parent view passed
+              an onDelete handler. Sits at the bottom because it's
+              destructive and shouldn't be on the natural scan path. */}
+          {!readonly && !isRoot && onDelete && (
+            <section className="nd-danger">
+              <button
+                type="button"
+                className="nd-delete-btn"
+                onClick={() => {
+                  if (
+                    typeof window === 'undefined' ||
+                    window.confirm(
+                      `Delete "${node.label || 'this node'}" and everything beneath it? This can't be undone here.`,
+                    )
+                  ) {
+                    onDelete();
+                  }
+                }}
+              >
+                <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M2.5 3.5 H 11.5" />
+                  <path d="M4 3.5 V 2.5 a1 1 0 0 1 1 -1 h4 a1 1 0 0 1 1 1 V 3.5" />
+                  <path d="M3.5 3.5 V 11.5 a1 1 0 0 0 1 1 h5 a1 1 0 0 0 1 -1 V 3.5" />
+                </svg>
+                Delete this node and subtree
+              </button>
+            </section>
           )}
 
           <footer className="nd-foot">
@@ -784,6 +817,35 @@ export default function NodeDetailPanel({
         .nd-attach-remove:hover {
           color: #fca5a5;
           background: rgba(239, 68, 68, 0.08);
+        }
+
+        /* ---- Danger / Delete ---- */
+        .nd-danger {
+          margin-top: 4px;
+          padding-top: 16px;
+          border-top: 1px dashed var(--border);
+        }
+        .nd-delete-btn {
+          width: 100%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          background: rgba(239, 68, 68, 0.08);
+          border: 1px solid rgba(239, 68, 68, 0.3);
+          color: #fca5a5;
+          font-size: 12px;
+          font-weight: 500;
+          padding: 9px 12px;
+          border-radius: 10px;
+          cursor: pointer;
+          transition: all 0.15s;
+          font-family: inherit;
+        }
+        .nd-delete-btn:hover {
+          background: rgba(239, 68, 68, 0.18);
+          border-color: rgba(239, 68, 68, 0.55);
+          color: #fee2e2;
         }
 
         /* ---- Error ---- */

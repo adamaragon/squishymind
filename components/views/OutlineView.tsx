@@ -675,6 +675,22 @@ export default function OutlineView({
                     >
                       ⓘ
                     </button>
+                    {!readonly && !isRoot && (
+                      <button
+                        type="button"
+                        className="ol-delete-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(id);
+                        }}
+                        data-tip="Delete this node and subtree"
+                        aria-label={`Delete ${node.label || 'this node'}`}
+                      >
+                        <svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <path d="M3 3 L9 9 M9 3 L3 9" />
+                        </svg>
+                      </button>
+                    )}
                     {!readonly && (
                       <button
                         type="button"
@@ -718,6 +734,11 @@ export default function OutlineView({
             ACCENT_PALETTE[(data.nodes[detailNodeId].colorIdx ?? 0) % 5]
           }
           onChange={applyNodeUpdate}
+          onDelete={() => {
+            const id = detailNodeId;
+            setDetailNodeId(null);
+            onDelete(id);
+          }}
           onClose={() => setDetailNodeId(null)}
         />
       )}
@@ -1162,6 +1183,36 @@ export default function OutlineView({
           background: rgba(139, 92, 246, 0.2);
           border-color: rgba(139, 92, 246, 0.5);
           color: #c4b5fd;
+          transform: scale(1.1);
+        }
+
+        /* Outline delete — same shape as the detail ⓘ button, danger
+           tint. Reveals on row hover/focus so the row reads cleanly
+           at rest. Hidden on the root node. */
+        .ol-delete-btn {
+          opacity: 0;
+          width: 22px;
+          height: 22px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(239, 68, 68, 0.1);
+          color: #fca5a5;
+          border: 1px solid rgba(239, 68, 68, 0.28);
+          border-radius: 50%;
+          cursor: pointer;
+          transition: all 0.15s;
+          padding: 0;
+          line-height: 0;
+        }
+        .ol-row:hover .ol-delete-btn,
+        .ol-row.is-focused .ol-delete-btn {
+          opacity: 1;
+        }
+        .ol-delete-btn:hover {
+          background: rgba(239, 68, 68, 0.22);
+          border-color: rgba(239, 68, 68, 0.6);
+          color: #fee2e2;
           transform: scale(1.1);
         }
         .ol-row:hover .ol-childcount,

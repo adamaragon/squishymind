@@ -43,6 +43,29 @@ function walkPaths(d: MindMapData): string[][] {
   return paths;
 }
 
+// Remove a node + its subtree from a MindMapData. Returns a new data object;
+// returns null if `id` is the root or doesn't exist (root is non-deletable).
+function removeNodeFromData(d: MindMapData, id: string): MindMapData | null {
+  if (id === d.rootId) return null;
+  const node = d.nodes[id];
+  if (!node) return null;
+  const nodes = { ...d.nodes };
+  const childIndex: Record<string, string[]> = {};
+  for (const [k, v] of Object.entries(d.childIndex)) childIndex[k] = v.slice();
+  const drop = (n: string) => {
+    for (const c of (childIndex[n] || []).slice()) drop(c);
+    delete nodes[n];
+    delete childIndex[n];
+  };
+  drop(id);
+  if (node.parentId && childIndex[node.parentId]) {
+    childIndex[node.parentId] = childIndex[node.parentId].filter(
+      (c) => c !== id,
+    );
+  }
+  return { nodes, childIndex, rootId: d.rootId };
+}
+
 export default function TableView({
   mindmapId,
   initialData,
@@ -76,11 +99,30 @@ export default function TableView({
     onDataChange?.(updated);
   }
 
+  function applyDeleteNode(id: string) {
+    const updated = removeNodeFromData(data, id);
+    if (!updated) return;
+    setData(updated);
+    onDataChange?.(updated);
+  }
+
   const paths = useMemo(() => walkPaths(data), [data]);
-  const maxDepth = useMemo(
-    () => paths.reduce((acc, p) => Math.max(acc, p.length), 0),
+  // Every path starts with the root, which is identical across rows and
+  // makes the first column an empty echo. Drop it from the view; the root
+  // is surfaced once in the toolbar instead. If the root itself has no
+  // children, paths is [[rootId]] → visiblePaths becomes [[]] which we
+  // filter out so the table is empty rather than full of blank rows.
+  const visiblePaths = useMemo(
+    () => paths.map((p) => p.slice(1)).filter((p) => p.length > 0),
     [paths],
   );
+  const maxDepth = useMemo(
+    () => visiblePaths.reduce((acc, p) => Math.max(acc, p.length), 0),
+    [visiblePaths],
+  );
+  const rootLabel = data.rootId
+    ? (data.nodes[data.rootId]?.label || 'Untitled mind map')
+    : null;
 
   // Stats for the header strip.
   const stats = useMemo(() => {
@@ -110,7 +152,13 @@ export default function TableView({
           <div className="tv-title">
             <span className="tv-title-icon" aria-hidden>▦</span>
             <h2>Table</h2>
-            <span className="tv-readonly-pill">Read-only</span>
+            {rootLabel && (
+              <span className="tv-root-crumb" title="All rows are paths under this root">
+                <span className="tv-root-icon" aria-hidden>🧠</span>
+                <span className="tv-root-name">{rootLabel}</span>
+              </span>
+            )}
+            {readonly && <span className="tv-readonly-pill">Read-only</span>}
           </div>
           <div className="tv-stats">
             <span className="tv-stat">
@@ -174,11 +222,15 @@ export default function TableView({
 
       {/* ---- Grid ---- */}
       <div className="tv-scroll">
-        {paths.length === 0 ? (
+        {visiblePaths.length === 0 ? (
           <div className="tv-empty">
             <div className="tv-empty-icon" aria-hidden>▦</div>
             <h3>No rows to show</h3>
-            <p>This map is empty. Add a node on the canvas to see it here.</p>
+            <p>
+              {data.rootId
+                ? 'The root has no children yet. Add a node on the canvas to see it here.'
+                : 'This map is empty. Add a node on the canvas to see it here.'}
+            </p>
           </div>
         ) : (
           <table className="tv-grid">
@@ -197,7 +249,11 @@ export default function TableView({
                       <span className="tv-th-label">
                         L{i + 1}
                         <span className="tv-th-sub">
-                          {i === 0 ? 'root' : i === maxDepth - 1 ? 'leaf' : 'branch'}
+                          {i === maxDepth - 1
+                            ? 'leaf'
+                            : i === 0
+                            ? 'branch'
+                            : 'branch'}
                         </span>
                       </span>
                     </div>
@@ -206,11 +262,14 @@ export default function TableView({
                 <th className="tv-th tv-th-note" scope="col" title="Per-row data: note, image, attachments">
                   Data
                 </th>
+                {!readonly && (
+                  <th className="tv-th tv-th-actions" scope="col" aria-label="Row actions" />
+                )}
               </tr>
             </thead>
             <tbody>
-              {paths.map((path, rowIdx) => {
-                const prev = rowIdx > 0 ? paths[rowIdx - 1] : null;
+              {visiblePaths.map((path, rowIdx) => {
+                const prev = rowIdx > 0 ? visiblePaths[rowIdx - 1] : null;
                 let firstNew = 0;
                 if (prev) {
                   while (
@@ -391,14 +450,45 @@ export default function TableView({
                         <span className="tv-row-details-cta">Open ↗</span>
                       </button>
                     </td>
+                    {!readonly && (
+                      <td className="tv-cell tv-cell-actions">
+                        <button
+                          type="button"
+                          className="tv-row-delete-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!leafId) return;
+                            if (
+                              typeof window === 'undefined' ||
+                              window.confirm(
+                                `Delete "${leafNode?.label || 'this node'}"? Removes it from the canvas too.`,
+                              )
+                            ) {
+                              applyDeleteNode(leafId);
+                            }
+                          }}
+                          data-tip="Delete this row's leaf node"
+                          aria-label="Delete leaf node"
+                        >
+                          <svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                            <path d="M2.5 3.5 H 11.5" />
+                            <path d="M4 3.5 V 2.5 a1 1 0 0 1 1 -1 h4 a1 1 0 0 1 1 1 V 3.5" />
+                            <path d="M3.5 3.5 V 11.5 a1 1 0 0 0 1 1 h5 a1 1 0 0 0 1 -1 V 3.5" />
+                          </svg>
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
             </tbody>
             <tfoot>
               <tr className="tv-foot">
-                <td colSpan={maxDepth + 3}>
-                  Showing {paths.length} of {paths.length} rows — every leaf path from root to tip.
+                {/* Columns: # + Tag + maxDepth depth cols + Data (+ Actions when editable) */}
+                <td colSpan={maxDepth + 3 + (readonly ? 0 : 1)}>
+                  Showing {visiblePaths.length}{' '}
+                  {visiblePaths.length === 1 ? 'row' : 'rows'} ·{' '}
+                  {rootLabel ? `under "${rootLabel}"` : 'every leaf path from root to tip'}.
                 </td>
               </tr>
             </tfoot>
@@ -413,6 +503,11 @@ export default function TableView({
           isRoot={detailNode.id === data.rootId}
           accentColor={ACCENT_PALETTE[(detailNode.colorIdx ?? 0) % 5]}
           onChange={applyNodeUpdate}
+          onDelete={() => {
+            const id = detailNode.id;
+            setDetailNodeId(null);
+            applyDeleteNode(id);
+          }}
           onClose={() => setDetailNodeId(null)}
         />
       )}
@@ -482,6 +577,34 @@ export default function TableView({
           border: 1px solid rgba(139, 92, 246, 0.3);
           padding: 2px 7px;
           border-radius: 999px;
+        }
+        /* Root breadcrumb in the toolbar — replaces the dropped L1 column.
+           Surfaces the root name once instead of repeating it on every row. */
+        .tv-root-crumb {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 12px;
+          font-weight: 500;
+          color: var(--text);
+          background: linear-gradient(
+            135deg,
+            rgba(236, 72, 153, 0.16),
+            rgba(139, 92, 246, 0.16)
+          );
+          border: 1px solid rgba(236, 72, 153, 0.32);
+          padding: 3px 10px;
+          border-radius: 999px;
+          max-width: 240px;
+        }
+        .tv-root-icon {
+          font-size: 12px;
+          line-height: 1;
+        }
+        .tv-root-name {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
         .tv-stats {
           display: flex;
@@ -899,6 +1022,50 @@ export default function TableView({
         }
         .tv-row-details-btn:hover .tv-row-details-cta {
           color: var(--text);
+        }
+
+        /* Trailing actions column — narrow, holds the row's delete × */
+        .tv-th-actions {
+          width: 44px;
+          min-width: 44px;
+          padding: 12px 6px;
+        }
+        .tv-cell-actions {
+          width: 44px;
+          min-width: 44px;
+          padding: 6px;
+          text-align: center;
+          vertical-align: middle;
+        }
+        .tv-row-delete-btn {
+          opacity: 0;
+          width: 26px;
+          height: 26px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(239, 68, 68, 0.08);
+          color: #fca5a5;
+          border: 1px solid rgba(239, 68, 68, 0.25);
+          border-radius: 50%;
+          cursor: pointer;
+          transition: all 0.15s;
+          padding: 0;
+          line-height: 0;
+        }
+        .tv-row:hover .tv-row-delete-btn,
+        .tv-row.is-selected .tv-row-delete-btn {
+          opacity: 1;
+        }
+        .tv-row-delete-btn:hover {
+          background: rgba(239, 68, 68, 0.22);
+          border-color: rgba(239, 68, 68, 0.6);
+          color: #fee2e2;
+          transform: scale(1.08);
+        }
+        .compact .tv-row-delete-btn {
+          width: 22px;
+          height: 22px;
         }
 
         /* Per-cell hover flags + details button */

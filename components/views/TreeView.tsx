@@ -612,6 +612,11 @@ export default function TreeView({
           isRoot={detailNodeId === data.rootId}
           accentColor={ACCENT_PALETTE[(data.nodes[detailNodeId].colorIdx ?? 0) % 5]}
           onChange={applyNodeUpdate}
+          onDelete={() => {
+            const id = detailNodeId;
+            setDetailNodeId(null);
+            onDelete(id);
+          }}
           onClose={() => setDetailNodeId(null)}
         />
       )}
