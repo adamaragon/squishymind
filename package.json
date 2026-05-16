@@ -9,7 +9,8 @@
     "lint": "next lint",
     "changelog": "node --env-file=.env.local scripts/draft-changelog.mjs",
     "changelog:apply": "node --env-file=.env.local scripts/draft-changelog.mjs --apply",
-    "sfx:delete": "node --env-file=.env.local scripts/generate-delete-sounds.mjs"
+    "sfx:delete": "node --env-file=.env.local scripts/generate-delete-sounds.mjs",
+    "sfx:brain": "node --env-file=.env.local scripts/generate-brain-sounds.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
