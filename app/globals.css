@@ -90,3 +90,67 @@ body {
   background-clip: text;
   color: transparent;
 }
+
+/* ----- Shared CSS tooltip ---------------------------------------------- *
+ * Any element with a `data-tip="..."` attribute shows the attribute value
+ * as a small chip above the element on hover. Used by alt-view buttons and
+ * flag pills where the text label alone isn't fully descriptive.
+ * 200ms delay so a casual mouse swipe doesn't trigger it.
+ * ---------------------------------------------------------------------- */
+[data-tip] {
+  position: relative;
+}
+[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%) translateY(4px);
+  background: rgba(8, 9, 18, 0.96);
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s, transform 0.18s;
+  z-index: 200;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55);
+}
+[data-tip]::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 3px);
+  transform: translateX(-50%) translateY(4px);
+  border: 5px solid transparent;
+  border-top-color: rgba(8, 9, 18, 0.96);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s, transform 0.18s;
+  z-index: 200;
+}
+[data-tip]:hover::after,
+[data-tip]:hover::before,
+[data-tip]:focus-visible::after,
+[data-tip]:focus-visible::before {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  transition-delay: 0.18s;
+}
+/* `data-tip-pos="below"` flips it under the element — handy for elements
+ * pinned to the top edge of a panel where there's no room above. */
+[data-tip][data-tip-pos="below"]::after {
+  bottom: auto;
+  top: calc(100% + 8px);
+}
+[data-tip][data-tip-pos="below"]::before {
+  bottom: auto;
+  top: calc(100% + 3px);
+  border-top-color: transparent;
+  border-bottom-color: rgba(8, 9, 18, 0.96);
+}

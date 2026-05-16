@@ -290,17 +290,27 @@ export default function TableView({
                             )}
                           </span>
                           {!isContinuation && hasData && (
-                            <span className="tv-cell-flags" aria-hidden>
+                            <span className="tv-cell-flags">
                               {hasNote && (
-                                <span className="tv-cell-flag" title="Has note">≡</span>
+                                <span
+                                  className="tv-cell-flag has-note"
+                                  data-tip="Has a note"
+                                >
+                                  ≡
+                                </span>
                               )}
                               {hasImage && (
-                                <span className="tv-cell-flag" title="Has image">▣</span>
+                                <span
+                                  className="tv-cell-flag has-image"
+                                  data-tip="Image attached"
+                                >
+                                  ▣
+                                </span>
                               )}
                               {attachCount > 0 && (
                                 <span
-                                  className="tv-cell-flag"
-                                  title={`${attachCount} attachment${attachCount === 1 ? '' : 's'}`}
+                                  className="tv-cell-flag has-attach"
+                                  data-tip={`${attachCount} file attachment${attachCount === 1 ? '' : 's'}`}
                                 >
                                   ◧{attachCount}
                                 </span>
@@ -315,7 +325,7 @@ export default function TableView({
                                 e.stopPropagation();
                                 setDetailNodeId(id);
                               }}
-                              title="Open details (notes, image, attachments)"
+                              data-tip="Open details · note, image, attachments"
                               aria-label="Open node details"
                             >
                               ⓘ
@@ -339,21 +349,37 @@ export default function TableView({
                         }}
                         title="Open this row's leaf node details"
                       >
-                        <span className="tv-row-flags" aria-hidden>
+                        <span className="tv-row-flags">
                           {leafNode?.note?.trim() && (
-                            <span className="tv-row-flag has-note" title="Has note">≡</span>
+                            <span
+                              className="tv-row-flag has-note"
+                              data-tip="Has a note"
+                            >
+                              <span className="tv-row-flag-icon" aria-hidden>≡</span>
+                              <span className="tv-row-flag-label">Note</span>
+                            </span>
                           )}
                           {leafNode?.imageUrl && (
-                            <span className="tv-row-flag has-image" title="Has image">▣</span>
+                            <span
+                              className="tv-row-flag has-image"
+                              data-tip="Image attached"
+                            >
+                              <span className="tv-row-flag-icon" aria-hidden>▣</span>
+                              <span className="tv-row-flag-label">Image</span>
+                            </span>
                           )}
                           {(leafNode?.attachments?.length ?? 0) > 0 && (
                             <span
                               className="tv-row-flag has-attach"
-                              title={`${leafNode!.attachments!.length} attachment${
+                              data-tip={`${leafNode!.attachments!.length} file attachment${
                                 leafNode!.attachments!.length === 1 ? '' : 's'
                               }`}
                             >
-                              ◧{leafNode!.attachments!.length}
+                              <span className="tv-row-flag-icon" aria-hidden>◧</span>
+                              <span className="tv-row-flag-label">
+                                {leafNode!.attachments!.length}{' '}
+                                {leafNode!.attachments!.length === 1 ? 'file' : 'files'}
+                              </span>
                             </span>
                           )}
                           {!leafNode?.note?.trim() &&
@@ -798,31 +824,41 @@ export default function TableView({
           flex-wrap: wrap;
         }
         .tv-row-flag {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
           font-size: 10px;
-          font-weight: 600;
-          letter-spacing: 0.3px;
-          padding: 2px 7px;
+          font-weight: 500;
+          letter-spacing: 0.2px;
+          padding: 2px 7px 2px 6px;
           border-radius: 999px;
           background: rgba(255, 255, 255, 0.04);
-          border: 1px solid var(--border);
           color: var(--text);
+          cursor: default;
+        }
+        .tv-row-flag-icon {
+          font-size: 10px;
+          line-height: 1;
+        }
+        .tv-row-flag-label {
+          font-weight: 500;
         }
         .tv-row-flag.has-note {
-          background: rgba(6, 182, 212, 0.15);
-          border-color: rgba(6, 182, 212, 0.35);
-          color: #67e8f9;
+          background: rgba(6, 182, 212, 0.12);
+          color: #a5f3fc;
         }
+        .tv-row-flag.has-note .tv-row-flag-icon { color: #67e8f9; }
         .tv-row-flag.has-image {
-          background: rgba(245, 158, 11, 0.15);
-          border-color: rgba(245, 158, 11, 0.35);
+          background: rgba(245, 158, 11, 0.12);
           color: #fcd34d;
         }
+        .tv-row-flag.has-image .tv-row-flag-icon { color: #f59e0b; }
         .tv-row-flag.has-attach {
-          background: rgba(236, 72, 153, 0.15);
-          border-color: rgba(236, 72, 153, 0.35);
-          color: #f9a8d4;
+          background: rgba(236, 72, 153, 0.12);
+          color: #fbcfe8;
           font-variant-numeric: tabular-nums;
         }
+        .tv-row-flag.has-attach .tv-row-flag-icon { color: #ec4899; }
         .tv-row-flag-empty {
           color: var(--text-dim);
           font-style: italic;
@@ -851,12 +887,25 @@ export default function TableView({
           display: inline-flex;
           align-items: center;
           font-size: 10px;
-          color: var(--text-dim);
-          background: rgba(255, 255, 255, 0.04);
-          border: 1px solid var(--border);
-          padding: 1px 5px;
+          color: var(--text);
+          background: rgba(255, 255, 255, 0.05);
+          padding: 1px 6px;
           border-radius: 999px;
           font-weight: 600;
+          cursor: default;
+        }
+        .tv-cell-flag.has-note {
+          background: rgba(6, 182, 212, 0.15);
+          color: #67e8f9;
+        }
+        .tv-cell-flag.has-image {
+          background: rgba(245, 158, 11, 0.15);
+          color: #fcd34d;
+        }
+        .tv-cell-flag.has-attach {
+          background: rgba(236, 72, 153, 0.15);
+          color: #f9a8d4;
+          font-variant-numeric: tabular-nums;
         }
         .tv-cell-detail-btn {
           position: absolute;

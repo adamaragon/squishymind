@@ -600,25 +600,35 @@ export default function OutlineView({
 
                   {/* Right column: indicators, metadata, actions */}
                   <div className="ol-meta">
-                    {/* Data indicators */}
+                    {/* Data indicators — content annotations, not buttons. */}
                     {(node.note?.trim() ||
                       node.imageUrl ||
                       (node.attachments?.length ?? 0) > 0) && (
-                      <span className="ol-flags" aria-hidden>
+                      <span className="ol-flags">
                         {node.note?.trim() && (
-                          <span className="ol-flag has-note" title="Has note">≡</span>
+                          <span className="ol-flag has-note" data-tip="Has a note">
+                            <span className="ol-flag-icon" aria-hidden>≡</span>
+                            <span className="ol-flag-label">Note</span>
+                          </span>
                         )}
                         {node.imageUrl && (
-                          <span className="ol-flag has-image" title="Has image">▣</span>
+                          <span className="ol-flag has-image" data-tip="Image attached">
+                            <span className="ol-flag-icon" aria-hidden>▣</span>
+                            <span className="ol-flag-label">Image</span>
+                          </span>
                         )}
                         {(node.attachments?.length ?? 0) > 0 && (
                           <span
                             className="ol-flag has-attach"
-                            title={`${node.attachments!.length} attachment${
+                            data-tip={`${node.attachments!.length} file attachment${
                               node.attachments!.length === 1 ? '' : 's'
                             }`}
                           >
-                            ◧{node.attachments!.length}
+                            <span className="ol-flag-icon" aria-hidden>◧</span>
+                            <span className="ol-flag-label">
+                              {node.attachments!.length}{' '}
+                              {node.attachments!.length === 1 ? 'file' : 'files'}
+                            </span>
                           </span>
                         )}
                       </span>
@@ -638,7 +648,7 @@ export default function OutlineView({
                         e.stopPropagation();
                         setDetailNodeId(id);
                       }}
-                      title="Open details (note, image, attachments)"
+                      data-tip="Open details · note, image, attachments"
                       aria-label={`Open details for ${node.label || 'this node'}`}
                     >
                       ⓘ
@@ -651,7 +661,7 @@ export default function OutlineView({
                           e.stopPropagation();
                           onAddChild(id);
                         }}
-                        title="Add child"
+                        data-tip="Add a child node"
                         aria-label={`Add child to ${node.label || 'this node'}`}
                       >
                         +
@@ -1052,38 +1062,49 @@ export default function OutlineView({
           white-space: nowrap;
         }
 
-        /* Data flags */
+        /* Data flags — annotations, not buttons (no border) */
         .ol-flags {
           display: inline-flex;
           gap: 4px;
           margin-right: 4px;
+          flex-wrap: wrap;
         }
         .ol-flag {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
           font-size: 10px;
-          font-weight: 600;
-          letter-spacing: 0.3px;
-          padding: 2px 6px;
+          font-weight: 500;
+          letter-spacing: 0.2px;
+          padding: 2px 7px 2px 6px;
           border-radius: 999px;
           background: rgba(255, 255, 255, 0.04);
-          border: 1px solid var(--border);
           color: var(--text);
+          cursor: default;
+        }
+        .ol-flag-icon {
+          font-size: 10px;
+          line-height: 1;
+        }
+        .ol-flag-label {
+          font-weight: 500;
         }
         .ol-flag.has-note {
-          background: rgba(6, 182, 212, 0.15);
-          border-color: rgba(6, 182, 212, 0.35);
-          color: #67e8f9;
+          background: rgba(6, 182, 212, 0.12);
+          color: #a5f3fc;
         }
+        .ol-flag.has-note .ol-flag-icon { color: #67e8f9; }
         .ol-flag.has-image {
-          background: rgba(245, 158, 11, 0.15);
-          border-color: rgba(245, 158, 11, 0.35);
+          background: rgba(245, 158, 11, 0.12);
           color: #fcd34d;
         }
+        .ol-flag.has-image .ol-flag-icon { color: #f59e0b; }
         .ol-flag.has-attach {
-          background: rgba(236, 72, 153, 0.15);
-          border-color: rgba(236, 72, 153, 0.35);
-          color: #f9a8d4;
+          background: rgba(236, 72, 153, 0.12);
+          color: #fbcfe8;
           font-variant-numeric: tabular-nums;
         }
+        .ol-flag.has-attach .ol-flag-icon { color: #ec4899; }
 
         /* Detail button */
         .ol-detail-btn {

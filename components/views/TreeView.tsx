@@ -903,34 +903,46 @@ function TreeNodeCard({
             {node.note}
           </p>
         )}
-        {(childCount > 0 || hasNote || hasImage || attachCount > 0) && (
+        {childCount > 0 && (
           <div className="tr-card-meta">
-            {childCount > 0 && (
-              <span className="tr-card-childcount">
-                {isCollapsed
-                  ? `+${childCount} hidden`
-                  : `${childCount} ${childCount === 1 ? 'child' : 'children'}`}
+            <span className="tr-card-childcount">
+              {isCollapsed
+                ? `+${childCount} hidden`
+                : `${childCount} ${childCount === 1 ? 'child' : 'children'}`}
+            </span>
+          </div>
+        )}
+        {(hasNote || hasImage || attachCount > 0) && (
+          <div className="tr-card-flags">
+            {hasNote && (
+              <span className="tr-card-flag has-note" data-tip="Has a note">
+                <span className="tr-card-flag-icon" aria-hidden>≡</span>
+                <span className="tr-card-flag-label">Note</span>
               </span>
             )}
-            {hasNote && (
-              <span className="tr-card-flag has-note" title="Has note">≡</span>
-            )}
             {hasImage && (
-              <span className="tr-card-flag has-image" title="Has image">▣</span>
+              <span className="tr-card-flag has-image" data-tip="Image attached">
+                <span className="tr-card-flag-icon" aria-hidden>▣</span>
+                <span className="tr-card-flag-label">Image</span>
+              </span>
             )}
             {attachCount > 0 && (
               <span
                 className="tr-card-flag has-attach"
-                title={`${attachCount} attachment${attachCount === 1 ? '' : 's'}`}
+                data-tip={`${attachCount} file attachment${attachCount === 1 ? '' : 's'}`}
               >
-                ◧{attachCount}
+                <span className="tr-card-flag-icon" aria-hidden>◧</span>
+                <span className="tr-card-flag-label">
+                  {attachCount} {attachCount === 1 ? 'file' : 'files'}
+                </span>
               </span>
             )}
           </div>
         )}
       </div>
 
-      {/* Collapse toggle on parent cards */}
+      {/* Collapse toggle on parent cards — chevron, not plus/minus, so it
+          can't be mistaken for the add-child button. */}
       {childCount > 0 && (
         <button
           type="button"
@@ -939,14 +951,17 @@ function TreeNodeCard({
             e.stopPropagation();
             onToggleCollapse();
           }}
-          title={isCollapsed ? 'Expand' : 'Collapse'}
-          aria-label={isCollapsed ? 'Expand' : 'Collapse'}
+          aria-label={isCollapsed ? 'Expand subtree' : 'Collapse subtree'}
+          data-tip={isCollapsed ? 'Expand subtree' : 'Collapse subtree'}
         >
-          {isCollapsed ? '+' : '−'}
+          <span className="tr-chev" aria-hidden>
+            {isCollapsed ? '▸' : '▾'}
+          </span>
         </button>
       )}
 
-      {/* Add-child button (right edge, on hover/select) */}
+      {/* Add-child button (right edge, on hover/select) — gradient pink
+          pill with a label so it can't be mistaken for the chevron toggle. */}
       {!readonly && (
         <button
           type="button"
@@ -955,10 +970,11 @@ function TreeNodeCard({
             onAddChild();
           }}
           className="tr-card-add"
-          title="Add child"
-          aria-label="Add child"
+          aria-label="Add child node"
+          data-tip="Add a child node"
         >
-          ＋
+          <span className="tr-card-add-glyph" aria-hidden>＋</span>
+          <span className="tr-card-add-label">Add</span>
         </button>
       )}
 
@@ -970,8 +986,8 @@ function TreeNodeCard({
           onOpenDetails();
         }}
         className="tr-card-details"
-        title="Open details (note, image, attachments)"
         aria-label="Open node details"
+        data-tip="Open details · note, image, attachments"
       >
         ⓘ
       </button>
@@ -1095,40 +1111,64 @@ function TreeNodeCard({
         }
         .tr-card-meta {
           margin-top: 6px;
+        }
+        /* Data flags live on their own row, beneath the child count, so a
+           reader sees structure (count) and content (flags) as two layers
+           rather than one mixed strip. */
+        .tr-card-flags {
           display: flex;
           flex-wrap: wrap;
           gap: 4px;
+          margin-top: 6px;
+          padding-top: 6px;
+          border-top: 1px dashed rgba(255, 255, 255, 0.06);
         }
         .tr-card-flag {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
           font-size: 10px;
-          font-weight: 600;
-          letter-spacing: 0.3px;
-          padding: 2px 6px;
+          font-weight: 500;
+          letter-spacing: 0.2px;
+          padding: 2px 7px 2px 6px;
           border-radius: 999px;
-          background: rgba(255, 255, 255, 0.06);
-          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.04);
           color: var(--text);
+          /* No heavy border — these are annotations, not buttons. */
+          border: 1px solid transparent;
+          cursor: default;
+        }
+        .tr-card-flag-icon {
+          font-size: 10px;
+          line-height: 1;
+          opacity: 0.9;
+        }
+        .tr-card-flag-label {
+          font-weight: 500;
         }
         .tr-card-flag.has-note {
-          background: rgba(6, 182, 212, 0.18);
-          border-color: rgba(6, 182, 212, 0.4);
-          color: #67e8f9;
+          background: rgba(6, 182, 212, 0.12);
+          color: #a5f3fc;
         }
+        .tr-card-flag.has-note .tr-card-flag-icon { color: #67e8f9; }
         .tr-card-flag.has-image {
-          background: rgba(245, 158, 11, 0.18);
-          border-color: rgba(245, 158, 11, 0.4);
+          background: rgba(245, 158, 11, 0.12);
           color: #fcd34d;
         }
+        .tr-card-flag.has-image .tr-card-flag-icon { color: #f59e0b; }
         .tr-card-flag.has-attach {
-          background: rgba(236, 72, 153, 0.18);
-          border-color: rgba(236, 72, 153, 0.4);
-          color: #f9a8d4;
+          background: rgba(236, 72, 153, 0.12);
+          color: #fbcfe8;
           font-variant-numeric: tabular-nums;
         }
+        .tr-card-flag.has-attach .tr-card-flag-icon { color: #ec4899; }
         .is-root .tr-card-flag {
-          background: rgba(255, 255, 255, 0.22);
-          border-color: rgba(255, 255, 255, 0.32);
+          background: rgba(255, 255, 255, 0.18);
           color: white;
+        }
+        .is-root .tr-card-flag .tr-card-flag-icon { color: white; }
+        .is-root .tr-card-flags {
+          border-top-color: rgba(255, 255, 255, 0.18);
         }
         .tr-card-childcount {
           font-size: 10px;
@@ -1152,65 +1192,90 @@ function TreeNodeCard({
           color: white;
         }
 
-        /* Collapse toggle */
+        /* Collapse toggle — chevron, not a plus/minus. Visually a folder
+           indicator so it can't be confused with the add-child pill. */
         .tr-card-toggle {
           position: absolute;
           right: -10px;
           top: 10px;
-          width: 20px;
-          height: 20px;
+          width: 22px;
+          height: 22px;
           border-radius: 50%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
           background: rgba(15, 17, 36, 0.95);
           color: var(--text);
-          border: 1px solid color-mix(in srgb, var(--tr-accent) 60%, rgba(255, 255, 255, 0.1));
-          font-size: 13px;
-          font-weight: 700;
-          line-height: 1;
+          border: 1px solid color-mix(in srgb, var(--tr-accent) 55%, rgba(255, 255, 255, 0.1));
           cursor: pointer;
           transition: all 0.15s;
           box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
           z-index: 2;
+          padding: 0;
+        }
+        .tr-chev {
+          font-size: 11px;
+          line-height: 1;
+          color: color-mix(in srgb, var(--tr-accent) 80%, white);
+          transition: transform 0.15s;
         }
         .tr-card-toggle:hover {
           background: var(--tr-accent);
           color: white;
           transform: scale(1.1);
         }
+        .tr-card-toggle:hover .tr-chev {
+          color: white;
+        }
         .is-root .tr-card-toggle {
           background: rgba(0, 0, 0, 0.45);
           border-color: rgba(255, 255, 255, 0.4);
+        }
+        .is-root .tr-chev {
           color: white;
         }
 
-        /* Add-child button */
+        /* Add-child pill — gradient pink-violet with a label. Distinct
+           from the dark chevron toggle in shape, colour, and copy. */
         .tr-card-add {
           position: absolute;
-          right: -12px;
+          right: -14px;
           bottom: 8px;
-          width: 22px;
-          height: 22px;
-          border-radius: 50%;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 4px 10px 4px 8px;
           background: linear-gradient(135deg, #ec4899, #8b5cf6);
           color: white;
           border: 1.5px solid rgba(15, 17, 36, 0.85);
-          font-size: 12px;
-          font-weight: 700;
+          border-radius: 999px;
+          font-size: 11px;
+          font-weight: 600;
           line-height: 1;
+          letter-spacing: 0.2px;
           cursor: pointer;
           opacity: 0;
-          transform: scale(0.7);
-          transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
-          box-shadow: 0 6px 14px rgba(139, 92, 246, 0.45);
+          transform: translateX(6px) scale(0.85);
+          transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+          box-shadow: 0 8px 18px rgba(139, 92, 246, 0.45);
           z-index: 2;
+        }
+        .tr-card-add-glyph {
+          font-size: 13px;
+          line-height: 1;
+          margin-top: -1px;
+        }
+        .tr-card-add-label {
+          font-weight: 600;
         }
         .tr-card:hover .tr-card-add,
         .tr-card.is-selected .tr-card-add {
           opacity: 1;
-          transform: scale(1);
+          transform: translateX(0) scale(1);
         }
         .tr-card-add:hover {
-          transform: scale(1.15);
-          box-shadow: 0 8px 20px rgba(139, 92, 246, 0.6);
+          transform: translateX(0) scale(1.06);
+          box-shadow: 0 10px 24px rgba(139, 92, 246, 0.6);
         }
 
         /* Details button — top-left, on hover */
