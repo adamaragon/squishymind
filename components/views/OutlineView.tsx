@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { MindMapData, MindMapNode } from '@/lib/types';
+import NodeDetailPanel from './NodeDetailPanel';
 
 type Props = {
   mindmapId: string;
@@ -230,6 +231,7 @@ export default function OutlineView({
   const [data, setData] = useState<MindMapData>(initialData);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [detailNodeId, setDetailNodeId] = useState<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const focusOnNextRender = useRef<{ id: string; caret?: 'end' | 'start' } | null>(null);
@@ -265,6 +267,17 @@ export default function OutlineView({
       el.setSelectionRange(0, 0);
     }
   }, [data]);
+
+  function applyNodeUpdate(next: MindMapNode) {
+    const updated: MindMapData = {
+      ...data,
+      nodes: { ...data.nodes, [next.id]: next },
+    };
+    commit(updated);
+    if (next.id === data.rootId) {
+      onTitleChange?.(next.label || initialTitle);
+    }
+  }
 
   function toggleCollapse(id: string) {
     setCollapsed((prev) => {
@@ -432,7 +445,7 @@ export default function OutlineView({
   const maxDepth = rows.reduce((acc, r) => Math.max(acc, r.depth), 0);
 
   return (
-    <div className="outline-view h-full flex flex-col">
+    <div className="outline-view h-full flex flex-col relative">
       {/* ---- Toolbar / stat strip ---- */}
       <div className="ol-toolbar shrink-0">
         <div className="ol-toolbar-left">
@@ -585,8 +598,31 @@ export default function OutlineView({
                     )}
                   </div>
 
-                  {/* Right column: metadata + actions */}
+                  {/* Right column: indicators, metadata, actions */}
                   <div className="ol-meta">
+                    {/* Data indicators */}
+                    {(node.note?.trim() ||
+                      node.imageUrl ||
+                      (node.attachments?.length ?? 0) > 0) && (
+                      <span className="ol-flags" aria-hidden>
+                        {node.note?.trim() && (
+                          <span className="ol-flag has-note" title="Has note">≡</span>
+                        )}
+                        {node.imageUrl && (
+                          <span className="ol-flag has-image" title="Has image">▣</span>
+                        )}
+                        {(node.attachments?.length ?? 0) > 0 && (
+                          <span
+                            className="ol-flag has-attach"
+                            title={`${node.attachments!.length} attachment${
+                              node.attachments!.length === 1 ? '' : 's'
+                            }`}
+                          >
+                            ◧{node.attachments!.length}
+                          </span>
+                        )}
+                      </span>
+                    )}
                     {hasChildren && (
                       <span
                         className="ol-childcount"
@@ -595,6 +631,18 @@ export default function OutlineView({
                         {isCollapsed ? `${descendantCount} hidden` : `${childCount}`}
                       </span>
                     )}
+                    <button
+                      type="button"
+                      className="ol-detail-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDetailNodeId(id);
+                      }}
+                      title="Open details (note, image, attachments)"
+                      aria-label={`Open details for ${node.label || 'this node'}`}
+                    >
+                      ⓘ
+                    </button>
                     {!readonly && (
                       <button
                         type="button"
@@ -623,10 +671,24 @@ export default function OutlineView({
             <kbd>Tab</kbd> indent ·{' '}
             <kbd>⇧ Tab</kbd> outdent ·{' '}
             <kbd>⌫</kbd> on empty removes ·{' '}
-            <kbd>▸</kbd> click to fold
+            <kbd>▸</kbd> click to fold ·{' '}
+            <kbd>ⓘ</kbd> opens details
           </div>
         )}
       </div>
+
+      {detailNodeId && data.nodes[detailNodeId] && (
+        <NodeDetailPanel
+          node={data.nodes[detailNodeId]}
+          readonly={readonly}
+          isRoot={detailNodeId === data.rootId}
+          accentColor={
+            ACCENT_PALETTE[(data.nodes[detailNodeId].colorIdx ?? 0) % 5]
+          }
+          onChange={applyNodeUpdate}
+          onClose={() => setDetailNodeId(null)}
+        />
+      )}
 
       <style jsx>{`
         .outline-view {
@@ -988,6 +1050,66 @@ export default function OutlineView({
           border-radius: 999px;
           font-variant-numeric: tabular-nums;
           white-space: nowrap;
+        }
+
+        /* Data flags */
+        .ol-flags {
+          display: inline-flex;
+          gap: 4px;
+          margin-right: 4px;
+        }
+        .ol-flag {
+          font-size: 10px;
+          font-weight: 600;
+          letter-spacing: 0.3px;
+          padding: 2px 6px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid var(--border);
+          color: var(--text);
+        }
+        .ol-flag.has-note {
+          background: rgba(6, 182, 212, 0.15);
+          border-color: rgba(6, 182, 212, 0.35);
+          color: #67e8f9;
+        }
+        .ol-flag.has-image {
+          background: rgba(245, 158, 11, 0.15);
+          border-color: rgba(245, 158, 11, 0.35);
+          color: #fcd34d;
+        }
+        .ol-flag.has-attach {
+          background: rgba(236, 72, 153, 0.15);
+          border-color: rgba(236, 72, 153, 0.35);
+          color: #f9a8d4;
+          font-variant-numeric: tabular-nums;
+        }
+
+        /* Detail button */
+        .ol-detail-btn {
+          opacity: 0;
+          width: 22px;
+          height: 22px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(15, 17, 36, 0.85);
+          color: var(--text);
+          border: 1px solid var(--border);
+          border-radius: 50%;
+          font-size: 11px;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+        .ol-row:hover .ol-detail-btn,
+        .ol-row.is-focused .ol-detail-btn {
+          opacity: 1;
+        }
+        .ol-detail-btn:hover {
+          background: rgba(139, 92, 246, 0.2);
+          border-color: rgba(139, 92, 246, 0.5);
+          color: #c4b5fd;
+          transform: scale(1.1);
         }
         .ol-row:hover .ol-childcount,
         .ol-row.is-focused .ol-childcount {

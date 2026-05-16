@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MindMapData, MindMapNode } from '@/lib/types';
+import NodeDetailPanel from './NodeDetailPanel';
 
 type Props = {
   mindmapId: string;
@@ -221,6 +222,7 @@ export default function TreeView({
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [zoom, setZoom] = useState(1);
+  const [detailNodeId, setDetailNodeId] = useState<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const focusOnNextRender = useRef<{ id: string; caret?: 'end' } | null>(null);
@@ -273,6 +275,17 @@ export default function TreeView({
     if (readonly) return;
     commit(setLabel(data, id, label));
     if (id === data.rootId) onTitleChange?.(label || initialTitle);
+  }
+
+  function applyNodeUpdate(next: MindMapNode) {
+    const updated: MindMapData = {
+      ...data,
+      nodes: { ...data.nodes, [next.id]: next },
+    };
+    commit(updated);
+    if (next.id === data.rootId) {
+      onTitleChange?.(next.label || initialTitle);
+    }
   }
 
   function onAddChild(parentId: string) {
@@ -391,7 +404,7 @@ export default function TreeView({
   }
 
   return (
-    <div className="tree-view h-full flex flex-col">
+    <div className="tree-view h-full flex flex-col relative">
       {/* ---- Toolbar ---- */}
       <div className="tr-toolbar shrink-0">
         <div className="tr-toolbar-left">
@@ -562,12 +575,24 @@ export default function TreeView({
                   onKeyDown={(e) => handleKey(e, id)}
                   onAddChild={() => onAddChild(id)}
                   onToggleCollapse={() => toggleCollapse(id)}
+                  onOpenDetails={() => setDetailNodeId(id)}
                 />
               );
             })}
           </div>
         </div>
       </div>
+
+      {detailNodeId && data.nodes[detailNodeId] && (
+        <NodeDetailPanel
+          node={data.nodes[detailNodeId]}
+          readonly={readonly}
+          isRoot={detailNodeId === data.rootId}
+          accentColor={ACCENT_PALETTE[(data.nodes[detailNodeId].colorIdx ?? 0) % 5]}
+          onChange={applyNodeUpdate}
+          onClose={() => setDetailNodeId(null)}
+        />
+      )}
 
       {/* Hint footer */}
       {!readonly && (
@@ -816,6 +841,7 @@ function TreeNodeCard({
   onKeyDown,
   onAddChild,
   onToggleCollapse,
+  onOpenDetails,
 }: {
   node: MindMapNode;
   x: number;
@@ -832,7 +858,11 @@ function TreeNodeCard({
   onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onAddChild: () => void;
   onToggleCollapse: () => void;
+  onOpenDetails: () => void;
 }) {
+  const hasNote = !!node.note?.trim();
+  const hasImage = !!node.imageUrl;
+  const attachCount = node.attachments?.length ?? 0;
   const accent = ACCENT_PALETTE[(node.colorIdx ?? 0) % 5];
   const accentAlt = ACCENT_PALETTE[((node.colorIdx ?? 0) + 2) % 5];
   return (
@@ -873,11 +903,29 @@ function TreeNodeCard({
             {node.note}
           </p>
         )}
-        {childCount > 0 && (
+        {(childCount > 0 || hasNote || hasImage || attachCount > 0) && (
           <div className="tr-card-meta">
-            <span className="tr-card-childcount">
-              {isCollapsed ? `+${childCount} hidden` : `${childCount} ${childCount === 1 ? 'child' : 'children'}`}
-            </span>
+            {childCount > 0 && (
+              <span className="tr-card-childcount">
+                {isCollapsed
+                  ? `+${childCount} hidden`
+                  : `${childCount} ${childCount === 1 ? 'child' : 'children'}`}
+              </span>
+            )}
+            {hasNote && (
+              <span className="tr-card-flag has-note" title="Has note">≡</span>
+            )}
+            {hasImage && (
+              <span className="tr-card-flag has-image" title="Has image">▣</span>
+            )}
+            {attachCount > 0 && (
+              <span
+                className="tr-card-flag has-attach"
+                title={`${attachCount} attachment${attachCount === 1 ? '' : 's'}`}
+              >
+                ◧{attachCount}
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -913,6 +961,20 @@ function TreeNodeCard({
           ＋
         </button>
       )}
+
+      {/* Details button (top-left, on hover) */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpenDetails();
+        }}
+        className="tr-card-details"
+        title="Open details (note, image, attachments)"
+        aria-label="Open node details"
+      >
+        ⓘ
+      </button>
 
       <style jsx>{`
         .tr-card {
@@ -1033,6 +1095,40 @@ function TreeNodeCard({
         }
         .tr-card-meta {
           margin-top: 6px;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 4px;
+        }
+        .tr-card-flag {
+          font-size: 10px;
+          font-weight: 600;
+          letter-spacing: 0.3px;
+          padding: 2px 6px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.06);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          color: var(--text);
+        }
+        .tr-card-flag.has-note {
+          background: rgba(6, 182, 212, 0.18);
+          border-color: rgba(6, 182, 212, 0.4);
+          color: #67e8f9;
+        }
+        .tr-card-flag.has-image {
+          background: rgba(245, 158, 11, 0.18);
+          border-color: rgba(245, 158, 11, 0.4);
+          color: #fcd34d;
+        }
+        .tr-card-flag.has-attach {
+          background: rgba(236, 72, 153, 0.18);
+          border-color: rgba(236, 72, 153, 0.4);
+          color: #f9a8d4;
+          font-variant-numeric: tabular-nums;
+        }
+        .is-root .tr-card-flag {
+          background: rgba(255, 255, 255, 0.22);
+          border-color: rgba(255, 255, 255, 0.32);
+          color: white;
         }
         .tr-card-childcount {
           font-size: 10px;
@@ -1115,6 +1211,42 @@ function TreeNodeCard({
         .tr-card-add:hover {
           transform: scale(1.15);
           box-shadow: 0 8px 20px rgba(139, 92, 246, 0.6);
+        }
+
+        /* Details button — top-left, on hover */
+        .tr-card-details {
+          position: absolute;
+          left: -10px;
+          top: 8px;
+          width: 22px;
+          height: 22px;
+          border-radius: 50%;
+          background: rgba(15, 17, 36, 0.92);
+          color: var(--text);
+          border: 1px solid color-mix(in srgb, var(--tr-accent) 50%, rgba(255, 255, 255, 0.1));
+          font-size: 11px;
+          line-height: 1;
+          cursor: pointer;
+          opacity: 0;
+          transform: scale(0.85);
+          transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
+          z-index: 2;
+        }
+        .tr-card:hover .tr-card-details,
+        .tr-card.is-selected .tr-card-details {
+          opacity: 1;
+          transform: scale(1);
+        }
+        .tr-card-details:hover {
+          background: var(--tr-accent);
+          color: white;
+          transform: scale(1.15);
+        }
+        .is-root .tr-card-details {
+          background: rgba(0, 0, 0, 0.45);
+          border-color: rgba(255, 255, 255, 0.4);
+          color: white;
         }
       `}</style>
     </div>

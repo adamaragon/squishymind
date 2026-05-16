@@ -1,3 +1,13 @@
+/** A generic file attached to a node. Distinct from `imageUrl`, which the
+ *  canvas owns as a single primary image. Attachments can be any allowed
+ *  type (PDF, zip, doc, etc.) and live in the same storage bucket. */
+export type Attachment = {
+  url: string;
+  name: string;
+  type: string; // MIME type
+  size?: number;
+};
+
 export type MindMapNode = {
   id: string;
   label: string;
@@ -9,6 +19,7 @@ export type MindMapNode = {
   note: string;
   createdAt: number;
   imageUrl?: string | null;
+  attachments?: Attachment[];
 };
 
 export type MindMapData = {

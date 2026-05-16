@@ -370,6 +370,7 @@ export default function EditorShell({
             initialTitle={title}
             readonly={!canEdit}
             onSwitchView={handleViewChange}
+            onDataChange={onDataChange}
           />
         ) : null}
       </div>

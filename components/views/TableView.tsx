@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import type { MindMapData, ViewMode } from '@/lib/types';
+import type { MindMapData, MindMapNode, ViewMode } from '@/lib/types';
+import NodeDetailPanel from './NodeDetailPanel';
 
 type Props = {
   mindmapId: string;
@@ -9,6 +10,9 @@ type Props = {
   initialTitle: string;
   readonly?: boolean;
   onSwitchView?: (mode: ViewMode) => void;
+  /** Called with the updated MindMapData when the detail panel mutates a
+   *  node (label / note / image / attachments). Parent debounces save. */
+  onDataChange?: (data: MindMapData) => void;
 };
 
 // Five-accent palette mirrors the canvas node colours so colorIdx maps to a
@@ -45,12 +49,33 @@ export default function TableView({
   initialTitle,
   readonly = false,
   onSwitchView,
+  onDataChange,
 }: Props) {
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
   const [hintForCellId, setHintForCellId] = useState<string | null>(null);
   const [density, setDensity] = useState<'comfy' | 'compact'>('comfy');
+  const [detailNodeId, setDetailNodeId] = useState<string | null>(null);
+  // Local data state so detail-panel edits feel immediate. Resyncs when the
+  // parent reseeds with new initialData (view switch).
+  const [data, setData] = useState<MindMapData>(initialData);
+  // Keep state aligned when the parent supplies fresh data (e.g. after a
+  // realtime sync). Cheap deep-equal via JSON to avoid spurious updates.
+  useMemo(() => {
+    if (JSON.stringify(initialData) !== JSON.stringify(data)) {
+      setData(initialData);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData]);
 
-  const data = initialData;
+  function applyNodeUpdate(next: MindMapNode) {
+    const updated: MindMapData = {
+      ...data,
+      nodes: { ...data.nodes, [next.id]: next },
+    };
+    setData(updated);
+    onDataChange?.(updated);
+  }
+
   const paths = useMemo(() => walkPaths(data), [data]);
   const maxDepth = useMemo(
     () => paths.reduce((acc, p) => Math.max(acc, p.length), 0),
@@ -75,8 +100,10 @@ export default function TableView({
   void mindmapId;
   void initialTitle;
 
+  const detailNode = detailNodeId ? data.nodes[detailNodeId] : null;
+
   return (
-    <div className={`table-view h-full flex flex-col ${density}`}>
+    <div className={`table-view h-full flex flex-col relative ${density}`}>
       {/* ---- Toolbar / stat strip ---- */}
       <div className="tv-toolbar shrink-0">
         <div className="tv-toolbar-left">
@@ -176,8 +203,8 @@ export default function TableView({
                     </div>
                   </th>
                 ))}
-                <th className="tv-th tv-th-note" scope="col" title="Notes attached">
-                  Note
+                <th className="tv-th tv-th-note" scope="col" title="Per-row data: note, image, attachments">
+                  Data
                 </th>
               </tr>
             </thead>
@@ -233,6 +260,10 @@ export default function TableView({
                       const isContinuation = colIdx < firstNew;
                       const isLeaf = colIdx === path.length - 1;
                       const cellKey = `${rowIdx}-${colIdx}`;
+                      const hasNote = !!node?.note?.trim();
+                      const hasImage = !!node?.imageUrl;
+                      const attachCount = node?.attachments?.length ?? 0;
+                      const hasData = hasNote || hasImage || attachCount > 0;
                       return (
                         <td
                           key={colIdx}
@@ -258,6 +289,38 @@ export default function TableView({
                               <span className="tv-cell-untitled">Untitled</span>
                             )}
                           </span>
+                          {!isContinuation && hasData && (
+                            <span className="tv-cell-flags" aria-hidden>
+                              {hasNote && (
+                                <span className="tv-cell-flag" title="Has note">≡</span>
+                              )}
+                              {hasImage && (
+                                <span className="tv-cell-flag" title="Has image">▣</span>
+                              )}
+                              {attachCount > 0 && (
+                                <span
+                                  className="tv-cell-flag"
+                                  title={`${attachCount} attachment${attachCount === 1 ? '' : 's'}`}
+                                >
+                                  ◧{attachCount}
+                                </span>
+                              )}
+                            </span>
+                          )}
+                          {!isContinuation && id && (
+                            <button
+                              type="button"
+                              className="tv-cell-detail-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDetailNodeId(id);
+                              }}
+                              title="Open details (notes, image, attachments)"
+                              aria-label="Open node details"
+                            >
+                              ⓘ
+                            </button>
+                          )}
                           {hintForCellId === cellKey && (
                             <span className="tv-cell-hint">
                               Switch to Canvas to edit ↗
@@ -267,14 +330,40 @@ export default function TableView({
                       );
                     })}
                     <td className="tv-cell tv-cell-noteflag">
-                      {leafNode?.note ? (
-                        <span className="tv-note-preview" title={leafNode.note}>
-                          <span className="tv-note-dot" aria-hidden>◉</span>
-                          <span className="tv-note-text">{leafNode.note}</span>
+                      <button
+                        type="button"
+                        className="tv-row-details-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (leafId) setDetailNodeId(leafId);
+                        }}
+                        title="Open this row's leaf node details"
+                      >
+                        <span className="tv-row-flags" aria-hidden>
+                          {leafNode?.note?.trim() && (
+                            <span className="tv-row-flag has-note" title="Has note">≡</span>
+                          )}
+                          {leafNode?.imageUrl && (
+                            <span className="tv-row-flag has-image" title="Has image">▣</span>
+                          )}
+                          {(leafNode?.attachments?.length ?? 0) > 0 && (
+                            <span
+                              className="tv-row-flag has-attach"
+                              title={`${leafNode!.attachments!.length} attachment${
+                                leafNode!.attachments!.length === 1 ? '' : 's'
+                              }`}
+                            >
+                              ◧{leafNode!.attachments!.length}
+                            </span>
+                          )}
+                          {!leafNode?.note?.trim() &&
+                            !leafNode?.imageUrl &&
+                            !(leafNode?.attachments?.length) && (
+                              <span className="tv-row-flag tv-row-flag-empty">No extras</span>
+                            )}
                         </span>
-                      ) : (
-                        <span className="tv-note-empty" aria-hidden>—</span>
-                      )}
+                        <span className="tv-row-details-cta">Open ↗</span>
+                      </button>
                     </td>
                   </tr>
                 );
@@ -290,6 +379,17 @@ export default function TableView({
           </table>
         )}
       </div>
+
+      {detailNode && (
+        <NodeDetailPanel
+          node={detailNode}
+          readonly={readonly}
+          isRoot={detailNode.id === data.rootId}
+          accentColor={ACCENT_PALETTE[(detailNode.colorIdx ?? 0) % 5]}
+          onChange={applyNodeUpdate}
+          onClose={() => setDetailNodeId(null)}
+        />
+      )}
 
       <style jsx>{`
         .table-view {
@@ -667,31 +767,126 @@ export default function TableView({
         }
 
         .tv-cell-noteflag {
-          width: 30%;
-          min-width: 200px;
-          color: var(--text-dim);
-          font-size: 12px;
-          font-style: italic;
+          width: 220px;
+          min-width: 180px;
+          padding: 6px 10px;
         }
-        .tv-note-preview {
+        .tv-row-details-btn {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          width: 100%;
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid var(--border);
+          color: var(--text);
+          padding: 6px 10px;
+          border-radius: 8px;
+          cursor: pointer;
+          font: inherit;
+          font-size: 11px;
+          transition: all 0.15s;
+        }
+        .tv-row-details-btn:hover {
+          background: rgba(139, 92, 246, 0.1);
+          border-color: rgba(139, 92, 246, 0.4);
+        }
+        .tv-row-flags {
           display: inline-flex;
-          align-items: baseline;
-          gap: 6px;
-          max-width: 100%;
+          gap: 5px;
+          align-items: center;
+          flex-wrap: wrap;
         }
-        .tv-note-dot {
-          color: #06b6d4;
-          font-size: 9px;
+        .tv-row-flag {
+          font-size: 10px;
+          font-weight: 600;
+          letter-spacing: 0.3px;
+          padding: 2px 7px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid var(--border);
+          color: var(--text);
+        }
+        .tv-row-flag.has-note {
+          background: rgba(6, 182, 212, 0.15);
+          border-color: rgba(6, 182, 212, 0.35);
+          color: #67e8f9;
+        }
+        .tv-row-flag.has-image {
+          background: rgba(245, 158, 11, 0.15);
+          border-color: rgba(245, 158, 11, 0.35);
+          color: #fcd34d;
+        }
+        .tv-row-flag.has-attach {
+          background: rgba(236, 72, 153, 0.15);
+          border-color: rgba(236, 72, 153, 0.35);
+          color: #f9a8d4;
+          font-variant-numeric: tabular-nums;
+        }
+        .tv-row-flag-empty {
+          color: var(--text-dim);
+          font-style: italic;
+          font-weight: 400;
+          background: transparent;
+          border-color: transparent;
+        }
+        .tv-row-details-cta {
+          font-size: 10px;
+          color: var(--text-dim);
           flex-shrink: 0;
+          font-weight: 500;
         }
-        .tv-note-text {
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          max-width: 100%;
+        .tv-row-details-btn:hover .tv-row-details-cta {
+          color: var(--text);
         }
-        .tv-note-empty {
-          opacity: 0.3;
+
+        /* Per-cell hover flags + details button */
+        .tv-cell-flags {
+          display: inline-flex;
+          gap: 4px;
+          margin-left: 8px;
+          vertical-align: middle;
+        }
+        .tv-cell-flag {
+          display: inline-flex;
+          align-items: center;
+          font-size: 10px;
+          color: var(--text-dim);
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid var(--border);
+          padding: 1px 5px;
+          border-radius: 999px;
+          font-weight: 600;
+        }
+        .tv-cell-detail-btn {
+          position: absolute;
+          right: 6px;
+          top: 6px;
+          width: 20px;
+          height: 20px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(15, 17, 36, 0.7);
+          color: var(--text-dim);
+          border: 1px solid var(--border);
+          border-radius: 50%;
+          font-size: 11px;
+          cursor: pointer;
+          opacity: 0;
+          transform: scale(0.85);
+          transition: all 0.15s;
+          z-index: 2;
+        }
+        .tv-cell:hover .tv-cell-detail-btn {
+          opacity: 1;
+          transform: scale(1);
+        }
+        .tv-cell-detail-btn:hover {
+          color: var(--text);
+          background: rgba(139, 92, 246, 0.2);
+          border-color: rgba(139, 92, 246, 0.5);
+          transform: scale(1.1);
         }
 
         .tv-cell-hint {
