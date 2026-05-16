@@ -894,17 +894,38 @@ export default function MindMapCanvas({
         const actions = document.createElement('div');
         actions.className = 'detail-stubs';
 
+        // Reusable SVG-icon button so emoji glyphs don't break the design
+        // family of stroke-1.6 SVGs used everywhere else in the card.
+        function setIconButton(btn: HTMLButtonElement, iconSvg: string, label: string) {
+          btn.innerHTML =
+            `<span class="stub-btn-icon" aria-hidden>${iconSvg}</span>` +
+            `<span class="stub-btn-label">${label}</span>`;
+        }
+
+        const ICON_IMAGE =
+          '<svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+          '<rect x="2.2" y="3.5" width="13.6" height="11" rx="2"/>' +
+          '<circle cx="6.5" cy="7.5" r="1.2"/>' +
+          '<path d="M2.4 12.5 L6.5 9 L9.5 11.5 L13 8 L15.6 10.4"/>' +
+          '</svg>';
+        const ICON_SPARKLE =
+          '<svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+          '<path d="M9 2.5 L10.4 7 L14.9 8.4 L10.4 9.8 L9 14.3 L7.6 9.8 L3.1 8.4 L7.6 7 Z"/>' +
+          '<path d="M14.5 2.5 L15 4 L16.5 4.5 L15 5 L14.5 6.5 L14 5 L12.5 4.5 L14 4 Z" stroke-width="1.2"/>' +
+          '<path d="M3.5 12 L3.9 13.2 L5.1 13.6 L3.9 14 L3.5 15.2 L3.1 14 L1.9 13.6 L3.1 13.2 Z" stroke-width="1.2"/>' +
+          '</svg>';
+
         const imageBtn = document.createElement('button');
         imageBtn.className = 'stub-btn ai-btn';
         imageBtn.title = 'Upload an image (PNG, JPG, WEBP, GIF up to 5 MB)';
-        imageBtn.textContent = n.imageUrl ? '🖼️ Replace image' : '🖼️ Add image';
+        setIconButton(imageBtn, ICON_IMAGE, n.imageUrl ? 'Replace image' : 'Add image');
         imageBtn.addEventListener('click', () => pickAndUploadImage(n, imageBtn, imageHolder));
         actions.appendChild(imageBtn);
 
         const aiBtn = document.createElement('button');
         aiBtn.className = 'stub-btn ai-btn';
         aiBtn.title = 'Suggest 5–8 child ideas with AI';
-        aiBtn.textContent = '✨ AI expand';
+        setIconButton(aiBtn, ICON_SPARKLE, 'AI expand');
         aiBtn.addEventListener('click', () => runAIExpand(n, aiBtn, wrap));
         actions.appendChild(aiBtn);
 
@@ -1015,9 +1036,12 @@ export default function MindMapCanvas({
         return;
       }
 
-      const originalText = btn.textContent || '🖼️ Add image';
+      // Preserve the existing icon + label markup so we can restore on failure
+      // (the button is built via setIconButton in buildDetailContent now).
+      const originalHtml = btn.innerHTML;
+      const labelEl = btn.querySelector('.stub-btn-label');
       btn.disabled = true;
-      btn.textContent = '🖼️ Uploading…';
+      if (labelEl) labelEl.textContent = 'Uploading…';
       btn.classList.add('ai-thinking');
 
       try {
@@ -1038,13 +1062,22 @@ export default function MindMapCanvas({
         renderDetailImage(n, imageHolder);
         scheduleSave();
         renderAll();
-        btn.textContent = '🖼️ Replace image';
+        // After success the button label should say "Replace" — re-query
+        // post-renderAll since renderAll rebuilt the detail panel and the
+        // old btn ref may be stale.
+        const fresh = document.querySelector(
+          '.in-detail .stub-btn .stub-btn-label',
+        );
+        if (fresh) fresh.textContent = 'Replace image';
       } catch {
         showImageError(imageHolder, 'Couldn’t reach upload server.');
       } finally {
         btn.disabled = false;
         btn.classList.remove('ai-thinking');
-        if (btn.textContent === '🖼️ Uploading…') btn.textContent = originalText;
+        if (labelEl && labelEl.textContent === 'Uploading…') {
+          // Restore the full HTML if we never made it past upload.
+          btn.innerHTML = originalHtml;
+        }
       }
     }
 
@@ -1186,7 +1219,14 @@ export default function MindMapCanvas({
         row.className = 'detail-comments-actions';
         const post = document.createElement('button');
         post.className = 'stub-btn ai-btn';
-        post.textContent = 'Post';
+        post.innerHTML =
+          '<span class="stub-btn-icon" aria-hidden>' +
+          '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+          '<path d="M14 2 L2.5 7.5 L7 9.2 L8.4 13.5 Z"/>' +
+          '<path d="M14 2 L7 9.2"/>' +
+          '</svg>' +
+          '</span>' +
+          '<span class="stub-btn-label">Post</span>';
         post.disabled = true;
         ta.addEventListener('input', () => {
           post.disabled = ta.value.trim().length === 0;
@@ -1246,9 +1286,11 @@ export default function MindMapCanvas({
       if (readonlyRef.current) return;
       // Don't allow stacking — remove any existing panel first.
       wrap.querySelector('.ai-panel')?.remove();
-      const originalText = btn.textContent || '✨ AI expand';
+      // Preserve icon + label structure built by setIconButton.
+      const originalHtml = btn.innerHTML;
+      const labelEl = btn.querySelector('.stub-btn-label');
       btn.disabled = true;
-      btn.textContent = '✨ Thinking…';
+      if (labelEl) labelEl.textContent = 'Thinking…';
       btn.classList.add('ai-thinking');
 
       const parent = n.parentId ? state.nodes[n.parentId] : null;
@@ -1283,7 +1325,7 @@ export default function MindMapCanvas({
       }
 
       btn.disabled = false;
-      btn.textContent = originalText;
+      btn.innerHTML = originalHtml;
       btn.classList.remove('ai-thinking');
 
       if (errorMsg) {
@@ -4192,18 +4234,22 @@ export default function MindMapCanvas({
           transform: translate(-50%, -50%) !important;
           /* Override the accent gradient any normal node carries so the
              detail card reads as a clean dark surface — the gradient was
-             washing out the title and making the card look fluorescent. */
+             washing out the title and making the card look fluorescent.
+             All accent treatments use --accent-c1 (the node's own colour)
+             so picking a new colour swatch updates the border + glow live. */
           background:
             linear-gradient(180deg, rgba(20, 22, 44, 0.96) 0%, rgba(12, 13, 28, 0.98) 100%) !important;
-          border: 1px solid color-mix(in srgb, var(--selection) 24%, var(--node-border)) !important;
-          /* A focused glow, but a single tight ring rather than a wash. */
+          border: 1.5px solid color-mix(in srgb, var(--accent-c1, var(--selection)) 45%, var(--node-border)) !important;
+          /* Focused glow tinted by the node's accent — single tight ring,
+             not a wash, so the colour reads clearly through the dark surface. */
           box-shadow:
             0 1px 0 rgba(255, 255, 255, 0.05) inset,
-            0 0 0 1px color-mix(in srgb, var(--selection) 18%, transparent),
+            0 0 0 1px color-mix(in srgb, var(--accent-c1, var(--selection)) 32%, transparent),
             0 24px 60px rgba(0, 0, 0, 0.55),
-            0 0 80px color-mix(in srgb, var(--selection) 14%, transparent) !important;
+            0 0 80px color-mix(in srgb, var(--accent-c1, var(--selection)) 24%, transparent) !important;
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
+          transition: border-color 0.25s, box-shadow 0.25s;
         }
         @keyframes detailCardIn {
           from {
@@ -4241,13 +4287,16 @@ export default function MindMapCanvas({
           right: 12%;
           height: 2px;
           border-radius: 0 0 2px 2px;
+          /* Top rail picks up the node's accent so a colour change shows
+             at the very top of the card immediately. */
           background: linear-gradient(
             90deg,
             transparent,
-            color-mix(in srgb, var(--selection) 75%, white),
+            color-mix(in srgb, var(--accent-c1, var(--selection)) 85%, white),
             transparent
           );
-          opacity: 0.7;
+          opacity: 0.75;
+          transition: background 0.25s;
         }
 
         .smm-root :global(.detail-content) {
@@ -4304,7 +4353,7 @@ export default function MindMapCanvas({
         }
         .smm-root :global(.detail-label:focus) {
           background: rgba(255, 255, 255, 0.05);
-          border-color: color-mix(in srgb, var(--selection) 40%, var(--node-border));
+          border-color: color-mix(in srgb, var(--accent-c1, var(--selection)) 55%, var(--node-border));
         }
         .smm-root :global(.detail-section-label) {
           font-size: 10px;
@@ -4324,7 +4373,8 @@ export default function MindMapCanvas({
           width: 3px;
           height: 12px;
           border-radius: 2px;
-          background: color-mix(in srgb, var(--selection) 60%, transparent);
+          background: color-mix(in srgb, var(--accent-c1, var(--selection)) 75%, transparent);
+          transition: background 0.25s;
         }
         .smm-root :global(.detail-note) {
           background: rgba(0, 0, 0, 0.25);
@@ -4344,8 +4394,9 @@ export default function MindMapCanvas({
           transition: border-color 0.15s, background 0.15s;
         }
         .smm-root :global(.detail-note:focus) {
-          border-color: color-mix(in srgb, var(--selection) 55%, var(--node-border));
+          border-color: color-mix(in srgb, var(--accent-c1, var(--selection)) 65%, var(--node-border));
           background: rgba(0, 0, 0, 0.35);
+          box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-c1, var(--selection)) 12%, transparent);
         }
         .smm-root :global(.detail-note::placeholder) {
           color: rgba(232, 234, 255, 0.35);
@@ -4381,7 +4432,7 @@ export default function MindMapCanvas({
           border-color: var(--node-text);
           box-shadow:
             0 0 0 1px rgba(255, 255, 255, 0.12),
-            0 0 0 4px color-mix(in srgb, var(--selection) 22%, transparent),
+            0 0 0 4px color-mix(in srgb, var(--accent-c1, var(--selection)) 28%, transparent),
             0 8px 20px rgba(0, 0, 0, 0.55);
         }
         .smm-root :global(.detail-stubs) {
@@ -4394,35 +4445,57 @@ export default function MindMapCanvas({
           background: transparent;
           border: 1px solid var(--node-border);
           border-radius: 10px;
-          padding: 9px 10px;
+          padding: 10px 12px;
           color: var(--ui-text-dim);
-          font-size: 12px;
+          font-size: 13px;
           font-weight: 500;
           cursor: not-allowed;
           font-family: inherit;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+        }
+        .smm-root :global(.stub-btn-icon) {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          color: color-mix(in srgb, var(--accent-c1, var(--selection)) 85%, white);
+          flex-shrink: 0;
+          line-height: 0;
+          transition: color 0.2s;
+        }
+        .smm-root :global(.stub-btn-label) {
+          font-weight: 600;
+          letter-spacing: 0.1px;
         }
         .smm-root :global(.stub-btn.ai-btn) {
           background: linear-gradient(
             180deg,
-            color-mix(in srgb, var(--selection) 22%, transparent),
-            color-mix(in srgb, var(--selection) 8%, transparent)
+            color-mix(in srgb, var(--accent-c1, var(--selection)) 22%, transparent),
+            color-mix(in srgb, var(--accent-c1, var(--selection)) 8%, transparent)
           );
-          border-color: color-mix(in srgb, var(--selection) 38%, var(--node-border));
+          border-color: color-mix(in srgb, var(--accent-c1, var(--selection)) 45%, var(--node-border));
           color: var(--node-text);
           cursor: pointer;
           transition:
-            background 0.15s,
-            border-color 0.15s,
-            transform 0.12s;
+            background 0.2s,
+            border-color 0.2s,
+            transform 0.12s,
+            box-shadow 0.2s;
         }
         .smm-root :global(.stub-btn.ai-btn:hover:not(:disabled)) {
           background: linear-gradient(
             180deg,
-            color-mix(in srgb, var(--selection) 32%, transparent),
-            color-mix(in srgb, var(--selection) 14%, transparent)
+            color-mix(in srgb, var(--accent-c1, var(--selection)) 32%, transparent),
+            color-mix(in srgb, var(--accent-c1, var(--selection)) 14%, transparent)
           );
-          border-color: color-mix(in srgb, var(--selection) 60%, var(--node-border));
+          border-color: color-mix(in srgb, var(--accent-c1, var(--selection)) 65%, var(--node-border));
           transform: translateY(-1px);
+          box-shadow: 0 6px 16px color-mix(in srgb, var(--accent-c1, var(--selection)) 22%, transparent);
+        }
+        .smm-root :global(.stub-btn.ai-btn:hover:not(:disabled) .stub-btn-icon) {
+          color: white;
         }
         .smm-root :global(.stub-btn.ai-btn.ai-thinking) {
           animation: aiPulse 1.4s ease-in-out infinite;
