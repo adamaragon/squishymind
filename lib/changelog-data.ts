@@ -17,6 +17,20 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v3.3',
+    title: 'Notes, images, and attachments — everywhere',
+    date: 'May 2026',
+    commit: '02db3ef',
+    highlights: [
+      'New side-drawer detail panel — open it from any view by clicking ⓘ',
+      'Edit a node\'s note, image, and attachments without leaving the alt views',
+      'Attach PDF, doc/docx, xls/csv, zip, audio, video — 10 MB cap',
+      '≡ / ▣ / ◧ flag pills show at a glance which rows have what',
+      'Tree view collapse layout is now height-aware — no more overlap',
+    ],
+    squishyNote: 'Darling, every node has secrets. Now you can keep them tidy.',
+  },
+  {
     version: 'v3.2',
     title: 'Views, Dazzled',
     date: 'May 2026',
