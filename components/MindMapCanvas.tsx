@@ -4227,6 +4227,17 @@ export default function MindMapCanvas({
           width: 420px;
           min-width: 360px;
           max-width: 420px;
+          /* Cap the card to the viewport so AI suggestions or a long
+             comments thread don't push it off-screen. The card scrolls
+             internally; nested max-heights (note, comments list) still
+             work, they're sub-scrolls inside this outer scroll. */
+          max-height: 85vh;
+          overflow-y: auto;
+          overflow-x: hidden;
+          /* Hide scrollbar buttons / corner so it looks native on macOS
+             and clean on Windows; pinned thumb only. */
+          scrollbar-width: thin;
+          scrollbar-color: color-mix(in srgb, var(--accent-c1, var(--selection)) 40%, transparent) transparent;
           padding: 20px 22px 18px !important;
           cursor: default;
           z-index: 100;
@@ -4250,6 +4261,24 @@ export default function MindMapCanvas({
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
           transition: border-color 0.25s, box-shadow 0.25s;
+        }
+        /* WebKit scrollbar styling so the bar inside the card is subtle
+           and accent-coloured rather than the default grey block. */
+        .smm-root :global(.node.in-detail::-webkit-scrollbar) {
+          width: 8px;
+        }
+        .smm-root :global(.node.in-detail::-webkit-scrollbar-track) {
+          background: transparent;
+        }
+        .smm-root :global(.node.in-detail::-webkit-scrollbar-thumb) {
+          background: color-mix(in srgb, var(--accent-c1, var(--selection)) 32%, transparent);
+          border-radius: 999px;
+          border: 2px solid transparent;
+          background-clip: padding-box;
+        }
+        .smm-root :global(.node.in-detail::-webkit-scrollbar-thumb:hover) {
+          background: color-mix(in srgb, var(--accent-c1, var(--selection)) 55%, transparent);
+          background-clip: padding-box;
         }
         @keyframes detailCardIn {
           from {
