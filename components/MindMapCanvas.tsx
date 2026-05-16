@@ -1432,6 +1432,15 @@ export default function MindMapCanvas({
             createdIds.push(child.id);
           }
         }
+        // addChild's placeChild uses the stale sibling count at the moment
+        // each call runs, so a batch like this stacks every new node at the
+        // outer edge of the parent's arc. layoutChildren redistributes the
+        // whole sibling set evenly around the parent and pushes outward to
+        // clear any other nodes already nearby — same call the voice batch
+        // path already uses (lib/canvas-bus create_nodes_batch handler).
+        if (createdIds.length > 0) {
+          layoutChildren(parentNode.id);
+        }
         scheduleSave();
         panel.remove();
         renderAll();
