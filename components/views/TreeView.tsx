@@ -898,36 +898,48 @@ function TreeNodeCard({
           className="tr-card-label"
           aria-label={`Node ${node.label || 'Untitled'}`}
         />
-        {/* Flag chips live IN the card body, right under the title — so
-            "what's attached to this node" is the first thing you scan after
-            the label. Each chip carries its own data-tip tooltip. */}
-        {(hasNote || hasImage || attachCount > 0) && (
-          <div className="tr-card-flags">
-            {hasNote && (
-              <span className="tr-card-flag has-note" data-tip="Has a note">
-                <span className="tr-card-flag-icon" aria-hidden>≡</span>
-                <span className="tr-card-flag-label">Note</span>
+        {/* Chip row directly under the title: the ⓘ details trigger sits
+            first (always present), then the data flag chips. Co-locating
+            the action with the data it surfaces — click ⓘ to view/edit
+            whatever the chips advertise. */}
+        <div className="tr-card-flags">
+          <button
+            type="button"
+            className="tr-card-details-chip"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenDetails();
+            }}
+            data-tip="Open details · note, image, attachments"
+            aria-label="Open node details"
+          >
+            <span className="tr-card-details-chip-icon" aria-hidden>ⓘ</span>
+            <span className="tr-card-details-chip-label">Details</span>
+          </button>
+          {hasNote && (
+            <span className="tr-card-flag has-note" data-tip="Has a note">
+              <span className="tr-card-flag-icon" aria-hidden>≡</span>
+              <span className="tr-card-flag-label">Note</span>
+            </span>
+          )}
+          {hasImage && (
+            <span className="tr-card-flag has-image" data-tip="Image attached">
+              <span className="tr-card-flag-icon" aria-hidden>▣</span>
+              <span className="tr-card-flag-label">Image</span>
+            </span>
+          )}
+          {attachCount > 0 && (
+            <span
+              className="tr-card-flag has-attach"
+              data-tip={`${attachCount} file attachment${attachCount === 1 ? '' : 's'}`}
+            >
+              <span className="tr-card-flag-icon" aria-hidden>◧</span>
+              <span className="tr-card-flag-label">
+                {attachCount} {attachCount === 1 ? 'file' : 'files'}
               </span>
-            )}
-            {hasImage && (
-              <span className="tr-card-flag has-image" data-tip="Image attached">
-                <span className="tr-card-flag-icon" aria-hidden>▣</span>
-                <span className="tr-card-flag-label">Image</span>
-              </span>
-            )}
-            {attachCount > 0 && (
-              <span
-                className="tr-card-flag has-attach"
-                data-tip={`${attachCount} file attachment${attachCount === 1 ? '' : 's'}`}
-              >
-                <span className="tr-card-flag-icon" aria-hidden>◧</span>
-                <span className="tr-card-flag-label">
-                  {attachCount} {attachCount === 1 ? 'file' : 'files'}
-                </span>
-              </span>
-            )}
-          </div>
-        )}
+            </span>
+          )}
+        </div>
         {node.note && (
           <p className="tr-card-note" title={node.note}>
             {node.note}
@@ -995,19 +1007,8 @@ function TreeNodeCard({
         </button>
       )}
 
-      {/* Details button (top-left, on hover) */}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onOpenDetails();
-        }}
-        className="tr-card-details"
-        aria-label="Open node details"
-        data-tip="Open details · note, image, attachments"
-      >
-        ⓘ
-      </button>
+      {/* (Details trigger moved inline into the chip row inside the
+          card body so it sits next to the data flags it controls.) */}
 
       <style jsx>{`
         .tr-card {
@@ -1292,40 +1293,53 @@ function TreeNodeCard({
           box-shadow: 0 10px 24px rgba(139, 92, 246, 0.6);
         }
 
-        /* Details button — top-left, on hover */
-        .tr-card-details {
-          position: absolute;
-          left: -10px;
-          top: 8px;
-          width: 22px;
-          height: 22px;
-          border-radius: 50%;
-          background: rgba(15, 17, 36, 0.92);
+        /* Details trigger — chip-styled, sits in the flag row next to
+           the data chips it controls. Always visible (no hover-reveal)
+           since it's the primary way to reach a node's note / image /
+           attachments from this view. */
+        .tr-card-details-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 10px;
+          font-weight: 500;
+          letter-spacing: 0.2px;
+          padding: 2px 8px 2px 7px;
+          border-radius: 999px;
+          background: color-mix(in srgb, var(--tr-accent) 16%, rgba(255, 255, 255, 0.04));
+          border: 1px solid color-mix(in srgb, var(--tr-accent) 35%, transparent);
           color: var(--text);
-          border: 1px solid color-mix(in srgb, var(--tr-accent) 50%, rgba(255, 255, 255, 0.1));
+          cursor: pointer;
+          transition: all 0.15s;
+          font-family: inherit;
+        }
+        .tr-card-details-chip-icon {
           font-size: 11px;
           line-height: 1;
-          cursor: pointer;
-          opacity: 0;
-          transform: scale(0.85);
-          transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
-          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
-          z-index: 2;
+          color: color-mix(in srgb, var(--tr-accent) 80%, white);
         }
-        .tr-card:hover .tr-card-details,
-        .tr-card.is-selected .tr-card-details {
-          opacity: 1;
-          transform: scale(1);
+        .tr-card-details-chip-label {
+          font-weight: 600;
         }
-        .tr-card-details:hover {
-          background: var(--tr-accent);
+        .tr-card-details-chip:hover {
+          background: color-mix(in srgb, var(--tr-accent) 30%, transparent);
+          border-color: var(--tr-accent);
+          transform: translateY(-1px);
+        }
+        .tr-card-details-chip:hover .tr-card-details-chip-icon {
           color: white;
-          transform: scale(1.15);
         }
-        .is-root .tr-card-details {
-          background: rgba(0, 0, 0, 0.45);
-          border-color: rgba(255, 255, 255, 0.4);
+        .is-root .tr-card-details-chip {
+          background: rgba(255, 255, 255, 0.18);
+          border-color: rgba(255, 255, 255, 0.3);
           color: white;
+        }
+        .is-root .tr-card-details-chip-icon {
+          color: white;
+        }
+        .is-root .tr-card-details-chip:hover {
+          background: rgba(255, 255, 255, 0.28);
+          border-color: rgba(255, 255, 255, 0.5);
         }
       `}</style>
     </div>
