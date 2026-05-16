@@ -11,13 +11,19 @@ type Props = {
   onSwitchView?: (mode: ViewMode) => void;
 };
 
-// Walk the tree depth-first and collect a path of node-ids for every leaf.
-// Non-leaf nodes appear in the rows of their descendant leaves; nodes with
-// zero children become their own one-row paths.
-function computePaths(d: MindMapData): string[][] {
+// Five-accent palette mirrors the canvas node colours so colorIdx maps to a
+// recognisable tag regardless of which view a user is in.
+const ACCENT_PALETTE = [
+  '#ec4899', // pink
+  '#8b5cf6', // violet
+  '#06b6d4', // cyan
+  '#22d3ee', // sky
+  '#f59e0b', // amber
+];
+
+function walkPaths(d: MindMapData): string[][] {
   const paths: string[][] = [];
   if (!d.rootId) return paths;
-
   function walk(id: string, path: string[]) {
     const node = d.nodes[id];
     if (!node) return;
@@ -40,73 +46,144 @@ export default function TableView({
   readonly = false,
   onSwitchView,
 }: Props) {
-  const [selected, setSelected] = useState<string | null>(initialData.rootId ?? null);
+  const [selectedRow, setSelectedRow] = useState<number | null>(null);
   const [hintForCellId, setHintForCellId] = useState<string | null>(null);
+  const [density, setDensity] = useState<'comfy' | 'compact'>('comfy');
 
-  // Data is read-only in Table view; never mutated here. Stays in sync with
-  // whatever the parent passes in.
   const data = initialData;
-
-  const paths = useMemo(() => computePaths(data), [data]);
+  const paths = useMemo(() => walkPaths(data), [data]);
   const maxDepth = useMemo(
     () => paths.reduce((acc, p) => Math.max(acc, p.length), 0),
     [paths],
   );
 
+  // Stats for the header strip.
+  const stats = useMemo(() => {
+    const totalNodes = Object.keys(data.nodes).length;
+    const leaves = paths.length;
+    const noted = Object.values(data.nodes).filter((n) => n.note && n.note.trim()).length;
+    const branches = totalNodes - leaves;
+    return { totalNodes, leaves, branches, noted };
+  }, [data, paths]);
+
   function tryEdit(cellId: string) {
     if (readonly) return;
     setHintForCellId(cellId);
-    setTimeout(() => setHintForCellId((curr) => (curr === cellId ? null : curr)), 3500);
+    setTimeout(() => setHintForCellId((c) => (c === cellId ? null : c)), 2800);
   }
 
-  // Avoid the unused warnings while keeping the prop signature stable for
-  // future view switching from this component.
   void mindmapId;
   void initialTitle;
 
   return (
-    <div className="table-view h-full flex flex-col">
-      <div className="px-6 pt-5 pb-3 flex items-baseline justify-between gap-3 flex-wrap shrink-0">
-        <div>
-          <h2 className="text-base font-semibold">Table view</h2>
-          <p className="text-xs text-[--text-dim] mt-1">
-            One row per leaf path · {paths.length} {paths.length === 1 ? 'row' : 'rows'} ·{' '}
-            {maxDepth} {maxDepth === 1 ? 'level' : 'levels'}
-          </p>
+    <div className={`table-view h-full flex flex-col ${density}`}>
+      {/* ---- Toolbar / stat strip ---- */}
+      <div className="tv-toolbar shrink-0">
+        <div className="tv-toolbar-left">
+          <div className="tv-title">
+            <span className="tv-title-icon" aria-hidden>▦</span>
+            <h2>Table</h2>
+            <span className="tv-readonly-pill">Read-only</span>
+          </div>
+          <div className="tv-stats">
+            <span className="tv-stat">
+              <span className="tv-stat-num">{stats.totalNodes}</span>
+              <span className="tv-stat-lbl">nodes</span>
+            </span>
+            <span className="tv-stat-sep" aria-hidden>·</span>
+            <span className="tv-stat">
+              <span className="tv-stat-num">{stats.branches}</span>
+              <span className="tv-stat-lbl">branches</span>
+            </span>
+            <span className="tv-stat-sep" aria-hidden>·</span>
+            <span className="tv-stat">
+              <span className="tv-stat-num">{stats.leaves}</span>
+              <span className="tv-stat-lbl">leaves</span>
+            </span>
+            <span className="tv-stat-sep" aria-hidden>·</span>
+            <span className="tv-stat">
+              <span className="tv-stat-num">{maxDepth}</span>
+              <span className="tv-stat-lbl">levels</span>
+            </span>
+            <span className="tv-stat-sep" aria-hidden>·</span>
+            <span className="tv-stat">
+              <span className="tv-stat-num">{stats.noted}</span>
+              <span className="tv-stat-lbl">w/ notes</span>
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-[--text-dim]">Read-only —</span>
+        <div className="tv-toolbar-right">
+          <div className="tv-density" role="group" aria-label="Row density">
+            <button
+              type="button"
+              className={`tv-density-btn ${density === 'comfy' ? 'is-active' : ''}`}
+              onClick={() => setDensity('comfy')}
+              title="Comfortable rows"
+              aria-pressed={density === 'comfy'}
+            >
+              Comfy
+            </button>
+            <button
+              type="button"
+              className={`tv-density-btn ${density === 'compact' ? 'is-active' : ''}`}
+              onClick={() => setDensity('compact')}
+              title="Compact rows"
+              aria-pressed={density === 'compact'}
+            >
+              Compact
+            </button>
+          </div>
           <button
             type="button"
             onClick={() => onSwitchView?.('canvas')}
-            className="btn btn-ghost text-xs"
+            className="tv-canvas-btn"
             title="Switch to the Canvas view to edit this map"
           >
-            🧠 Switch to Canvas to edit
+            <span aria-hidden>🧠</span>
+            Edit on Canvas
           </button>
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-auto px-6 pb-6">
+      {/* ---- Grid ---- */}
+      <div className="tv-scroll">
         {paths.length === 0 ? (
-          <p className="text-sm text-[--text-dim]">This map is empty.</p>
+          <div className="tv-empty">
+            <div className="tv-empty-icon" aria-hidden>▦</div>
+            <h3>No rows to show</h3>
+            <p>This map is empty. Add a node on the canvas to see it here.</p>
+          </div>
         ) : (
-          <table className="table-view-grid">
+          <table className="tv-grid">
             <thead>
               <tr>
+                <th className="tv-th tv-th-rowno" scope="col">
+                  <span className="tv-th-rowno-inner">#</span>
+                </th>
+                <th className="tv-th tv-th-tag" scope="col" title="Leaf colour tag">
+                  Tag
+                </th>
                 {Array.from({ length: maxDepth }).map((_, i) => (
-                  <th key={i} scope="col">
-                    Level {i + 1}
+                  <th key={i} className="tv-th" scope="col">
+                    <div className="tv-th-inner">
+                      <span className="tv-th-dot" data-depth={i % 5} aria-hidden />
+                      <span className="tv-th-label">
+                        L{i + 1}
+                        <span className="tv-th-sub">
+                          {i === 0 ? 'root' : i === maxDepth - 1 ? 'leaf' : 'branch'}
+                        </span>
+                      </span>
+                    </div>
                   </th>
                 ))}
+                <th className="tv-th tv-th-note" scope="col" title="Notes attached">
+                  Note
+                </th>
               </tr>
             </thead>
             <tbody>
               {paths.map((path, rowIdx) => {
                 const prev = rowIdx > 0 ? paths[rowIdx - 1] : null;
-                // Find the first column where this row diverges from the previous.
-                // Cells before that are continuations (rendered dimmed); cells from
-                // that column onward are "new" — fully visible.
                 let firstNew = 0;
                 if (prev) {
                   while (
@@ -117,144 +194,545 @@ export default function TableView({
                     firstNew++;
                   }
                 }
+                const leafId = path[path.length - 1];
+                const leafNode = data.nodes[leafId];
+                const colorIdx = leafNode?.colorIdx ?? 0;
+                const isSelected = selectedRow === rowIdx;
                 return (
-                  <tr key={rowIdx}>
+                  <tr
+                    key={rowIdx}
+                    className={`tv-row ${isSelected ? 'is-selected' : ''}`}
+                    onClick={() => setSelectedRow(rowIdx)}
+                  >
+                    <td className="tv-cell tv-cell-rowno">
+                      <span className="tv-rowno">{rowIdx + 1}</span>
+                    </td>
+                    <td className="tv-cell tv-cell-tag">
+                      <span
+                        className="tv-tag-pill"
+                        style={{
+                          background: `linear-gradient(135deg, ${ACCENT_PALETTE[colorIdx % 5]}, ${
+                            ACCENT_PALETTE[(colorIdx + 2) % 5]
+                          })`,
+                        }}
+                        aria-hidden
+                      />
+                    </td>
                     {Array.from({ length: maxDepth }).map((_, colIdx) => {
                       const id = path[colIdx];
                       if (!id) {
                         return (
                           <td
                             key={colIdx}
-                            className="table-view-cell table-view-cell-empty"
+                            className="tv-cell tv-cell-empty"
                             aria-hidden
                           />
                         );
                       }
                       const node = data.nodes[id];
                       const isContinuation = colIdx < firstNew;
-                      const isSelected = selected === id;
+                      const isLeaf = colIdx === path.length - 1;
                       const cellKey = `${rowIdx}-${colIdx}`;
                       return (
                         <td
                           key={colIdx}
                           className={[
-                            'table-view-cell',
-                            isContinuation ? 'table-view-cell-continuation' : '',
-                            isSelected ? 'table-view-cell-selected' : '',
+                            'tv-cell',
+                            isContinuation ? 'tv-cell-continuation' : '',
+                            isLeaf ? 'tv-cell-leaf' : '',
                           ]
                             .filter(Boolean)
                             .join(' ')}
-                          onClick={() => setSelected(id)}
-                          onDoubleClick={() => tryEdit(cellKey)}
+                          onDoubleClick={(e) => {
+                            e.stopPropagation();
+                            tryEdit(cellKey);
+                          }}
                           title={node?.note || node?.label || ''}
+                          data-depth={colIdx % 5}
                         >
-                          <span className="table-view-label">{node?.label || 'Untitled'}</span>
-                          {node?.note && (
-                            <span
-                              className="table-view-note-dot"
-                              aria-label="has note"
-                              title={node.note}
-                            >
-                              ◉
-                            </span>
+                          {!isContinuation && (
+                            <span className="tv-cell-rail" aria-hidden />
                           )}
+                          <span className="tv-cell-label">
+                            {node?.label || (
+                              <span className="tv-cell-untitled">Untitled</span>
+                            )}
+                          </span>
                           {hintForCellId === cellKey && (
-                            <span className="table-view-edit-hint">
-                              Switch to Canvas to edit
+                            <span className="tv-cell-hint">
+                              Switch to Canvas to edit ↗
                             </span>
                           )}
                         </td>
                       );
                     })}
+                    <td className="tv-cell tv-cell-noteflag">
+                      {leafNode?.note ? (
+                        <span className="tv-note-preview" title={leafNode.note}>
+                          <span className="tv-note-dot" aria-hidden>◉</span>
+                          <span className="tv-note-text">{leafNode.note}</span>
+                        </span>
+                      ) : (
+                        <span className="tv-note-empty" aria-hidden>—</span>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
             </tbody>
+            <tfoot>
+              <tr className="tv-foot">
+                <td colSpan={maxDepth + 3}>
+                  Showing {paths.length} of {paths.length} rows — every leaf path from root to tip.
+                </td>
+              </tr>
+            </tfoot>
           </table>
         )}
       </div>
 
       <style jsx>{`
-        .table-view-grid {
+        .table-view {
+          color: var(--text);
+          background:
+            radial-gradient(
+              1200px 600px at 0% -10%,
+              rgba(139, 92, 246, 0.06) 0%,
+              transparent 60%
+            ),
+            radial-gradient(
+              900px 500px at 100% 110%,
+              rgba(6, 182, 212, 0.06) 0%,
+              transparent 60%
+            );
+        }
+
+        /* ---- Toolbar ---- */
+        .tv-toolbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 18px;
+          padding: 14px 22px;
+          border-bottom: 1px solid var(--border);
+          background: rgba(10, 11, 22, 0.6);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          flex-wrap: wrap;
+        }
+        .tv-toolbar-left {
+          display: flex;
+          align-items: center;
+          gap: 18px;
+          flex-wrap: wrap;
+        }
+        .tv-title {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .tv-title-icon {
+          font-size: 16px;
+          line-height: 1;
+          color: transparent;
+          background: linear-gradient(135deg, #8b5cf6, #06b6d4);
+          background-clip: text;
+          -webkit-background-clip: text;
+          font-weight: 700;
+        }
+        .tv-title h2 {
+          font-size: 14px;
+          font-weight: 600;
+          margin: 0;
+          letter-spacing: 0.2px;
+        }
+        .tv-readonly-pill {
+          font-size: 9px;
+          letter-spacing: 0.8px;
+          text-transform: uppercase;
+          font-weight: 600;
+          color: rgba(139, 92, 246, 0.9);
+          background: rgba(139, 92, 246, 0.1);
+          border: 1px solid rgba(139, 92, 246, 0.3);
+          padding: 2px 7px;
+          border-radius: 999px;
+        }
+        .tv-stats {
+          display: flex;
+          align-items: baseline;
+          gap: 8px;
+          font-size: 11px;
+          color: var(--text-dim);
+        }
+        .tv-stat {
+          display: inline-flex;
+          align-items: baseline;
+          gap: 4px;
+        }
+        .tv-stat-num {
+          color: var(--text);
+          font-weight: 600;
+          font-variant-numeric: tabular-nums;
+          font-size: 13px;
+        }
+        .tv-stat-lbl {
+          opacity: 0.7;
+        }
+        .tv-stat-sep {
+          opacity: 0.3;
+        }
+        .tv-toolbar-right {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .tv-density {
+          display: inline-flex;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          padding: 2px;
+        }
+        .tv-density-btn {
+          background: transparent;
+          color: var(--text-dim);
+          border: none;
+          font-size: 11px;
+          font-weight: 500;
+          padding: 4px 10px;
+          border-radius: 6px;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+        .tv-density-btn:hover {
+          color: var(--text);
+        }
+        .tv-density-btn.is-active {
+          color: var(--text);
+          background: rgba(255, 255, 255, 0.08);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+        .tv-canvas-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: linear-gradient(135deg, rgba(236, 72, 153, 0.18), rgba(139, 92, 246, 0.18));
+          border: 1px solid rgba(236, 72, 153, 0.32);
+          color: var(--text);
+          font-size: 11px;
+          font-weight: 500;
+          padding: 5px 12px;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+        .tv-canvas-btn:hover {
+          background: linear-gradient(135deg, rgba(236, 72, 153, 0.28), rgba(139, 92, 246, 0.28));
+          border-color: rgba(236, 72, 153, 0.5);
+          transform: translateY(-1px);
+        }
+
+        /* ---- Scroll container with grid background ---- */
+        .tv-scroll {
+          flex: 1;
+          min-height: 0;
+          overflow: auto;
+          padding: 0;
+          background-image:
+            linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+          background-size: 32px 32px;
+          background-position: -1px -1px;
+        }
+
+        /* ---- Empty state ---- */
+        .tv-empty {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 80px 24px;
+          text-align: center;
+        }
+        .tv-empty-icon {
+          font-size: 48px;
+          opacity: 0.25;
+          margin-bottom: 12px;
+        }
+        .tv-empty h3 {
+          font-size: 15px;
+          font-weight: 600;
+          margin: 0 0 6px;
+        }
+        .tv-empty p {
+          font-size: 12px;
+          color: var(--text-dim);
+          margin: 0;
+        }
+
+        /* ---- Grid ---- */
+        .tv-grid {
           width: 100%;
           border-collapse: separate;
           border-spacing: 0;
           font-size: 13px;
+          background: rgba(10, 11, 22, 0.4);
         }
-        .table-view-grid thead th {
+
+        /* Headers — sticky, label-on-top */
+        .tv-th {
           position: sticky;
           top: 0;
-          z-index: 2;
+          z-index: 3;
           text-align: left;
-          background: var(--ui-bg);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-          color: var(--ui-text-dim);
+          background: rgba(15, 17, 36, 0.92);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          color: var(--text-dim);
           font-size: 10px;
-          letter-spacing: 0.5px;
+          letter-spacing: 0.9px;
           text-transform: uppercase;
           font-weight: 600;
-          padding: 8px 12px;
-          border-bottom: 1px solid var(--ui-border);
+          padding: 12px 14px;
+          border-bottom: 1px solid var(--border-strong);
+          border-right: 1px solid rgba(255, 255, 255, 0.04);
+          white-space: nowrap;
         }
-        .table-view-cell {
-          padding: 8px 12px;
-          border-bottom: 1px solid color-mix(in srgb, var(--ui-border) 50%, transparent);
+        .tv-th:last-child {
+          border-right: none;
+        }
+        .tv-th-inner {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+        }
+        .tv-th-label {
+          display: inline-flex;
+          align-items: baseline;
+          gap: 5px;
+          color: var(--text);
+          font-size: 11px;
+          letter-spacing: 0.6px;
+        }
+        .tv-th-sub {
+          color: var(--text-dim);
+          font-size: 9px;
+          letter-spacing: 0.5px;
+          text-transform: lowercase;
+          font-weight: 400;
+        }
+        .tv-th-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          flex-shrink: 0;
+          display: inline-block;
+        }
+        .tv-th-dot[data-depth='0'] { background: #ec4899; }
+        .tv-th-dot[data-depth='1'] { background: #8b5cf6; }
+        .tv-th-dot[data-depth='2'] { background: #06b6d4; }
+        .tv-th-dot[data-depth='3'] { background: #22d3ee; }
+        .tv-th-dot[data-depth='4'] { background: #f59e0b; }
+
+        .tv-th-rowno {
+          width: 56px;
+          padding: 12px 0;
+          text-align: center;
+        }
+        .tv-th-rowno-inner {
+          display: inline-block;
+          color: var(--text-dim);
+          font-size: 11px;
+          letter-spacing: 0.6px;
+        }
+        .tv-th-tag {
+          width: 60px;
+          padding: 12px 8px;
+        }
+        .tv-th-note {
+          width: 30%;
+          min-width: 200px;
+        }
+
+        /* Rows */
+        .tv-row {
+          transition: background 0.1s;
+          cursor: default;
+        }
+        .tv-row:nth-child(even) {
+          background: rgba(255, 255, 255, 0.012);
+        }
+        .tv-row:hover {
+          background: rgba(139, 92, 246, 0.05);
+        }
+        .tv-row.is-selected {
+          background: linear-gradient(
+            90deg,
+            rgba(236, 72, 153, 0.12) 0%,
+            rgba(139, 92, 246, 0.08) 100%
+          );
+          box-shadow: inset 3px 0 0 #ec4899;
+        }
+
+        /* Cells */
+        .tv-cell {
+          padding: 10px 14px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+          border-right: 1px solid rgba(255, 255, 255, 0.025);
           vertical-align: top;
-          cursor: pointer;
           position: relative;
           min-width: 160px;
-          max-width: 280px;
-          color: var(--node-text);
-          transition: background 0.12s;
+          max-width: 260px;
+          color: var(--text);
+          line-height: 1.4;
         }
-        .table-view-cell:hover {
-          background: color-mix(in srgb, var(--selection) 8%, transparent);
+        .tv-cell:last-child {
+          border-right: none;
         }
-        .table-view-cell-continuation {
-          color: color-mix(in srgb, var(--node-text) 35%, transparent);
+        .compact .tv-cell {
+          padding: 6px 14px;
         }
-        .table-view-cell-continuation .table-view-note-dot {
-          opacity: 0.4;
+        .compact .tv-th {
+          padding: 8px 14px;
         }
-        .table-view-cell-selected {
-          background: color-mix(in srgb, var(--selection) 18%, transparent);
+
+        .tv-cell-rowno {
+          width: 56px;
+          min-width: 56px;
+          padding: 10px 0;
+          text-align: center;
+          color: var(--text-dim);
+          font-variant-numeric: tabular-nums;
+          font-size: 11px;
+          background: rgba(0, 0, 0, 0.15);
+          border-right: 1px solid var(--border);
         }
-        .table-view-cell-empty {
-          background: transparent;
-          cursor: default;
+        .tv-rowno {
+          display: inline-block;
+          font-weight: 500;
+        }
+        .tv-row.is-selected .tv-rowno {
+          color: var(--text);
+          font-weight: 700;
+        }
+
+        .tv-cell-tag {
+          width: 60px;
+          min-width: 60px;
+          padding: 10px 12px;
+        }
+        .tv-tag-pill {
+          display: inline-block;
+          width: 12px;
+          height: 12px;
+          border-radius: 4px;
+          box-shadow:
+            0 0 0 1px rgba(255, 255, 255, 0.1),
+            0 2px 6px rgba(0, 0, 0, 0.4);
+        }
+
+        .tv-cell-rail {
+          position: absolute;
+          left: 0;
+          top: 14%;
+          bottom: 14%;
+          width: 2px;
+          border-radius: 1px;
+          opacity: 0.55;
+        }
+        .tv-cell[data-depth='0'] .tv-cell-rail { background: #ec4899; }
+        .tv-cell[data-depth='1'] .tv-cell-rail { background: #8b5cf6; }
+        .tv-cell[data-depth='2'] .tv-cell-rail { background: #06b6d4; }
+        .tv-cell[data-depth='3'] .tv-cell-rail { background: #22d3ee; }
+        .tv-cell[data-depth='4'] .tv-cell-rail { background: #f59e0b; }
+
+        .tv-cell-continuation {
+          color: rgba(232, 234, 255, 0.3);
+          background: rgba(255, 255, 255, 0.008);
+        }
+        .tv-cell-leaf .tv-cell-label {
+          font-weight: 500;
+        }
+        .tv-cell-empty {
+          background: rgba(0, 0, 0, 0.12);
           border-bottom-color: transparent;
         }
-        .table-view-cell-empty:hover {
-          background: transparent;
-        }
-        .table-view-label {
+        .tv-cell-label {
           display: inline-block;
           word-wrap: break-word;
-          line-height: 1.35;
         }
-        .table-view-note-dot {
-          margin-left: 6px;
-          color: var(--accent-2);
-          font-size: 10px;
-          vertical-align: super;
+        .tv-cell-untitled {
+          color: var(--text-dim);
+          font-style: italic;
         }
-        .table-view-edit-hint {
+
+        .tv-cell-noteflag {
+          width: 30%;
+          min-width: 200px;
+          color: var(--text-dim);
+          font-size: 12px;
+          font-style: italic;
+        }
+        .tv-note-preview {
+          display: inline-flex;
+          align-items: baseline;
+          gap: 6px;
+          max-width: 100%;
+        }
+        .tv-note-dot {
+          color: #06b6d4;
+          font-size: 9px;
+          flex-shrink: 0;
+        }
+        .tv-note-text {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          max-width: 100%;
+        }
+        .tv-note-empty {
+          opacity: 0.3;
+        }
+
+        .tv-cell-hint {
           position: absolute;
-          top: -28px;
+          top: -34px;
           left: 8px;
-          background: var(--ui-bg);
+          background: rgba(15, 17, 36, 0.95);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
-          border: 1px solid var(--ui-border);
-          color: var(--ui-text);
+          border: 1px solid var(--border-strong);
+          color: var(--text);
           font-size: 10px;
-          padding: 4px 8px;
+          font-style: normal;
+          font-weight: 500;
+          padding: 5px 10px;
           border-radius: 6px;
           white-space: nowrap;
-          z-index: 3;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+          z-index: 5;
+          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
           pointer-events: none;
+          animation: tv-hint-in 0.18s ease;
+        }
+        @keyframes tv-hint-in {
+          from {
+            opacity: 0;
+            transform: translateY(4px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        /* Footer */
+        .tv-foot td {
+          padding: 12px 14px;
+          font-size: 11px;
+          color: var(--text-dim);
+          background: rgba(0, 0, 0, 0.15);
+          border-top: 1px solid var(--border);
+          font-style: italic;
         }
       `}</style>
     </div>
