@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { templates } from '@/lib/templates';
 import { createClient } from '@/lib/supabase/client';
+import { track } from '@/lib/track';
 
 export default function TemplatePicker({ onClose }: { onClose: () => void }) {
   const router = useRouter();
@@ -48,6 +49,10 @@ export default function TemplatePicker({ onClose }: { onClose: () => void }) {
       setCreating(null);
       return;
     }
+    track('template_applied', {
+      template_id: templateId || 'blank',
+      mindmap_id: data.id,
+    });
     router.push(`/m/${data.id}`);
   }
 

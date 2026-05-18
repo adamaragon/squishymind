@@ -967,6 +967,26 @@ export default function MindMapCanvas({
       renderDetailImage(n, imageHolder);
       wrap.appendChild(imageHolder);
 
+      // Attachments section — mirrors NodeDetailPanel.tsx so the canvas
+      // can manage non-image attachments (PDF / zip / doc / audio / video)
+      // the same way the alt views do. Always rendered so readers can
+      // see + open existing files; the "Add file" trigger is editor-only.
+      const attachmentsSection = document.createElement('div');
+      attachmentsSection.className = 'detail-attachments';
+      const attachmentsLabel = document.createElement('div');
+      attachmentsLabel.className = 'detail-section-label';
+      attachmentsLabel.textContent = 'Attachments';
+      attachmentsSection.appendChild(attachmentsLabel);
+      const attachmentsHolder = document.createElement('div');
+      attachmentsHolder.className = 'detail-attachments-list';
+      renderDetailAttachments(n, attachmentsHolder);
+      attachmentsSection.appendChild(attachmentsHolder);
+      // Only mount the section at all if there's something to show or the
+      // user can add — keeps the readonly viewer clean.
+      if ((n.attachments && n.attachments.length > 0) || !readonlyRef.current) {
+        wrap.appendChild(attachmentsSection);
+      }
+
       // Action buttons row (hidden in readonly).
       if (!readonlyRef.current) {
         const actions = document.createElement('div');
@@ -992,6 +1012,10 @@ export default function MindMapCanvas({
           '<path d="M14.5 2.5 L15 4 L16.5 4.5 L15 5 L14.5 6.5 L14 5 L12.5 4.5 L14 4 Z" stroke-width="1.2"/>' +
           '<path d="M3.5 12 L3.9 13.2 L5.1 13.6 L3.9 14 L3.5 15.2 L3.1 14 L1.9 13.6 L3.1 13.2 Z" stroke-width="1.2"/>' +
           '</svg>';
+        const ICON_ATTACH =
+          '<svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+          '<path d="M11.5 5.5 L6 11 a2.5 2.5 0 0 0 3.5 3.5 L15.5 8.5 a4 4 0 0 0 -5.5 -5.5 L4 9 a5.5 5.5 0 0 0 7.5 8" />' +
+          '</svg>';
 
         const imageBtn = document.createElement('button');
         imageBtn.className = 'stub-btn ai-btn';
@@ -999,6 +1023,15 @@ export default function MindMapCanvas({
         setIconButton(imageBtn, ICON_IMAGE, n.imageUrl ? 'Replace image' : 'Add image');
         imageBtn.addEventListener('click', () => pickAndUploadImage(n, imageBtn, imageHolder));
         actions.appendChild(imageBtn);
+
+        const attachBtn = document.createElement('button');
+        attachBtn.className = 'stub-btn ai-btn';
+        attachBtn.title = 'Attach a file (PDF, doc, zip, audio, video, 10 MB cap)';
+        setIconButton(attachBtn, ICON_ATTACH, 'Add file');
+        attachBtn.addEventListener('click', () =>
+          pickAndUploadAttachment(n, attachBtn, attachmentsHolder, attachmentsSection, wrap),
+        );
+        actions.appendChild(attachBtn);
 
         const aiBtn = document.createElement('button');
         aiBtn.className = 'stub-btn ai-btn';
@@ -1009,7 +1042,9 @@ export default function MindMapCanvas({
 
         wrap.appendChild(actions);
 
-        // Drag-drop image upload on the whole detail wrap.
+        // Drag-drop on the whole detail wrap. Images go through /api/upload
+        // (5 MB cap, stays in n.imageUrl); anything else routes through
+        // /api/attachments (10 MB cap, accumulates in n.attachments).
         wrap.addEventListener('dragenter', (e) => {
           if (readonlyRef.current) return;
           if (!e.dataTransfer?.types.includes('Files')) return;
@@ -1030,7 +1065,18 @@ export default function MindMapCanvas({
           e.preventDefault();
           wrap.classList.remove('dropzone-hover');
           const file = e.dataTransfer.files[0];
-          await uploadAndAttachImage(n, file, imageBtn, imageHolder);
+          if (file.type.startsWith('image/')) {
+            await uploadAndAttachImage(n, file, imageBtn, imageHolder);
+          } else {
+            await uploadAndAttachFile(
+              n,
+              file,
+              attachBtn,
+              attachmentsHolder,
+              attachmentsSection,
+              wrap,
+            );
+          }
         });
       }
 
@@ -1165,6 +1211,204 @@ export default function MindMapCanvas({
       err.textContent = `✕ ${msg}`;
       holder.appendChild(err);
       setTimeout(() => err.remove(), 4000);
+    }
+
+    // ---- Generic file attachments ----
+    // Mirrors NodeDetailPanel's icon/size logic so the canvas detail card
+    // shows the same icons + filesize formatting for PDFs, docs, zips, etc.
+    function iconForAttachment(type: string): string {
+      if (type.startsWith('image/')) return '🖼';
+      if (type === 'application/pdf') return '📕';
+      if (
+        type.includes('zip') ||
+        type.includes('compressed') ||
+        type.includes('tar') ||
+        type === 'application/gzip'
+      )
+        return '🗄';
+      if (
+        type === 'application/msword' ||
+        type.includes('wordprocessingml') ||
+        type === 'application/rtf'
+      )
+        return '📘';
+      if (
+        type === 'application/vnd.ms-excel' ||
+        type.includes('spreadsheetml') ||
+        type === 'text/csv'
+      )
+        return '📊';
+      if (
+        type === 'application/vnd.ms-powerpoint' ||
+        type.includes('presentationml')
+      )
+        return '🎞';
+      if (type.startsWith('audio/')) return '🎵';
+      if (type.startsWith('video/')) return '🎬';
+      if (
+        type === 'application/json' ||
+        type === 'application/xml' ||
+        type === 'text/xml'
+      )
+        return '📦';
+      if (type.startsWith('text/')) return '📝';
+      return '📎';
+    }
+    function humanSize(bytes?: number): string {
+      if (!bytes && bytes !== 0) return '';
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    }
+
+    function renderDetailAttachments(n: MindMapNode, holder: HTMLElement) {
+      holder.innerHTML = '';
+      const list = n.attachments || [];
+      if (list.length === 0) {
+        // Editor sees an empty-state hint; readers see nothing (the whole
+        // section is gated upstream when there's nothing to show).
+        if (!readonlyRef.current) {
+          const empty = document.createElement('div');
+          empty.className = 'detail-attach-empty';
+          empty.textContent =
+            'No files attached. Click "Add file" below or drop one onto the card.';
+          holder.appendChild(empty);
+        }
+        return;
+      }
+      list.forEach((att) => {
+        const row = document.createElement('div');
+        row.className = 'detail-attach-row';
+
+        const link = document.createElement('a');
+        link.className = 'detail-attach-link';
+        link.href = att.url;
+        link.target = '_blank';
+        link.rel = 'noreferrer noopener';
+        link.title = `Open ${att.name} in a new tab`;
+
+        const icon = document.createElement('span');
+        icon.className = 'detail-attach-icon';
+        icon.textContent = iconForAttachment(att.type);
+        link.appendChild(icon);
+
+        const meta = document.createElement('span');
+        meta.className = 'detail-attach-meta';
+        const name = document.createElement('span');
+        name.className = 'detail-attach-name';
+        name.textContent = att.name;
+        const sub = document.createElement('span');
+        sub.className = 'detail-attach-sub';
+        const typeTag = att.type.split('/').pop() || 'file';
+        sub.textContent = att.size ? `${typeTag} · ${humanSize(att.size)}` : typeTag;
+        meta.appendChild(name);
+        meta.appendChild(sub);
+        link.appendChild(meta);
+
+        row.appendChild(link);
+
+        if (!readonlyRef.current) {
+          const del = document.createElement('button');
+          del.className = 'detail-attach-del';
+          del.textContent = '✕';
+          del.title = 'Remove';
+          del.setAttribute('aria-label', `Remove ${att.name}`);
+          del.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            ev.preventDefault();
+            n.attachments = (n.attachments || []).filter((a) => a.url !== att.url);
+            renderDetailAttachments(n, holder);
+            scheduleSave();
+          });
+          row.appendChild(del);
+        }
+
+        holder.appendChild(row);
+      });
+    }
+
+    function pickAndUploadAttachment(
+      n: MindMapNode,
+      btn: HTMLButtonElement,
+      attachHolder: HTMLElement,
+      attachSection: HTMLElement,
+      wrap: HTMLElement,
+    ) {
+      if (readonlyRef.current) return;
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.style.display = 'none';
+      input.addEventListener('change', async () => {
+        const file = input.files?.[0];
+        if (file)
+          await uploadAndAttachFile(n, file, btn, attachHolder, attachSection, wrap);
+        input.remove();
+      });
+      document.body.appendChild(input);
+      input.click();
+    }
+
+    async function uploadAndAttachFile(
+      n: MindMapNode,
+      file: File,
+      btn: HTMLButtonElement,
+      attachHolder: HTMLElement,
+      attachSection: HTMLElement,
+      wrap: HTMLElement,
+    ) {
+      if (readonlyRef.current) return;
+
+      const labelEl = btn.querySelector('.stub-btn-label');
+      const originalHtml = btn.innerHTML;
+      btn.disabled = true;
+      if (labelEl) labelEl.textContent = 'Uploading…';
+      btn.classList.add('ai-thinking');
+
+      try {
+        const form = new FormData();
+        form.append('file', file);
+        const res = await fetch('/api/attachments', {
+          method: 'POST',
+          body: form,
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const msg =
+            body.error === 'too_large' ? 'File is over 10 MB.'
+            : body.error === 'bad_type' ? `Unsupported file type (${body.type || 'unknown'}).`
+            : body.error === 'unauthenticated' ? 'You need to be signed in.'
+            : body.error || 'Upload failed.';
+          showImageError(attachHolder, msg);
+          return;
+        }
+        n.attachments = [
+          ...(n.attachments || []),
+          {
+            url: body.url,
+            name: body.name,
+            type: body.type,
+            size: body.size,
+          },
+        ];
+        renderDetailAttachments(n, attachHolder);
+        // Empty section was gated above — once a first attachment lands,
+        // make sure the section is in the DOM.
+        if (!attachSection.parentElement) {
+          // Insert before the actions row (which is where the user clicked).
+          const actionsRow = wrap.querySelector('.detail-stubs');
+          if (actionsRow) wrap.insertBefore(attachSection, actionsRow);
+          else wrap.appendChild(attachSection);
+        }
+        scheduleSave();
+      } catch {
+        showImageError(attachHolder, 'Couldn’t reach upload server.');
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('ai-thinking');
+        if (labelEl && labelEl.textContent === 'Uploading…') {
+          btn.innerHTML = originalHtml;
+        }
+      }
     }
 
     // ---- Comments ----
@@ -4841,6 +5085,99 @@ export default function MindMapCanvas({
           outline: 2px dashed color-mix(in srgb, var(--selection) 60%, transparent);
           outline-offset: 4px;
           border-radius: 8px;
+        }
+
+        /* Attachments — mirrors NodeDetailPanel's list pattern. Per-row
+           glass tile with type icon + filename + size, accent-tinted hover
+           and a small × button for removal. */
+        .smm-root :global(.detail-attachments) {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .smm-root :global(.detail-attachments-list) {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .smm-root :global(.detail-attach-empty) {
+          font-size: 12px;
+          color: rgba(232, 234, 255, 0.45);
+          font-style: italic;
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px dashed var(--node-border);
+          border-radius: 10px;
+          padding: 10px 12px;
+          text-align: center;
+        }
+        .smm-root :global(.detail-attach-row) {
+          display: flex;
+          align-items: stretch;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid var(--node-border);
+          border-radius: 10px;
+          overflow: hidden;
+          transition: all 0.15s;
+        }
+        .smm-root :global(.detail-attach-row:hover) {
+          background: rgba(255, 255, 255, 0.06);
+          border-color: color-mix(
+            in srgb,
+            var(--accent-c1, var(--selection)) 35%,
+            var(--node-border)
+          );
+        }
+        .smm-root :global(.detail-attach-link) {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 8px 10px;
+          color: var(--node-text);
+          text-decoration: none;
+          min-width: 0;
+        }
+        .smm-root :global(.detail-attach-icon) {
+          font-size: 22px;
+          line-height: 1;
+          width: 28px;
+          text-align: center;
+          flex-shrink: 0;
+        }
+        .smm-root :global(.detail-attach-meta) {
+          display: flex;
+          flex-direction: column;
+          gap: 1px;
+          min-width: 0;
+          overflow: hidden;
+        }
+        .smm-root :global(.detail-attach-name) {
+          font-size: 13px;
+          font-weight: 500;
+          color: var(--node-text);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .smm-root :global(.detail-attach-sub) {
+          font-size: 10px;
+          color: var(--ui-text-dim);
+          letter-spacing: 0.4px;
+          text-transform: uppercase;
+        }
+        .smm-root :global(.detail-attach-del) {
+          background: transparent;
+          color: var(--ui-text-dim);
+          border: none;
+          border-left: 1px solid var(--node-border);
+          width: 34px;
+          font-size: 12px;
+          cursor: pointer;
+          transition: all 0.12s;
+        }
+        .smm-root :global(.detail-attach-del:hover) {
+          color: #fca5a5;
+          background: rgba(239, 68, 68, 0.1);
         }
 
         /* Toolbar */

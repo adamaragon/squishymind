@@ -10,6 +10,7 @@ const NAV: Array<{ href: string; label: string; emoji: string }> = [
   { href: '/admin/users', label: 'Users', emoji: '👤' },
   { href: '/admin/maps', label: 'Maps', emoji: '🗺' },
   { href: '/admin/comments', label: 'Comments', emoji: '💬' },
+  { href: '/admin/activity', label: 'Activity', emoji: '📈' },
 ];
 
 export default async function AdminLayout({

@@ -12,6 +12,7 @@ import TreeView from '@/components/views/TreeView';
 import TableView from '@/components/views/TableView';
 import ViewSwitcher from '@/components/ViewSwitcher';
 import { loadViewMode, saveViewMode } from '@/lib/squishy';
+import { track } from '@/lib/track';
 import { registerCanvasHandler } from '@/lib/canvas-bus';
 import type { MindMapData, ViewMode, Visibility } from '@/lib/types';
 
@@ -73,7 +74,10 @@ export default function EditorShell({
     setViewMode(loadViewMode());
   }, []);
   function handleViewChange(next: ViewMode) {
-    setViewMode(next);
+    setViewMode((prev) => {
+      if (prev !== next) track('view_switched', { from: prev, to: next });
+      return next;
+    });
     saveViewMode(next);
   }
 
