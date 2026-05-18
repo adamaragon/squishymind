@@ -17,6 +17,20 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v3.9',
+    title: 'Flow you can see from across the room',
+    date: 'May 2026',
+    commit: '9edb0bd',
+    highlights: [
+      'Flow direction now shows as actual triangle arrows traveling the line, not subtle dashes',
+      'Each direction has its own colour — → emerald, ← amber, ↔ both, — slate',
+      'Picker buttons echo the same palette so you can tell at a glance what mode is set',
+      'Same treatment in Tree view; Canvas + Tree match',
+    ],
+    squishyNote:
+      'You don\'t have to squint anymore, darling. The flow is right there.',
+  },
+  {
     version: 'v3.8',
     title: 'Flow, in motion',
     date: 'May 2026',
