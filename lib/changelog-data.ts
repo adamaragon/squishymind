@@ -17,6 +17,22 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v3.5',
+    title: 'Templates, properly furnished',
+    date: 'May 2026',
+    commit: '6085c4b',
+    highlights: [
+      'All 8 starter templates now 3–5× richer — depth-three structure throughout',
+      'Project Planning carries 60 nodes, Second Brain 66, Trip Planning 62',
+      'Decision Tree gained a Criteria branch and a proper Do-Nothing path',
+      'Trip Planning added Documents and Budget sections',
+      'Second Brain added a Finance domain',
+      'OKRs now have a check-ins branch and a risks-and-blockers branch',
+    ],
+    squishyNote:
+      'I gave each template a personality, darling. Some of them have opinions now.',
+  },
+  {
     version: 'v3.4',
     title: 'Founder Access — the honest version',
     date: 'May 2026',
