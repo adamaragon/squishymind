@@ -1185,6 +1185,59 @@ export default function MindMapCanvas({
       return wrap;
     }
 
+    /** Pop a tiny 4-button flow picker next to `nodeEl` so users can set
+     *  direction without opening the full detail panel. Used by the
+     *  in-node flow handle (click) and by the link-drag drop (to set the
+     *  new link's direction). Dismisses on outside click or after pick. */
+    function showInlineFlowPicker(
+      nodeEl: HTMLElement,
+      current: import('@/lib/types').FlowDirection,
+      onPick: (v: import('@/lib/types').FlowDirection) => void,
+    ) {
+      // Single picker on screen at a time — close any leftover.
+      document
+        .querySelectorAll('.flow-mini-picker')
+        .forEach((p) => p.remove());
+
+      const picker = document.createElement('div');
+      picker.className = 'flow-mini-picker';
+
+      FLOW_DIRS.forEach(({ value, glyph, label }) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className =
+          'flow-mini-btn' + (current === value ? ' is-active' : '');
+        btn.textContent = glyph;
+        btn.title = label;
+        btn.setAttribute('aria-label', label);
+        btn.setAttribute('aria-pressed', current === value ? 'true' : 'false');
+        // Block the mousedown so the picker itself doesn't get caught by
+        // any node-level drag/drop handlers.
+        btn.addEventListener('mousedown', (e) => e.stopPropagation());
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          onPick(value);
+          picker.remove();
+        });
+        picker.appendChild(btn);
+      });
+
+      nodeEl.appendChild(picker);
+
+      // Outside-click dismissal. setTimeout so the click that opened the
+      // picker doesn't immediately close it on the same tick.
+      function dismiss(ev: MouseEvent) {
+        if (!picker.contains(ev.target as Node)) {
+          picker.remove();
+          document.removeEventListener('mousedown', dismiss, true);
+        }
+      }
+      setTimeout(
+        () => document.addEventListener('mousedown', dismiss, true),
+        0,
+      );
+    }
+
     // ---- Image attachments ----
     function renderDetailImage(n: MindMapNode, holder: HTMLElement) {
       holder.innerHTML = '';
@@ -2123,6 +2176,128 @@ export default function MindMapCanvas({
             document.addEventListener('mouseup', onUp);
           });
           el.appendChild(plus);
+
+          // Flow handle — sits just below the + handle. Click = open a
+          // 4-button picker for the parent-edge flow direction (skipped on
+          // root, which has no parent edge). Drag = create a link from
+          // this node to whatever node you drop onto, then open the same
+          // picker for the new link's direction. Both paths are click-vs-
+          // drag discriminated by mouse-movement threshold, same pattern
+          // the add-handle uses.
+          const flow = document.createElement('div');
+          flow.className = 'flow-handle';
+          flow.setAttribute('aria-label', 'Set flow direction or drag to link');
+          flow.setAttribute('data-tip', 'Click for flow · drag to link');
+          // Arrow SVG inside the chip so the cursor reads it as a flow
+          // control, not a duplicate add-button.
+          flow.innerHTML =
+            '<svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden>' +
+            '<path d="M3 8 H 11.5 M 8.5 5 L 12 8 L 8.5 11" />' +
+            '</svg>';
+          flow.addEventListener('mousedown', (e) => {
+            if (readonlyRef.current) return;
+            e.stopPropagation();
+            e.preventDefault();
+            const startSX = e.clientX;
+            const startSY = e.clientY;
+            const owner = state.nodes[n.id];
+            let moved = false;
+
+            // Dashed ghost line for the drag — visually distinct from the
+            // solid edge-ghost used by the add-handle so users can tell
+            // they're creating a link, not a child.
+            const ghost = document.createElementNS(
+              'http://www.w3.org/2000/svg',
+              'path',
+            );
+            ghost.setAttribute('class', 'edge-link-ghost');
+            ghost.setAttribute(
+              'd',
+              `M ${owner.x} ${owner.y} L ${owner.x} ${owner.y}`,
+            );
+            edgesG.appendChild(ghost);
+
+            function onMove(ev: MouseEvent) {
+              if (
+                !moved &&
+                Math.hypot(ev.clientX - startSX, ev.clientY - startSY) > 4
+              ) {
+                moved = true;
+              }
+              const w = screenToWorld(ev.clientX, ev.clientY);
+              const dx = (w.x - owner.x) * 0.5;
+              ghost.setAttribute(
+                'd',
+                `M ${owner.x} ${owner.y} C ${owner.x + dx} ${owner.y}, ${w.x - dx} ${w.y}, ${w.x} ${w.y}`,
+              );
+            }
+
+            function onUp(ev: MouseEvent) {
+              document.removeEventListener('mousemove', onMove);
+              document.removeEventListener('mouseup', onUp);
+              ghost.remove();
+
+              if (!moved) {
+                // Click — open the parent-edge flow picker. Root has no
+                // parent edge so we ignore the click for it (drag still
+                // works to add a link from the root).
+                if (owner.parentId == null) return;
+                showInlineFlowPicker(
+                  el,
+                  owner.flowDirection || 'forward',
+                  (v) => {
+                    owner.flowDirection = v === 'forward' ? undefined : v;
+                    scheduleSave();
+                    renderAll();
+                  },
+                );
+                return;
+              }
+
+              // Drag end — hit-test the drop point for a target node.
+              const dropEl = document.elementFromPoint(ev.clientX, ev.clientY);
+              const targetEl =
+                (dropEl?.closest('.node[data-id]') as HTMLElement | null) ||
+                null;
+              const targetId = targetEl?.dataset.id || '';
+              if (!targetId || targetId === owner.id) return;
+
+              // Don't duplicate existing links.
+              const existing = (owner.links || []).some(
+                (l) => l.targetId === targetId,
+              );
+              if (existing) return;
+
+              owner.links = [...(owner.links || []), { targetId }];
+              scheduleSave();
+              renderAll();
+              playSfx('pop');
+
+              // Refresh the target element ref (renderAll rebuilt the DOM)
+              // and open the new link's flow picker on it.
+              const freshTarget = nodesLayer.querySelector(
+                `[data-id="${CSS.escape(targetId)}"]`,
+              ) as HTMLElement | null;
+              if (freshTarget) {
+                showInlineFlowPicker(freshTarget, 'forward', (v) => {
+                  owner.links = (owner.links || []).map((l) =>
+                    l.targetId === targetId
+                      ? {
+                          ...l,
+                          flowDirection: v === 'forward' ? undefined : v,
+                        }
+                      : l,
+                  );
+                  scheduleSave();
+                  renderAll();
+                });
+              }
+            }
+
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+          });
+          el.appendChild(flow);
         }
 
         applyNodeColor(el, n.colorIdx);
@@ -4354,6 +4529,119 @@ export default function MindMapCanvas({
         }
         .smm-root :global(.add-handle:hover) {
           background: color-mix(in srgb, var(--selection) 80%, white);
+        }
+
+        /* Flow handle — same right-edge column as the add-handle but
+           below it. Smaller and more muted so + remains the primary
+           action; click opens an inline flow picker, drag creates a
+           link. Hidden by default; scales in when the node is selected
+           or hovered. */
+        .smm-root :global(.flow-handle) {
+          position: absolute;
+          top: calc(50% + 24px);
+          right: -8px;
+          transform: translate(50%, -50%) scale(0);
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: rgba(15, 17, 36, 0.92);
+          color: var(--selection);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: grab;
+          border: 1px solid color-mix(in srgb, var(--selection) 55%, rgba(255,255,255,0.1));
+          box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45);
+          transition:
+            transform 0.18s cubic-bezier(0.2, 0.7, 0.3, 1.4),
+            background 0.15s,
+            color 0.15s;
+          z-index: 5;
+        }
+        .smm-root :global(.flow-handle:active) {
+          cursor: grabbing;
+        }
+        .smm-root :global(.node.selected .flow-handle),
+        .smm-root :global(.node:hover .flow-handle) {
+          transform: translate(50%, -50%) scale(1);
+        }
+        .smm-root :global(.flow-handle:hover) {
+          background: var(--selection);
+          color: var(--bg-1);
+        }
+        /* Root's flow handle is offset further down because the root has
+           a larger add-handle (positioned via .is-brain .add-handle). */
+        .smm-root :global(.is-brain .flow-handle) {
+          top: calc(50% + 28px);
+          right: -20px;
+        }
+
+        /* Dashed ghost line for the link drag. Distinct from edge-ghost
+           (solid, used by the add-handle drag for "create child") so the
+           user can tell from the line alone which kind of edge they're
+           about to drop. */
+        .smm-root :global(.edge-link-ghost) {
+          fill: none;
+          stroke: var(--selection);
+          stroke-width: 2;
+          stroke-dasharray: 6 5;
+          stroke-linecap: round;
+          opacity: 0.7;
+          pointer-events: none;
+        }
+
+        /* Inline flow picker — 4-button popup that floats next to a node
+           when the user clicks the flow handle (or drops a link). Sits
+           above the node so it doesn't extend below the visible card. */
+        .smm-root :global(.flow-mini-picker) {
+          position: absolute;
+          top: -42px;
+          left: 50%;
+          transform: translateX(-50%);
+          display: inline-flex;
+          gap: 2px;
+          padding: 3px;
+          border-radius: 10px;
+          background: rgba(8, 9, 18, 0.96);
+          border: 1px solid var(--ui-border);
+          box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
+          z-index: 10;
+          animation: smm-flow-pop-in 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+        }
+        @keyframes smm-flow-pop-in {
+          from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(4px) scale(0.85);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0) scale(1);
+          }
+        }
+        .smm-root :global(.flow-mini-btn) {
+          background: transparent;
+          color: var(--ui-text-dim);
+          border: none;
+          font-size: 13px;
+          font-weight: 600;
+          padding: 5px 9px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-family: inherit;
+          line-height: 1;
+          min-width: 26px;
+          transition: all 0.12s;
+        }
+        .smm-root :global(.flow-mini-btn:hover) {
+          color: var(--ui-text);
+          background: rgba(255, 255, 255, 0.08);
+        }
+        .smm-root :global(.flow-mini-btn.is-active) {
+          color: white;
+          background: color-mix(in srgb, var(--selection) 38%, transparent);
+          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--selection) 60%, transparent);
         }
 
         .smm-root :global(.edge-path) {
