@@ -17,6 +17,22 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v3.4',
+    title: 'Founder Access — the honest version',
+    date: 'May 2026',
+    commit: '1b33c34',
+    highlights: [
+      'Retired the "free forever" promise — see /founder-access for why',
+      'Beta signups now get Founder Access: half off Premium ($1.99/mo) forever',
+      'Plus a bigger free tier you keep — 8 maps, 150 nodes, 40 voice minutes',
+      'New /pricing page lays out the three tiers side by side',
+      'Polish: icon-only delete on Tree cards, wider cards, brighter edges',
+      'Fun SVG icons added to every feature card on the home page',
+    ],
+    squishyNote:
+      'I changed my mind about "forever," darling. I prefer "honestly."',
+  },
+  {
     version: 'v3.3',
     title: 'Notes, images, and attachments — everywhere',
     date: 'May 2026',
