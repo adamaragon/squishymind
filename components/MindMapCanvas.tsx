@@ -6114,10 +6114,14 @@ export default function MindMapCanvas({
 
         /* Minimap — top-right corner. Was bottom-right, but the Squishy
            voice bot in the bottom-right covered it; moving it up keeps
-           both surfaces clickable without overlap. */
+           both surfaces clickable without overlap. Explicit bottom/left
+           auto resets the .panel inheritance chain so the move sticks
+           even if a cached stylesheet has the old bottom rule. */
         .smm-minimap {
           top: 16px;
           right: 16px;
+          bottom: auto;
+          left: auto;
           width: 200px;
           height: 140px;
           padding: 0;

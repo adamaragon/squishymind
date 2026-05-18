@@ -1,5 +1,6 @@
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ShareButtons from '@/components/ShareButtons';
 import {
   shipped,
   roadmap,
@@ -64,6 +65,12 @@ export default function ChangelogPage() {
             ))}
           </ol>
         </section>
+
+        <ShareButtons
+          heading="Found something fun in here?"
+          blurb="Share what's new — Squishy thrives on word of mouth."
+          text="SquishyMind keeps shipping — check out what's new"
+        />
       </main>
       <Footer />
 

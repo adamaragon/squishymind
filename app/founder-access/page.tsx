@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ShareButtons from '@/components/ShareButtons';
 import PageViewTracker from '@/components/PageViewTracker';
 
 export const metadata = {
@@ -129,6 +130,12 @@ export default function FounderAccessPage() {
             </p>
           </div>
         </article>
+
+        <ShareButtons
+          heading="Spread the founder offer."
+          blurb="Beta is ending soon. Send this to anyone who'd want $1.99/mo for life."
+          text="SquishyMind is offering Founder Access during beta — $1.99/mo forever. Don't miss it →"
+        />
       </main>
       <Footer />
     </>

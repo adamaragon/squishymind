@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ShareButtons from '@/components/ShareButtons';
 import PageViewTracker from '@/components/PageViewTracker';
 
 export const metadata = {
@@ -170,6 +171,12 @@ export default function PricingPage() {
             .
           </p>
         </section>
+
+        <ShareButtons
+          heading="Know someone who'd grab Founder pricing?"
+          blurb="Share this page — it'll save them money for life."
+          text="SquishyMind has $1.99/mo Founder pricing during beta — limited time"
+        />
       </main>
       <Footer />
     </>

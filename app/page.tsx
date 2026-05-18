@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ShareButtons from '@/components/ShareButtons';
 import BetaBanner from '@/components/BetaBanner';
 import SquishyCTA from '@/components/SquishyCTA';
 import RecentShipped from '@/components/RecentShipped';
@@ -206,6 +207,12 @@ export default function HomePage() {
             We promise this is the last time we&apos;ll ask.
           </p>
         </section>
+
+        <ShareButtons
+          heading="Like SquishyMind? Pass it on."
+          blurb="Beam the squishy brain to a friend on whatever they use — X, WhatsApp, Messenger, email…"
+          text="Your brain, but squishier. Try SquishyMind →"
+        />
       </main>
 
       <Footer />
