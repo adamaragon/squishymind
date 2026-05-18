@@ -17,6 +17,21 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v4.0',
+    title: 'Flow chip lands in Tree view',
+    date: 'May 2026',
+    commit: 'a411885',
+    highlights: [
+      'Tree cards now have the same flow chip the canvas does — click to set the parent-edge direction, drag to link to another card',
+      'Drag-ghost trails the cursor as a dashed curve so you can aim a new link without guessing',
+      'Inline picker opens above the dropped-onto card so you can pick → ← ↔ — without leaving the tree',
+      'Same guards as the canvas — can\'t link to your direct parent or child (those already have a tree edge)',
+      'Source card glows accent-coloured while you drag, so it\'s obvious where the link is coming from',
+    ],
+    squishyNote:
+      'Tree view finally feels as alive as the canvas, darling. I was waiting.',
+  },
+  {
     version: 'v3.9',
     title: 'Flow you can see from across the room',
     date: 'May 2026',
