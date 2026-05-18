@@ -10,6 +10,7 @@ import {
   presenceChannelName,
   type PresenceState,
 } from '@/lib/realtime';
+import { track } from '@/lib/track';
 
 export type MindMapCanvasProps = {
   mindmapId: string;
@@ -1186,6 +1187,12 @@ export default function MindMapCanvas({
         renderDetailImage(n, imageHolder);
         scheduleSave();
         renderAll();
+        track('image_added', {
+          mindmap_id: mindmapId,
+          node_id: n.id,
+          size: file.size,
+          type: file.type,
+        });
         // After success the button label should say "Replace" — re-query
         // post-renderAll since renderAll rebuilt the detail panel and the
         // old btn ref may be stale.
@@ -1390,6 +1397,12 @@ export default function MindMapCanvas({
             size: body.size,
           },
         ];
+        track('attachment_added', {
+          mindmap_id: mindmapId,
+          node_id: n.id,
+          size: body.size,
+          type: body.type,
+        });
         renderDetailAttachments(n, attachHolder);
         // Empty section was gated above — once a first attachment lands,
         // make sure the section is in the DOM.
@@ -1582,6 +1595,10 @@ export default function MindMapCanvas({
               return;
             }
             ta.value = '';
+            track('comment_posted', {
+              mindmap_id: mindmapId,
+              node_id: nodeId,
+            });
             await refreshComments(nodeId);
           } finally {
             post.disabled = ta.value.trim().length === 0;
@@ -1773,6 +1790,11 @@ export default function MindMapCanvas({
             undo: () => {
               for (const id of createdIds) deleteNodeById(id);
             },
+          });
+          track('ai_expand_used', {
+            mindmap_id: mindmapId,
+            parent_node_id: parentNode.id,
+            added: createdIds.length,
           });
         }
       });

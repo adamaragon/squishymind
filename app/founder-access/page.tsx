@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageViewTracker from '@/components/PageViewTracker';
 
 export const metadata = {
   title: 'Founder Access — SquishyMind',
@@ -11,6 +12,7 @@ export const metadata = {
 export default function FounderAccessPage() {
   return (
     <>
+      <PageViewTracker event="founder_access_visited" />
       <Header />
       <main className="px-6">
         {/* Hero */}

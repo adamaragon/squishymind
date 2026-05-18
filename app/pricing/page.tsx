@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageViewTracker from '@/components/PageViewTracker';
 
 export const metadata = {
   title: 'Pricing — SquishyMind',
@@ -90,6 +91,7 @@ const BADGE_TONES: Record<NonNullable<Tier['badgeTone']>, string> = {
 export default function PricingPage() {
   return (
     <>
+      <PageViewTracker event="pricing_visited" />
       <Header />
       <main className="px-6">
         {/* Hero */}

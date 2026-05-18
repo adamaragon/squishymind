@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { Visibility } from '@/lib/types';
+import { track } from '@/lib/track';
 
 type Props = {
   mindmapId: string;
@@ -102,6 +103,11 @@ export default function ShareDialog({
   function copy() {
     navigator.clipboard.writeText(shareUrl);
     setCopied(true);
+    track('share_link_copied', {
+      mindmap_id: mindmapId,
+      visibility,
+      via_slug: !!slug,
+    });
     setTimeout(() => setCopied(false), 2000);
   }
 
