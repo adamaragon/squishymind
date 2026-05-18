@@ -707,7 +707,7 @@ export default function TreeView({
                       className="tr-flow-arrow tr-flow-arrow-fwd"
                       pointerEvents="none"
                     >
-                      <path d="M -9 -6 L 7 0 L -9 6 Z" />
+                      <path d="M -8 -6 L 4 0 L -8 6" />
                       <animateMotion
                         dur="5s"
                         repeatCount="indefinite"
@@ -728,7 +728,7 @@ export default function TreeView({
                       className="tr-flow-arrow tr-flow-arrow-back"
                       pointerEvents="none"
                     >
-                      <path d="M -9 -6 L 7 0 L -9 6 Z" />
+                      <path d="M -8 -6 L 4 0 L -8 6" />
                       <animateMotion
                         dur="5s"
                         repeatCount="indefinite"
@@ -784,7 +784,7 @@ export default function TreeView({
                       className="tr-flow-arrow tr-flow-arrow-link tr-flow-arrow-fwd"
                       pointerEvents="none"
                     >
-                      <path d="M -9 -6 L 7 0 L -9 6 Z" />
+                      <path d="M -8 -6 L 4 0 L -8 6" />
                       <animateMotion
                         dur="5s"
                         repeatCount="indefinite"
@@ -805,7 +805,7 @@ export default function TreeView({
                       className="tr-flow-arrow tr-flow-arrow-link tr-flow-arrow-back"
                       pointerEvents="none"
                     >
-                      <path d="M -9 -6 L 7 0 L -9 6 Z" />
+                      <path d="M -8 -6 L 4 0 L -8 6" />
                       <animateMotion
                         dur="5s"
                         repeatCount="indefinite"
@@ -880,10 +880,21 @@ export default function TreeView({
             onDelete(id);
           }}
           onClose={() => setDetailNodeId(null)}
-          allNodes={Object.values(data.nodes).map((n) => ({
-            id: n.id,
-            label: n.label,
-          }))}
+          allNodes={(() => {
+            // Exclude the focused node, its direct parent, and its direct
+            // children — those already share a structural edge so a link
+            // would render a second redundant line.
+            const focused = data.nodes[detailNodeId];
+            const childIds = new Set(data.childIndex[detailNodeId] || []);
+            return Object.values(data.nodes)
+              .filter(
+                (n) =>
+                  n.id !== detailNodeId &&
+                  n.id !== focused?.parentId &&
+                  !childIds.has(n.id),
+              )
+              .map((n) => ({ id: n.id, label: n.label }));
+          })()}
         />
       )}
 
@@ -1095,29 +1106,34 @@ export default function TreeView({
           animation: tr-flow-pulse 5s linear infinite;
         }
         @keyframes tr-flow-pulse {
-          0%   { opacity: 1; }
-          35%  { opacity: 1; }
+          0%   { opacity: 0.6; }
+          35%  { opacity: 0.6; }
           45%  { opacity: 0; }
           100% { opacity: 0; }
         }
+        /* Stroked chevron (open V) — matches the canvas's lighter
+           treatment so neither view feels heavier than the other. */
         .tr-flow-arrow path {
-          stroke: none;
+          fill: none;
+          stroke-width: 2.5;
+          stroke-linecap: round;
+          stroke-linejoin: round;
         }
         .tr-flow-arrow-fwd path {
-          fill: #10b981;
-          filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.6));
+          stroke: #10b981;
+          filter: drop-shadow(0 0 3px rgba(16, 185, 129, 0.5));
         }
         .tr-flow-arrow-back path {
-          fill: #f59e0b;
-          filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.6));
+          stroke: #f59e0b;
+          filter: drop-shadow(0 0 3px rgba(245, 158, 11, 0.5));
         }
         .tr-flow-arrow-link.tr-flow-arrow-fwd path {
-          fill: #6ee7b7;
-          filter: drop-shadow(0 0 4px rgba(110, 231, 183, 0.55));
+          stroke: #6ee7b7;
+          filter: drop-shadow(0 0 3px rgba(110, 231, 183, 0.45));
         }
         .tr-flow-arrow-link.tr-flow-arrow-back path {
-          fill: #fcd34d;
-          filter: drop-shadow(0 0 4px rgba(252, 211, 77, 0.55));
+          stroke: #fcd34d;
+          filter: drop-shadow(0 0 3px rgba(252, 211, 77, 0.45));
         }
         @media (prefers-reduced-motion: reduce) {
           .tr-flow-arrow { display: none; }

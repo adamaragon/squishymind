@@ -752,10 +752,20 @@ export default function OutlineView({
             onDelete(id);
           }}
           onClose={() => setDetailNodeId(null)}
-          allNodes={Object.values(data.nodes).map((n) => ({
-            id: n.id,
-            label: n.label,
-          }))}
+          allNodes={(() => {
+            // Exclude the focused node, its direct parent, and its
+            // direct children — those already share a structural edge.
+            const focused = data.nodes[detailNodeId];
+            const childIds = new Set(data.childIndex[detailNodeId] || []);
+            return Object.values(data.nodes)
+              .filter(
+                (n) =>
+                  n.id !== detailNodeId &&
+                  n.id !== focused?.parentId &&
+                  !childIds.has(n.id),
+              )
+              .map((n) => ({ id: n.id, label: n.label }));
+          })()}
         />
       )}
 

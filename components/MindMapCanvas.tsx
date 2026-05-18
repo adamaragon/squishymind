@@ -1123,11 +1123,19 @@ export default function MindMapCanvas({
         section.appendChild(list);
       }
 
-      // Add-link picker (editor only)
+      // Add-link picker (editor only). Excludes self, already-linked
+      // targets, and direct parent + direct children (the structural
+      // tree edge already connects those, so a link would draw a second
+      // redundant line on top).
       if (!readonlyRef.current) {
         const linkedIds = new Set(links.map((l) => l.targetId));
+        const directChildren = new Set(state.childIndex[n.id] || []);
         const targets = Object.values(state.nodes).filter(
-          (o) => o.id !== n.id && !linkedIds.has(o.id),
+          (o) =>
+            o.id !== n.id &&
+            !linkedIds.has(o.id) &&
+            o.id !== n.parentId &&
+            !directChildren.has(o.id),
         );
         if (targets.length > 0) {
           const pick = document.createElement('select');
@@ -2266,6 +2274,15 @@ export default function MindMapCanvas({
               const targetId = targetEl?.dataset.id || '';
               if (!targetId || targetId === owner.id) return;
 
+              // Block direct parent and direct children — the structural
+              // tree edge already connects them, so a link here would
+              // render as a second redundant line. Users who want
+              // bidirectional flow with a parent should toggle the
+              // parent-edge's flowDirection to 'both' instead.
+              const targetNode = state.nodes[targetId];
+              if (owner.parentId === targetId) return;
+              if (targetNode && targetNode.parentId === owner.id) return;
+
               // Don't duplicate existing links.
               const existing = (owner.links || []).some(
                 (l) => l.targetId === targetId,
@@ -2441,7 +2458,7 @@ export default function MindMapCanvas({
         //     the line wiggle frame-perfectly.
         if (flow === 'forward' || flow === 'both') {
           html += `<g class="flow-arrow flow-arrow-fwd" pointer-events="none">`
-            + `<path d="M -9 -6 L 7 0 L -9 6 Z" />`
+            + `<path d="M -8 -6 L 4 0 L -8 6" />`
             + `<animateMotion dur="5s" repeatCount="indefinite" rotate="auto" keyTimes="0;0.35;1" keyPoints="0;1;1" calcMode="linear">`
             + `<mpath href="#${pathId}" />`
             + `</animateMotion>`
@@ -2449,7 +2466,7 @@ export default function MindMapCanvas({
         }
         if (flow === 'backward' || flow === 'both') {
           html += `<g class="flow-arrow flow-arrow-back" pointer-events="none">`
-            + `<path d="M -9 -6 L 7 0 L -9 6 Z" />`
+            + `<path d="M -8 -6 L 4 0 L -8 6" />`
             + `<animateMotion dur="5s" repeatCount="indefinite" rotate="auto-reverse" keyTimes="0;0.35;1" keyPoints="1;0;0" calcMode="linear">`
             + `<mpath href="#${pathId}" />`
             + `</animateMotion>`
@@ -2489,7 +2506,7 @@ export default function MindMapCanvas({
           // variants use lighter tints of the direction colours.
           if (flow === 'forward' || flow === 'both') {
             html += `<g class="flow-arrow flow-arrow-link flow-arrow-fwd" pointer-events="none">`
-              + `<path d="M -9 -6 L 7 0 L -9 6 Z" />`
+              + `<path d="M -8 -6 L 4 0 L -8 6" />`
               + `<animateMotion dur="5s" repeatCount="indefinite" rotate="auto" keyTimes="0;0.35;1" keyPoints="0;1;1" calcMode="linear">`
               + `<mpath href="#${linkId}" />`
               + `</animateMotion>`
@@ -2497,7 +2514,7 @@ export default function MindMapCanvas({
           }
           if (flow === 'backward' || flow === 'both') {
             html += `<g class="flow-arrow flow-arrow-link flow-arrow-back" pointer-events="none">`
-              + `<path d="M -9 -6 L 7 0 L -9 6 Z" />`
+              + `<path d="M -8 -6 L 4 0 L -8 6" />`
               + `<animateMotion dur="5s" repeatCount="indefinite" rotate="auto-reverse" keyTimes="0;0.35;1" keyPoints="1;0;0" calcMode="linear">`
               + `<mpath href="#${linkId}" />`
               + `</animateMotion>`
@@ -4769,29 +4786,37 @@ export default function MindMapCanvas({
           animation: smm-flow-pulse 5s linear infinite;
         }
         @keyframes smm-flow-pulse {
-          0%   { opacity: 1; }
-          35%  { opacity: 1; }
+          /* Peak opacity 0.6 — calmer than full 1.0; the arrows now read
+             as "passing through" rather than "demanding attention". */
+          0%   { opacity: 0.6; }
+          35%  { opacity: 0.6; }
           45%  { opacity: 0; }
           100% { opacity: 0; }
         }
+        /* Stroked chevron (open V) instead of filled triangle — lighter
+           visual weight that doesn't compete with the line beneath. The
+           round line-joins/caps keep it polished at the small size. */
         .smm-root :global(.flow-arrow path) {
-          stroke: none;
+          fill: none;
+          stroke-width: 2.5;
+          stroke-linecap: round;
+          stroke-linejoin: round;
         }
         .smm-root :global(.flow-arrow-fwd path) {
-          fill: #10b981;
-          filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.6));
+          stroke: #10b981;
+          filter: drop-shadow(0 0 3px rgba(16, 185, 129, 0.5));
         }
         .smm-root :global(.flow-arrow-back path) {
-          fill: #f59e0b;
-          filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.6));
+          stroke: #f59e0b;
+          filter: drop-shadow(0 0 3px rgba(245, 158, 11, 0.5));
         }
         .smm-root :global(.flow-arrow-link.flow-arrow-fwd path) {
-          fill: #6ee7b7;
-          filter: drop-shadow(0 0 4px rgba(110, 231, 183, 0.55));
+          stroke: #6ee7b7;
+          filter: drop-shadow(0 0 3px rgba(110, 231, 183, 0.45));
         }
         .smm-root :global(.flow-arrow-link.flow-arrow-back path) {
-          fill: #fcd34d;
-          filter: drop-shadow(0 0 4px rgba(252, 211, 77, 0.55));
+          stroke: #fcd34d;
+          filter: drop-shadow(0 0 3px rgba(252, 211, 77, 0.45));
         }
         /* In-detail mode dims the arrows so the focused card stays the
            focal point. (SMIL <animateMotion> can't be CSS-paused, so we

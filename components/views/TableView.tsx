@@ -637,10 +637,19 @@ export default function TableView({
             applyDeleteNode(id);
           }}
           onClose={() => setDetailNodeId(null)}
-          allNodes={Object.values(data.nodes).map((n) => ({
-            id: n.id,
-            label: n.label,
-          }))}
+          allNodes={(() => {
+            // Exclude the focused node, its direct parent, and its
+            // direct children — those already share a structural edge.
+            const childIds = new Set(data.childIndex[detailNode.id] || []);
+            return Object.values(data.nodes)
+              .filter(
+                (n) =>
+                  n.id !== detailNode.id &&
+                  n.id !== detailNode.parentId &&
+                  !childIds.has(n.id),
+              )
+              .map((n) => ({ id: n.id, label: n.label }));
+          })()}
         />
       )}
 
