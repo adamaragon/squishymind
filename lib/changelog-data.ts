@@ -17,6 +17,21 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v3.6',
+    title: 'Attachments on canvas, click-to-edit in Table',
+    date: 'May 2026',
+    commit: '0a60175',
+    highlights: [
+      'Canvas detail card now handles file attachments — PDF, doc, zip, audio, video (10 MB)',
+      'Drag any file onto a node to attach it; images still go to the image slot',
+      'Click any cell in Table view to open the full detail panel',
+      'Type-coded icons — 📕 PDF, 🗄 zip, 📊 csv, 🎵 audio, 🎬 video',
+      'Attachment rows live-tint with the node\'s colour swatch',
+    ],
+    squishyNote:
+      'Drop the whole binder on me, darling. I\'ll keep it neat.',
+  },
+  {
     version: 'v3.5',
     title: 'Templates, properly furnished',
     date: 'May 2026',
