@@ -2420,17 +2420,40 @@ export default function MindMapCanvas({
           flow === 'backward' || flow === 'both'
             ? ' marker-start="url(#arrow-start-tree)"'
             : '';
-        html += `<path class="edge-path${highlight}" d="${d}" data-from="${p.id}" data-to="${n.id}" data-phase="${phase}"${markerStart}${markerEnd} />`;
-        // Flow markers: actual triangle arrows riding the curve via SVG
-        // <animateMotion>. Bigger than the line stroke (18×12 px) so
-        // direction reads at a glance. Forward = emerald, backward =
-        // amber. 'both' renders one of each. 'none' renders no arrow.
-        // keyPoints="1;0" reverses the motion for backward.
+        // Each edge path gets a stable id so the flow-arrow's
+        // <animateMotion><mpath/> can reference it. mpath is a LIVE
+        // reference — when the breathing wiggle updates the path's d
+        // attribute every frame, the arrow's motion path updates too,
+        // so the arrow stays glued to the actual curve.
+        const pathId = `smm-edge-${p.id}-${n.id}`;
+        html += `<path id="${pathId}" class="edge-path${highlight}" d="${d}" data-from="${p.id}" data-to="${n.id}" data-phase="${phase}"${markerStart}${markerEnd} />`;
+        // Flow markers: triangle arrows riding the curve.
+        //   - 5s cycle total: ~1.75s slide + ~0.5s fade-out + ~2.75s
+        //     pause. Slower + pulsed instead of a constant stream so the
+        //     motion reads as a discrete "trip" rather than a moving
+        //     dashed line.
+        //   - Forward uses rotate="auto"; backward uses "auto-reverse"
+        //     so the triangle TIP points in the direction of motion,
+        //     not against it.
+        //   - keyPoints picks the traversal direction along the path:
+        //     0→1 forward, 1→0 backward.
+        //   - mpath references the structural path so the arrow follows
+        //     the line wiggle frame-perfectly.
         if (flow === 'forward' || flow === 'both') {
-          html += `<g class="flow-arrow flow-arrow-fwd" pointer-events="none"><path d="M -9 -6 L 7 0 L -9 6 Z" /><animateMotion dur="2.6s" repeatCount="indefinite" rotate="auto" path="${d}" /></g>`;
+          html += `<g class="flow-arrow flow-arrow-fwd" pointer-events="none">`
+            + `<path d="M -9 -6 L 7 0 L -9 6 Z" />`
+            + `<animateMotion dur="5s" repeatCount="indefinite" rotate="auto" keyTimes="0;0.35;1" keyPoints="0;1;1" calcMode="linear">`
+            + `<mpath href="#${pathId}" />`
+            + `</animateMotion>`
+            + `</g>`;
         }
         if (flow === 'backward' || flow === 'both') {
-          html += `<g class="flow-arrow flow-arrow-back" pointer-events="none"><path d="M -9 -6 L 7 0 L -9 6 Z" /><animateMotion dur="2.6s" repeatCount="indefinite" rotate="auto" path="${d}" keyPoints="1;0" keyTimes="0;1" calcMode="linear" /></g>`;
+          html += `<g class="flow-arrow flow-arrow-back" pointer-events="none">`
+            + `<path d="M -9 -6 L 7 0 L -9 6 Z" />`
+            + `<animateMotion dur="5s" repeatCount="indefinite" rotate="auto-reverse" keyTimes="0;0.35;1" keyPoints="1;0;0" calcMode="linear">`
+            + `<mpath href="#${pathId}" />`
+            + `</animateMotion>`
+            + `</g>`;
         }
       });
 
@@ -2460,15 +2483,25 @@ export default function MindMapCanvas({
             flow === 'backward' || flow === 'both'
               ? ' marker-start="url(#arrow-start-link)"'
               : '';
-          html += `<path class="edge-path edge-link${highlight}" d="${d}" data-from="${n.id}" data-to="${lk.targetId}" data-phase="${phase}" data-link="1"${markerStart}${markerEnd} />`;
-          // Same traveling-arrow pattern for links; link variants use
-          // lighter (paler) tints of the same direction colours so a link
-          // arrow doesn't get visually confused with a tree edge arrow.
+          const linkId = `smm-link-${n.id}-${lk.targetId}`;
+          html += `<path id="${linkId}" class="edge-path edge-link${highlight}" d="${d}" data-from="${n.id}" data-to="${lk.targetId}" data-phase="${phase}" data-link="1"${markerStart}${markerEnd} />`;
+          // Same pulsed traveling-arrow treatment for links; link
+          // variants use lighter tints of the direction colours.
           if (flow === 'forward' || flow === 'both') {
-            html += `<g class="flow-arrow flow-arrow-link flow-arrow-fwd" pointer-events="none"><path d="M -9 -6 L 7 0 L -9 6 Z" /><animateMotion dur="2.6s" repeatCount="indefinite" rotate="auto" path="${d}" /></g>`;
+            html += `<g class="flow-arrow flow-arrow-link flow-arrow-fwd" pointer-events="none">`
+              + `<path d="M -9 -6 L 7 0 L -9 6 Z" />`
+              + `<animateMotion dur="5s" repeatCount="indefinite" rotate="auto" keyTimes="0;0.35;1" keyPoints="0;1;1" calcMode="linear">`
+              + `<mpath href="#${linkId}" />`
+              + `</animateMotion>`
+              + `</g>`;
           }
           if (flow === 'backward' || flow === 'both') {
-            html += `<g class="flow-arrow flow-arrow-link flow-arrow-back" pointer-events="none"><path d="M -9 -6 L 7 0 L -9 6 Z" /><animateMotion dur="2.6s" repeatCount="indefinite" rotate="auto" path="${d}" keyPoints="1;0" keyTimes="0;1" calcMode="linear" /></g>`;
+            html += `<g class="flow-arrow flow-arrow-link flow-arrow-back" pointer-events="none">`
+              + `<path d="M -9 -6 L 7 0 L -9 6 Z" />`
+              + `<animateMotion dur="5s" repeatCount="indefinite" rotate="auto-reverse" keyTimes="0;0.35;1" keyPoints="1;0;0" calcMode="linear">`
+              + `<mpath href="#${linkId}" />`
+              + `</animateMotion>`
+              + `</g>`;
           }
         }
       }
@@ -4712,15 +4745,35 @@ export default function MindMapCanvas({
           opacity: 0.75;
         }
         /* Flow markers — actual triangle arrows riding the edge curve via
-           SVG <animateMotion>. Sized 16×12 (bigger than the 2px line
-           stroke) so direction reads at a glance. Per-direction colours
-           are part of the system vocabulary now:
-             forward  = emerald   (#10b981)
-             backward = amber     (#f59e0b)
-             both     = one of each, so a bidirectional edge is visually
-                        two-toned and unambiguous
-           Link arrows use slightly desaturated tints so they don't
-           compete with tree-edge arrows in a busy map. */
+           SVG <animateMotion><mpath>. mpath references the structural
+           edge path id, so the arrow tracks the live wiggling curve
+           frame-by-frame (path attribute would have been a static
+           snapshot at render time and the arrow would have drifted off
+           during wiggle peaks).
+
+           Cycle is now PULSED — the arrow snaps in at the start, slides
+           to the end during the first ~35% of the cycle, then fades out
+           and the rest of the cycle is empty space before the next
+           trip. Less constant-stream visual noise, easier to scan.
+           5s total = ~1.75s motion + ~0.5s fade + ~2.75s pause.
+
+           Per-direction palette:
+             forward  = emerald   (#10b981) · rotate="auto"
+             backward = amber     (#f59e0b) · rotate="auto-reverse"
+                        so the triangle TIP points in the direction of
+                        motion instead of against it.
+             both     = one of each, two-toned + unambiguous.
+           Link arrows use desaturated tints so they don't compete with
+           tree-edge arrows on the same canvas. */
+        .smm-root :global(.flow-arrow) {
+          animation: smm-flow-pulse 5s linear infinite;
+        }
+        @keyframes smm-flow-pulse {
+          0%   { opacity: 1; }
+          35%  { opacity: 1; }
+          45%  { opacity: 0; }
+          100% { opacity: 0; }
+        }
         .smm-root :global(.flow-arrow path) {
           stroke: none;
         }

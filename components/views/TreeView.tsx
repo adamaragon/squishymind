@@ -398,6 +398,9 @@ export default function TreeView({
     d: string;
     colorIdx: number;
     key: string;
+    /** DOM id for the path. animateMotion's <mpath href> references this
+     *  so the flow arrows track the live edge curve. */
+    pathId: string;
     isHighlight: boolean;
     /** Direction of flow — drives arrowhead placement. */
     flow: 'forward' | 'backward' | 'both' | 'none';
@@ -426,6 +429,7 @@ export default function TreeView({
         d: `M ${x1} ${y1} C ${cx} ${y1}, ${cx} ${y2}, ${x2} ${y2}`,
         colorIdx: parentNode?.colorIdx ?? 0,
         key: `${parentId}->${childId}`,
+        pathId: `tr-edge-${parentId}-${childId}`,
         isHighlight,
         flow: data.nodes[childId]?.flowDirection || 'forward',
       });
@@ -438,6 +442,8 @@ export default function TreeView({
   const linkPaths: Array<{
     d: string;
     key: string;
+    /** DOM id, used by animateMotion <mpath href>. */
+    pathId: string;
     isHighlight: boolean;
     flow: 'forward' | 'backward' | 'both' | 'none';
   }> = [];
@@ -468,6 +474,7 @@ export default function TreeView({
       linkPaths.push({
         d: `M ${x1} ${y1} C ${cx} ${y1}, ${cx} ${y2}, ${x2} ${y2}`,
         key: `link:${n.id}->${lk.targetId}`,
+        pathId: `tr-link-${n.id}-${lk.targetId}`,
         isHighlight,
         flow: lk.flowDirection || 'forward',
       });
@@ -671,6 +678,7 @@ export default function TreeView({
                 return (
                   <path
                     key={e.key}
+                    id={e.pathId}
                     d={e.d}
                     fill="none"
                     stroke={`url(#tr-edge${e.isHighlight ? '-hl' : ''}-${idx})`}
@@ -683,9 +691,12 @@ export default function TreeView({
                 );
               })}
               {/* Animated flow markers for tree edges — actual triangle
-                  arrows riding the curve via SVG <animateMotion>. Per-
-                  direction colour: forward = emerald, backward = amber.
-                  'both' renders one of each. 'none' renders nothing. */}
+                  arrows riding the curve via SVG <animateMotion> +
+                  <mpath> referencing the structural path id, so the
+                  arrow tracks the live curve. Pulsed cycle: ~1.75s
+                  slide → 0.5s fade → 2.75s pause. Forward uses
+                  rotate="auto"; backward uses "auto-reverse" so the
+                  triangle tip points in the direction of motion. */}
               {edgePaths.map((e) => {
                 if (e.flow === 'none') return null;
                 const out: React.ReactNode[] = [];
@@ -698,11 +709,15 @@ export default function TreeView({
                     >
                       <path d="M -9 -6 L 7 0 L -9 6 Z" />
                       <animateMotion
-                        dur="2.6s"
+                        dur="5s"
                         repeatCount="indefinite"
                         rotate="auto"
-                        path={e.d}
-                      />
+                        keyTimes="0;0.35;1"
+                        keyPoints="0;1;1"
+                        calcMode="linear"
+                      >
+                        <mpath href={`#${e.pathId}`} />
+                      </animateMotion>
                     </g>,
                   );
                 }
@@ -715,14 +730,15 @@ export default function TreeView({
                     >
                       <path d="M -9 -6 L 7 0 L -9 6 Z" />
                       <animateMotion
-                        dur="2.6s"
+                        dur="5s"
                         repeatCount="indefinite"
-                        rotate="auto"
-                        path={e.d}
-                        keyPoints="1;0"
-                        keyTimes="0;1"
+                        rotate="auto-reverse"
+                        keyTimes="0;0.35;1"
+                        keyPoints="1;0;0"
                         calcMode="linear"
-                      />
+                      >
+                        <mpath href={`#${e.pathId}`} />
+                      </animateMotion>
                     </g>,
                   );
                 }
@@ -743,6 +759,7 @@ export default function TreeView({
                 return (
                   <path
                     key={lk.key}
+                    id={lk.pathId}
                     d={lk.d}
                     fill="none"
                     stroke="#cbd5e1"
@@ -754,7 +771,7 @@ export default function TreeView({
                   />
                 );
               })}
-              {/* Same traveling-arrow treatment for link edges, with
+              {/* Same pulsed traveling-arrow treatment for links, with
                   lighter tints so a link arrow is distinguishable from a
                   tree-edge arrow if the two cross over each other. */}
               {linkPaths.map((lk) => {
@@ -769,11 +786,15 @@ export default function TreeView({
                     >
                       <path d="M -9 -6 L 7 0 L -9 6 Z" />
                       <animateMotion
-                        dur="2.6s"
+                        dur="5s"
                         repeatCount="indefinite"
                         rotate="auto"
-                        path={lk.d}
-                      />
+                        keyTimes="0;0.35;1"
+                        keyPoints="0;1;1"
+                        calcMode="linear"
+                      >
+                        <mpath href={`#${lk.pathId}`} />
+                      </animateMotion>
                     </g>,
                   );
                 }
@@ -786,14 +807,15 @@ export default function TreeView({
                     >
                       <path d="M -9 -6 L 7 0 L -9 6 Z" />
                       <animateMotion
-                        dur="2.6s"
+                        dur="5s"
                         repeatCount="indefinite"
-                        rotate="auto"
-                        path={lk.d}
-                        keyPoints="1;0"
-                        keyTimes="0;1"
+                        rotate="auto-reverse"
+                        keyTimes="0;0.35;1"
+                        keyPoints="1;0;0"
                         calcMode="linear"
-                      />
+                      >
+                        <mpath href={`#${lk.pathId}`} />
+                      </animateMotion>
                     </g>,
                   );
                 }
@@ -1063,8 +1085,21 @@ export default function TreeView({
         }
 
         /* Flow markers — actual triangle arrows riding the curve via SVG
-           <animateMotion>. Per-direction colour matches the canvas so the
-           two views speak the same visual language. */
+           <animateMotion> + <mpath>. Pulsed: slide for the first 35 %
+           of the 5s cycle, fade out, then pause before the next trip.
+           Per-direction colour matches the canvas so the two views
+           speak the same visual language.
+           Backward direction uses rotate="auto-reverse" upstream so the
+           triangle tip points in the direction of motion. */
+        .tr-flow-arrow {
+          animation: tr-flow-pulse 5s linear infinite;
+        }
+        @keyframes tr-flow-pulse {
+          0%   { opacity: 1; }
+          35%  { opacity: 1; }
+          45%  { opacity: 0; }
+          100% { opacity: 0; }
+        }
         .tr-flow-arrow path {
           stroke: none;
         }
