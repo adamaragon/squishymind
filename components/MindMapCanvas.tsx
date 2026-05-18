@@ -4684,11 +4684,13 @@ export default function MindMapCanvas({
           opacity: 1;
         }
         /* Link edges — non-structural connections between any two nodes.
-           Distinct from tree edges via the dashed stroke + cooler hue so
-           a glance separates "structure" from "cross-reference". */
+           Solid stroke (was dashed; the traveling arrows + colour now
+           do the work of telling links apart from tree edges, dashes
+           on top of arrows read as visual noise). The cooler selection
+           tint + thinner stroke remain the still-image differentiators
+           from tree edges. */
         .smm-root :global(.edge-path.edge-link) {
           stroke: var(--selection);
-          stroke-dasharray: 6 5;
           stroke-width: 1.8;
           opacity: 0.55;
         }

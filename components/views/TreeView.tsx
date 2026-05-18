@@ -748,7 +748,6 @@ export default function TreeView({
                     stroke="#cbd5e1"
                     strokeOpacity={lk.isHighlight ? 0.85 : 0.45}
                     strokeWidth={lk.isHighlight ? 2.2 : 1.6}
-                    strokeDasharray="6 5"
                     strokeLinecap="round"
                     markerStart={markerStart}
                     markerEnd={markerEnd}
