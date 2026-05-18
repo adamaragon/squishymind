@@ -75,7 +75,6 @@ export default function TableView({
   onDataChange,
 }: Props) {
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
-  const [hintForCellId, setHintForCellId] = useState<string | null>(null);
   const [density, setDensity] = useState<'comfy' | 'compact'>('comfy');
   const [detailNodeId, setDetailNodeId] = useState<string | null>(null);
   // Local data state so detail-panel edits feel immediate. Resyncs when the
@@ -133,10 +132,9 @@ export default function TableView({
     return { totalNodes, leaves, branches, noted };
   }, [data, paths]);
 
-  function tryEdit(cellId: string) {
-    if (readonly) return;
-    setHintForCellId(cellId);
-    setTimeout(() => setHintForCellId((c) => (c === cellId ? null : c)), 2800);
+  function openNodeDetail(id: string, rowIdx: number) {
+    setSelectedRow(rowIdx);
+    setDetailNodeId(id);
   }
 
   void mindmapId;
@@ -212,10 +210,10 @@ export default function TableView({
             type="button"
             onClick={() => onSwitchView?.('canvas')}
             className="tv-canvas-btn"
-            title="Switch to the Canvas view to edit this map"
+            title="Switch to the wobbly spatial view"
           >
             <span aria-hidden>🧠</span>
-            Edit on Canvas
+            Open Canvas
           </button>
         </div>
       </div>
@@ -318,25 +316,39 @@ export default function TableView({
                       const node = data.nodes[id];
                       const isContinuation = colIdx < firstNew;
                       const isLeaf = colIdx === path.length - 1;
-                      const cellKey = `${rowIdx}-${colIdx}`;
                       const hasNote = !!node?.note?.trim();
                       const hasImage = !!node?.imageUrl;
                       const attachCount = node?.attachments?.length ?? 0;
                       const hasData = hasNote || hasImage || attachCount > 0;
+                      // Every cell is a click-target for the detail panel.
+                      // Continuation cells point at the same node as the row
+                      // above so clicking them is harmless (they just open
+                      // the panel for that same ancestor). Empty trailing
+                      // cells stay non-interactive.
                       return (
                         <td
                           key={colIdx}
                           className={[
                             'tv-cell',
+                            'tv-cell-clickable',
                             isContinuation ? 'tv-cell-continuation' : '',
                             isLeaf ? 'tv-cell-leaf' : '',
                           ]
                             .filter(Boolean)
                             .join(' ')}
-                          onDoubleClick={(e) => {
+                          onClick={(e) => {
                             e.stopPropagation();
-                            tryEdit(cellKey);
+                            openNodeDetail(id, rowIdx);
                           }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              openNodeDetail(id, rowIdx);
+                            }
+                          }}
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`Open details for ${node?.label || 'this node'}`}
                           title={node?.note || node?.label || ''}
                           data-depth={colIdx % 5}
                         >
@@ -374,25 +386,6 @@ export default function TableView({
                                   ◧{attachCount}
                                 </span>
                               )}
-                            </span>
-                          )}
-                          {!isContinuation && id && (
-                            <button
-                              type="button"
-                              className="tv-cell-detail-btn"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDetailNodeId(id);
-                              }}
-                              data-tip="Open details · note, image, attachments"
-                              aria-label="Open node details"
-                            >
-                              ⓘ
-                            </button>
-                          )}
-                          {hintForCellId === cellKey && (
-                            <span className="tv-cell-hint">
-                              Switch to Canvas to edit ↗
                             </span>
                           )}
                         </td>
@@ -1099,66 +1092,22 @@ export default function TableView({
           color: #f9a8d4;
           font-variant-numeric: tabular-nums;
         }
-        .tv-cell-detail-btn {
-          position: absolute;
-          right: 6px;
-          top: 6px;
-          width: 20px;
-          height: 20px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          background: rgba(15, 17, 36, 0.7);
-          color: var(--text-dim);
-          border: 1px solid var(--border);
-          border-radius: 50%;
-          font-size: 11px;
+        /* Every depth-cell is a click target for the detail panel. Show
+           a pointer cursor + a subtle inset highlight on hover so the
+           affordance is unambiguous. */
+        .tv-cell-clickable {
           cursor: pointer;
-          opacity: 0;
-          transform: scale(0.85);
-          transition: all 0.15s;
-          z-index: 2;
         }
-        .tv-cell:hover .tv-cell-detail-btn {
-          opacity: 1;
-          transform: scale(1);
+        .tv-cell-clickable:hover {
+          box-shadow: inset 2px 0 0 color-mix(in srgb, var(--accent-violet, #8b5cf6) 60%, transparent);
+          background: rgba(139, 92, 246, 0.05);
         }
-        .tv-cell-detail-btn:hover {
-          color: var(--text);
-          background: rgba(139, 92, 246, 0.2);
-          border-color: rgba(139, 92, 246, 0.5);
-          transform: scale(1.1);
+        .tv-cell-clickable:focus-visible {
+          outline: none;
+          box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent-violet, #8b5cf6) 60%, transparent);
         }
-
-        .tv-cell-hint {
-          position: absolute;
-          top: -34px;
-          left: 8px;
-          background: rgba(15, 17, 36, 0.95);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-          border: 1px solid var(--border-strong);
-          color: var(--text);
-          font-size: 10px;
-          font-style: normal;
-          font-weight: 500;
-          padding: 5px 10px;
-          border-radius: 6px;
-          white-space: nowrap;
-          z-index: 5;
-          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
-          pointer-events: none;
-          animation: tv-hint-in 0.18s ease;
-        }
-        @keyframes tv-hint-in {
-          from {
-            opacity: 0;
-            transform: translateY(4px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+        .tv-row.is-selected .tv-cell-clickable:hover {
+          background: rgba(236, 72, 153, 0.12);
         }
 
         /* Footer */
