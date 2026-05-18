@@ -682,6 +682,45 @@ export default function TreeView({
                   />
                 );
               })}
+              {/* Animated flow overlay for tree edges — dashed packets
+                  sliding along each edge in the indicated direction.
+                  Skipped when flow === 'none'. */}
+              {edgePaths.map((e) => {
+                if (e.flow === 'none') return null;
+                const colour = ACCENT_PALETTE[e.colorIdx % 5];
+                const out: React.ReactNode[] = [];
+                if (e.flow === 'forward' || e.flow === 'both') {
+                  out.push(
+                    <path
+                      key={`${e.key}-fwd`}
+                      d={e.d}
+                      fill="none"
+                      stroke={colour}
+                      strokeWidth={2.2}
+                      strokeLinecap="round"
+                      strokeDasharray="4 14"
+                      className="tr-flow tr-flow-fwd"
+                      pointerEvents="none"
+                    />,
+                  );
+                }
+                if (e.flow === 'backward' || e.flow === 'both') {
+                  out.push(
+                    <path
+                      key={`${e.key}-back`}
+                      d={e.d}
+                      fill="none"
+                      stroke={colour}
+                      strokeWidth={2.2}
+                      strokeLinecap="round"
+                      strokeDasharray="4 14"
+                      className="tr-flow tr-flow-back"
+                      pointerEvents="none"
+                    />,
+                  );
+                }
+                return out;
+              })}
               {/* Link edges — dashed, neutral colour, sit above tree edges
                   but below cards. Each gets its own arrow markers based
                   on the link's flow direction. */}
@@ -708,6 +747,44 @@ export default function TreeView({
                     markerEnd={markerEnd}
                   />
                 );
+              })}
+              {/* Flow overlay for link edges — same sliding-packets logic
+                  in a slightly brighter neutral so the motion reads on top
+                  of the dashed link line. */}
+              {linkPaths.map((lk) => {
+                if (lk.flow === 'none') return null;
+                const out: React.ReactNode[] = [];
+                if (lk.flow === 'forward' || lk.flow === 'both') {
+                  out.push(
+                    <path
+                      key={`${lk.key}-fwd`}
+                      d={lk.d}
+                      fill="none"
+                      stroke="#e2e8f0"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeDasharray="4 14"
+                      className="tr-flow tr-flow-fwd tr-flow-link"
+                      pointerEvents="none"
+                    />,
+                  );
+                }
+                if (lk.flow === 'backward' || lk.flow === 'both') {
+                  out.push(
+                    <path
+                      key={`${lk.key}-back`}
+                      d={lk.d}
+                      fill="none"
+                      stroke="#e2e8f0"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeDasharray="4 14"
+                      className="tr-flow tr-flow-back tr-flow-link"
+                      pointerEvents="none"
+                    />,
+                  );
+                }
+                return out;
               })}
             </svg>
 
@@ -970,6 +1047,32 @@ export default function TreeView({
         }
         .tr-edge-hl {
           filter: drop-shadow(0 0 6px currentColor);
+        }
+
+        /* Flow overlays — dashed packets sliding along the edge to make
+           direction visible at rest. Total dash period 4 + 14 = 18, so
+           the keyframe offset matches one full cycle. */
+        .tr-flow {
+          opacity: 0.7;
+        }
+        .tr-flow-link {
+          opacity: 0.8;
+        }
+        .tr-flow-fwd {
+          animation: tr-flow-fwd 2.4s linear infinite;
+        }
+        .tr-flow-back {
+          animation: tr-flow-back 2.4s linear infinite;
+        }
+        @keyframes tr-flow-fwd {
+          to { stroke-dashoffset: -18; }
+        }
+        @keyframes tr-flow-back {
+          to { stroke-dashoffset: 18; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .tr-flow-fwd,
+          .tr-flow-back { animation: none; }
         }
 
         /* ---- Hint footer ---- */

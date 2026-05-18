@@ -2220,7 +2220,9 @@ export default function MindMapCanvas({
       const sel = state.selectedId;
 
       // Tree edges (parent → child). Each child carries its own
-      // flowDirection (default 'forward'); arrows are picked accordingly.
+      // flowDirection (default 'forward'); arrows are picked accordingly,
+      // and an overlay path with stroke-dashoffset animation slides
+      // along the curve to show flow direction visually.
       Object.values(state.nodes).forEach((n) => {
         if (n.parentId == null) return;
         const p = state.nodes[n.parentId];
@@ -2240,6 +2242,16 @@ export default function MindMapCanvas({
             ? ' marker-start="url(#arrow-start-tree)"'
             : '';
         html += `<path class="edge-path${highlight}" d="${d}" data-from="${p.id}" data-to="${n.id}" data-phase="${phase}"${markerStart}${markerEnd} />`;
+        // Flow overlays: dashed packets sliding along the curve. One per
+        // direction; 'both' gets two. 'none' gets none. The overlay shares
+        // data-from/data-to so wiggleAllEdges keeps it locked to the
+        // breathing tree-edge path.
+        if (flow === 'forward' || flow === 'both') {
+          html += `<path class="edge-flow flow-fwd" d="${d}" data-from="${p.id}" data-to="${n.id}" data-phase="${phase}" pointer-events="none" />`;
+        }
+        if (flow === 'backward' || flow === 'both') {
+          html += `<path class="edge-flow flow-back" d="${d}" data-from="${p.id}" data-to="${n.id}" data-phase="${phase}" pointer-events="none" />`;
+        }
       });
 
       // Link edges. Each link is rendered from its OWNER node to the target
@@ -2269,6 +2281,13 @@ export default function MindMapCanvas({
               ? ' marker-start="url(#arrow-start-link)"'
               : '';
           html += `<path class="edge-path edge-link${highlight}" d="${d}" data-from="${n.id}" data-to="${lk.targetId}" data-phase="${phase}" data-link="1"${markerStart}${markerEnd} />`;
+          // Same overlay pattern for links — packets riding the dashed line.
+          if (flow === 'forward' || flow === 'both') {
+            html += `<path class="edge-flow edge-flow-link flow-fwd" d="${d}" data-from="${n.id}" data-to="${lk.targetId}" data-phase="${phase}" pointer-events="none" />`;
+          }
+          if (flow === 'backward' || flow === 'both') {
+            html += `<path class="edge-flow edge-flow-link flow-back" d="${d}" data-from="${n.id}" data-to="${lk.targetId}" data-phase="${phase}" pointer-events="none" />`;
+          }
         }
       }
 
@@ -4378,6 +4397,53 @@ export default function MindMapCanvas({
           fill: var(--selection);
           stroke: none;
           opacity: 0.75;
+        }
+        /* Flow overlay paths — small dashed packets that slide along the
+           curve via stroke-dashoffset animation, making direction visible
+           at a glance. Sits above the structural edge stroke (drawn after
+           in the SVG paint order). 'forward' / 'backward' classes pick
+           opposite animations; 'both' renders one of each, slightly out
+           of phase so they don't collide visually. */
+        .smm-root :global(.edge-flow) {
+          fill: none;
+          stroke: var(--edge);
+          stroke-width: 2.2;
+          stroke-linecap: round;
+          stroke-dasharray: 4 14;
+          opacity: 0.7;
+          pointer-events: none;
+        }
+        .smm-root :global(.edge-flow-link) {
+          stroke: var(--selection);
+          opacity: 0.85;
+        }
+        .smm-root :global(.edge-flow.flow-fwd) {
+          animation: smm-flow-fwd 2.4s linear infinite;
+        }
+        .smm-root :global(.edge-flow.flow-back) {
+          animation: smm-flow-back 2.4s linear infinite;
+        }
+        @keyframes smm-flow-fwd {
+          /* Total dash cycle is 4 + 14 = 18; negative offset slides
+             along the path in its forward direction (parent → child). */
+          to { stroke-dashoffset: -18; }
+        }
+        @keyframes smm-flow-back {
+          to { stroke-dashoffset: 18; }
+        }
+        /* In-detail mode, dim flow overlays along with structural edges
+           so the focused card stays the centre of attention. */
+        .smm-root.in-detail-mode :global(.edge-flow) {
+          opacity: 0.15;
+          animation-play-state: paused;
+        }
+        /* Reduced motion preference disables the animation entirely;
+           static dashes still show direction implicitly via the markers. */
+        @media (prefers-reduced-motion: reduce) {
+          .smm-root :global(.edge-flow.flow-fwd),
+          .smm-root :global(.edge-flow.flow-back) {
+            animation: none;
+          }
         }
         @keyframes smm-flow {
           to {
