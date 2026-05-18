@@ -8,6 +8,23 @@ export type Attachment = {
   size?: number;
 };
 
+/** Direction of flow along an edge. `forward` = arrow at the destination
+ *  end (parent → child by default), `backward` = arrow at the origin,
+ *  `both` = arrowheads at both ends, `none` = a plain line. Missing →
+ *  treated as `forward` so legacy maps keep their original look. */
+export type FlowDirection = 'forward' | 'backward' | 'both' | 'none';
+
+/** A non-structural connection between two nodes. Distinct from the
+ *  parent-child tree edges encoded in `childIndex`. Rendered as a dashed
+ *  line on the canvas; arrowheads follow `flowDirection`. */
+export type NodeLink = {
+  /** Target node id in the same MindMapData. Orphan links (target no
+   *  longer exists) are silently skipped at render time. */
+  targetId: string;
+  /** Direction of flow on the link. Defaults to `forward` (this node → target). */
+  flowDirection?: FlowDirection;
+};
+
 export type MindMapNode = {
   id: string;
   label: string;
@@ -20,6 +37,10 @@ export type MindMapNode = {
   createdAt: number;
   imageUrl?: string | null;
   attachments?: Attachment[];
+  /** Direction of flow on the parent→this edge. Missing == 'forward'. */
+  flowDirection?: FlowDirection;
+  /** Non-structural connections from this node to others in the map. */
+  links?: NodeLink[];
 };
 
 export type MindMapData = {

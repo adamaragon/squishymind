@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MindMapData, MindMapNode, ViewMode } from '@/lib/types';
 import NodeDetailPanel from './NodeDetailPanel';
+import { stripIncomingLinks } from '@/lib/canvas/layout';
 
 type Props = {
   mindmapId: string;
@@ -52,7 +53,9 @@ function removeNodeFromData(d: MindMapData, id: string): MindMapData | null {
   const nodes = { ...d.nodes };
   const childIndex: Record<string, string[]> = {};
   for (const [k, v] of Object.entries(d.childIndex)) childIndex[k] = v.slice();
+  const doomed = new Set<string>();
   const drop = (n: string) => {
+    doomed.add(n);
     for (const c of (childIndex[n] || []).slice()) drop(c);
     delete nodes[n];
     delete childIndex[n];
@@ -63,6 +66,16 @@ function removeNodeFromData(d: MindMapData, id: string): MindMapData | null {
       (c) => c !== id,
     );
   }
+  // Clone any link-bearing nodes that survived, then strip references to
+  // the deleted subtree. (We work on a shallow-cloned `nodes` already, but
+  // the link arrays themselves are shared with the input data; deep-clone
+  // those before mutating.)
+  for (const surviving of Object.values(nodes)) {
+    if (surviving.links && surviving.links.length > 0) {
+      nodes[surviving.id] = { ...surviving, links: surviving.links.slice() };
+    }
+  }
+  stripIncomingLinks(nodes, doomed);
   return { nodes, childIndex, rootId: d.rootId };
 }
 
@@ -624,6 +637,10 @@ export default function TableView({
             applyDeleteNode(id);
           }}
           onClose={() => setDetailNodeId(null)}
+          allNodes={Object.values(data.nodes).map((n) => ({
+            id: n.id,
+            label: n.label,
+          }))}
         />
       )}
 

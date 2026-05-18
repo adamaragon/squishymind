@@ -20,6 +20,7 @@ import {
   nodeOverlaps as nodeOverlapsRaw,
   placeChildAtAngle as placeChildAtAngleRaw,
   layoutChildren as layoutChildrenRaw,
+  stripIncomingLinks,
 } from '@/lib/canvas/layout';
 
 export type MindMapCanvasProps = {
@@ -561,14 +562,27 @@ export default function MindMapCanvas({
       if (id === state.rootId) return;
       const n = state.nodes[id];
       if (!n) return;
-      const kids = (state.childIndex[id] || []).slice();
-      kids.forEach(removeNode);
+      // Gather every id in the subtree up front so we can strip incoming
+      // cross-references in one sweep at the end.
+      const doomed = new Set<string>([id]);
+      const stack = [id];
+      while (stack.length) {
+        const cur = stack.pop()!;
+        for (const child of state.childIndex[cur] || []) {
+          doomed.add(child);
+          stack.push(child);
+        }
+      }
+      for (const did of doomed) {
+        delete state.nodes[did];
+        delete state.childIndex[did];
+      }
       const sibs = n.parentId != null ? state.childIndex[n.parentId] : null;
       if (sibs && n.parentId != null)
         state.childIndex[n.parentId] = sibs.filter((x) => x !== id);
-      delete state.nodes[id];
-      delete state.childIndex[id];
-      if (state.selectedId === id) state.selectedId = n.parentId;
+      if (state.selectedId && doomed.has(state.selectedId))
+        state.selectedId = n.parentId;
+      stripIncomingLinks(state.nodes, doomed);
     }
 
     function getDescendants(id: string): string[] {
@@ -996,6 +1010,13 @@ export default function MindMapCanvas({
         });
       }
 
+      // Flow & Links — direction picker for the parent-child edge plus
+      // non-structural links to other nodes. Always rendered (read-only
+      // viewers can still see existing links) except on the brain root
+      // when there are no links at all.
+      const flowLinksSection = buildFlowLinksSection(n);
+      if (flowLinksSection) wrap.appendChild(flowLinksSection);
+
       // Comments section — appended for every non-brain node, for any reader.
       // Compose form only renders when the current user is authenticated.
       const commentsHolder = document.createElement('div');
@@ -1004,6 +1025,163 @@ export default function MindMapCanvas({
       wrap.appendChild(commentsHolder);
       mountCommentsPanel(commentsHolder, n.id);
 
+      return wrap;
+    }
+
+    // ---- Flow & Links (imperative twin of NodeDetailPanel's section) ----
+    const FLOW_DIRS: Array<{ value: import('@/lib/types').FlowDirection; glyph: string; label: string }> = [
+      { value: 'forward', glyph: '→', label: 'Forward (parent → child)' },
+      { value: 'backward', glyph: '←', label: 'Reverse (child → parent)' },
+      { value: 'both', glyph: '↔', label: 'Both directions' },
+      { value: 'none', glyph: '—', label: 'No arrow' },
+    ];
+
+    function buildFlowLinksSection(n: MindMapNode): HTMLElement | null {
+      const isRoot = n.id === state.rootId;
+      const links = n.links || [];
+      // Root + no links + readonly = render nothing.
+      if (isRoot && readonlyRef.current && links.length === 0) return null;
+
+      const section = document.createElement('div');
+      section.className = 'detail-flowlinks';
+      section.addEventListener('mousedown', (e) => e.stopPropagation());
+      section.addEventListener('click', (e) => e.stopPropagation());
+
+      const label = document.createElement('div');
+      label.className = 'detail-section-label';
+      label.textContent = 'Flow & Links';
+      section.appendChild(label);
+
+      // Parent-edge flow picker (skip for root — no parent edge to govern).
+      if (!isRoot) {
+        const flowRow = document.createElement('div');
+        flowRow.className = 'detail-flow-row';
+        const flowLabel = document.createElement('span');
+        flowLabel.className = 'detail-flow-label';
+        flowLabel.textContent = 'Edge from parent';
+        flowRow.appendChild(flowLabel);
+        flowRow.appendChild(buildFlowPicker(n.flowDirection || 'forward', (v) => {
+          if (readonlyRef.current) return;
+          // Persist 'forward' as undefined so the JSON doesn't bloat with defaults.
+          n.flowDirection = v === 'forward' ? undefined : v;
+          scheduleSave();
+          renderAll();
+        }));
+        section.appendChild(flowRow);
+      }
+
+      // Links list
+      if (links.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'detail-flowlinks-empty';
+        empty.textContent = readonlyRef.current
+          ? 'No links from this node.'
+          : 'No links yet. Pick a target below to connect this node.';
+        section.appendChild(empty);
+      } else {
+        const list = document.createElement('ul');
+        list.className = 'detail-link-list';
+        links.forEach((lk) => {
+          const target = state.nodes[lk.targetId];
+          const row = document.createElement('li');
+          row.className = 'detail-link-row';
+          const name = document.createElement('span');
+          name.className = 'detail-link-name';
+          name.textContent = target?.label || '(missing node)';
+          name.title = target?.label || lk.targetId;
+          row.appendChild(name);
+          row.appendChild(
+            buildFlowPicker(lk.flowDirection || 'forward', (v) => {
+              if (readonlyRef.current) return;
+              const updated = (n.links || []).map((l) =>
+                l.targetId === lk.targetId
+                  ? { ...l, flowDirection: v === 'forward' ? undefined : v }
+                  : l,
+              );
+              n.links = updated;
+              scheduleSave();
+              renderAll();
+            }, true),
+          );
+          if (!readonlyRef.current) {
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'detail-link-remove';
+            remove.textContent = '✕';
+            remove.title = 'Remove link';
+            remove.setAttribute('aria-label', `Remove link to ${target?.label || lk.targetId}`);
+            remove.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              n.links = (n.links || []).filter((l) => l.targetId !== lk.targetId);
+              scheduleSave();
+              renderAll();
+            });
+            row.appendChild(remove);
+          }
+          list.appendChild(row);
+        });
+        section.appendChild(list);
+      }
+
+      // Add-link picker (editor only)
+      if (!readonlyRef.current) {
+        const linkedIds = new Set(links.map((l) => l.targetId));
+        const targets = Object.values(state.nodes).filter(
+          (o) => o.id !== n.id && !linkedIds.has(o.id),
+        );
+        if (targets.length > 0) {
+          const pick = document.createElement('select');
+          pick.className = 'detail-add-link';
+          const placeholder = document.createElement('option');
+          placeholder.value = '';
+          placeholder.textContent = '+ Add link to another node…';
+          pick.appendChild(placeholder);
+          // Sort by label for predictable ordering.
+          targets
+            .slice()
+            .sort((a, b) => (a.label || '').localeCompare(b.label || ''))
+            .forEach((t) => {
+              const opt = document.createElement('option');
+              opt.value = t.id;
+              opt.textContent = t.label || '(untitled)';
+              pick.appendChild(opt);
+            });
+          pick.addEventListener('change', () => {
+            if (!pick.value) return;
+            n.links = [...(n.links || []), { targetId: pick.value }];
+            scheduleSave();
+            renderAll();
+          });
+          section.appendChild(pick);
+        }
+      }
+
+      return section;
+    }
+
+    function buildFlowPicker(
+      current: import('@/lib/types').FlowDirection,
+      onPick: (v: import('@/lib/types').FlowDirection) => void,
+      compact = false,
+    ): HTMLElement {
+      const wrap = document.createElement('div');
+      wrap.className = compact ? 'detail-flow-picker compact' : 'detail-flow-picker';
+      FLOW_DIRS.forEach(({ value, glyph, label }) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'detail-flow-btn' + (current === value ? ' is-active' : '');
+        b.textContent = glyph;
+        b.title = label;
+        b.setAttribute('aria-label', label);
+        b.setAttribute('aria-pressed', current === value ? 'true' : 'false');
+        if (readonlyRef.current) b.disabled = true;
+        b.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          if (readonlyRef.current) return;
+          onPick(value);
+        });
+        wrap.appendChild(b);
+      });
       return wrap;
     }
 
@@ -1989,10 +2167,21 @@ export default function MindMapCanvas({
         edgesG.innerHTML = '';
         return;
       }
-      const minX = Math.min(...all.map((n) => n.x)) - 500;
-      const minY = Math.min(...all.map((n) => n.y)) - 500;
-      const maxX = Math.max(...all.map((n) => n.x)) + 500;
-      const maxY = Math.max(...all.map((n) => n.y)) + 500;
+      // Include link targets in the bounding-box calc so a link that
+      // stretches off the structural tree's footprint doesn't get clipped.
+      const linkCoords: Array<{ x: number; y: number }> = [];
+      for (const n of all) {
+        for (const lk of n.links || []) {
+          const t = state.nodes[lk.targetId];
+          if (t) linkCoords.push({ x: t.x, y: t.y });
+        }
+      }
+      const xs = all.map((n) => n.x).concat(linkCoords.map((c) => c.x));
+      const ys = all.map((n) => n.y).concat(linkCoords.map((c) => c.y));
+      const minX = Math.min(...xs) - 500;
+      const minY = Math.min(...ys) - 500;
+      const maxX = Math.max(...xs) + 500;
+      const maxY = Math.max(...ys) + 500;
       edgesSvg.style.left = minX + 'px';
       edgesSvg.style.top = minY + 'px';
       edgesSvg.setAttribute('width', String(maxX - minX));
@@ -2002,8 +2191,36 @@ export default function MindMapCanvas({
         `${minX} ${minY} ${maxX - minX} ${maxY - minY}`,
       );
 
-      let html = '';
+      // Build `defs` once per render so the markers always reference the
+      // live edge colour from CSS. Two marker styles: solid (tree edges)
+      // and dashed (link edges). Each comes in start + end variants for
+      // the four FlowDirection states.
+      const markerDefs = `
+        <defs>
+          <marker id="arrow-end-tree" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" class="edge-arrow-tree" />
+          </marker>
+          <marker id="arrow-start-tree" viewBox="0 0 10 10" refX="1" refY="5"
+            markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M 10 0 L 0 5 L 10 10 z" class="edge-arrow-tree" />
+          </marker>
+          <marker id="arrow-end-link" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" class="edge-arrow-link" />
+          </marker>
+          <marker id="arrow-start-link" viewBox="0 0 10 10" refX="1" refY="5"
+            markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M 10 0 L 0 5 L 10 10 z" class="edge-arrow-link" />
+          </marker>
+        </defs>
+      `;
+
+      let html = markerDefs;
       const sel = state.selectedId;
+
+      // Tree edges (parent → child). Each child carries its own
+      // flowDirection (default 'forward'); arrows are picked accordingly.
       Object.values(state.nodes).forEach((n) => {
         if (n.parentId == null) return;
         const p = state.nodes[n.parentId];
@@ -2013,8 +2230,48 @@ export default function MindMapCanvas({
         const d = curvePath(p.x, p.y, n.x, n.y, 0, phase);
         const highlight =
           sel && (sel === n.id || sel === p.id) ? ' highlight' : '';
-        html += `<path class="edge-path${highlight}" d="${d}" data-from="${p.id}" data-to="${n.id}" data-phase="${phase}" />`;
+        const flow = n.flowDirection || 'forward';
+        const markerEnd =
+          flow === 'forward' || flow === 'both'
+            ? ' marker-end="url(#arrow-end-tree)"'
+            : '';
+        const markerStart =
+          flow === 'backward' || flow === 'both'
+            ? ' marker-start="url(#arrow-start-tree)"'
+            : '';
+        html += `<path class="edge-path${highlight}" d="${d}" data-from="${p.id}" data-to="${n.id}" data-phase="${phase}"${markerStart}${markerEnd} />`;
       });
+
+      // Link edges. Each link is rendered from its OWNER node to the target
+      // with the same bezier math but a dashed stroke + link-coloured
+      // arrows. Orphan links (target gone) are silently skipped.
+      for (const n of all) {
+        if (!n.links || n.links.length === 0) continue;
+        for (const lk of n.links) {
+          const t = state.nodes[lk.targetId];
+          if (!t) continue;
+          // Phase from a hash of the two endpoints so the wiggle is stable
+          // for a given link but different from its neighbours.
+          const seed =
+            (parseInt(n.id.replace('n', ''), 10) || 0) +
+            (parseInt(lk.targetId.replace('n', ''), 10) || 0) * 0.71;
+          const phase = (seed * 0.41) % (Math.PI * 2);
+          const d = curvePath(n.x, n.y, t.x, t.y, 0, phase);
+          const highlight =
+            sel && (sel === n.id || sel === lk.targetId) ? ' highlight' : '';
+          const flow = lk.flowDirection || 'forward';
+          const markerEnd =
+            flow === 'forward' || flow === 'both'
+              ? ' marker-end="url(#arrow-end-link)"'
+              : '';
+          const markerStart =
+            flow === 'backward' || flow === 'both'
+              ? ' marker-start="url(#arrow-start-link)"'
+              : '';
+          html += `<path class="edge-path edge-link${highlight}" d="${d}" data-from="${n.id}" data-to="${lk.targetId}" data-phase="${phase}" data-link="1"${markerStart}${markerEnd} />`;
+        }
+      }
+
       edgesG.innerHTML = html;
     }
 
@@ -4096,6 +4353,32 @@ export default function MindMapCanvas({
           stroke-width: 2.5;
           opacity: 1;
         }
+        /* Link edges — non-structural connections between any two nodes.
+           Distinct from tree edges via the dashed stroke + cooler hue so
+           a glance separates "structure" from "cross-reference". */
+        .smm-root :global(.edge-path.edge-link) {
+          stroke: var(--selection);
+          stroke-dasharray: 6 5;
+          stroke-width: 1.8;
+          opacity: 0.55;
+        }
+        .smm-root :global(.edge-path.edge-link.highlight) {
+          opacity: 1;
+          stroke-width: 2.4;
+        }
+        /* SVG marker arrowheads. Two flavours — tree = matches the
+           structural edge stroke; link = matches the link selection
+           tint. Filled triangles, no stroke so they read at small sizes. */
+        .smm-root :global(.edge-arrow-tree) {
+          fill: var(--edge);
+          stroke: none;
+          opacity: 0.85;
+        }
+        .smm-root :global(.edge-arrow-link) {
+          fill: var(--selection);
+          stroke: none;
+          opacity: 0.75;
+        }
         @keyframes smm-flow {
           to {
             stroke-dashoffset: -24;
@@ -4226,6 +4509,144 @@ export default function MindMapCanvas({
             transform: scale(1.04) rotate(-2deg) skewX(-2deg);
           }
         }
+        /* Flow & Links — imperative twin of the alt-view NodeDetailPanel
+           section. Same vocabulary (segmented flow picker, link rows with
+           per-link picker, add-link select) so users get the same UI
+           regardless of which view they reached the detail card from. */
+        .smm-root :global(.detail-flowlinks) {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          padding-top: 6px;
+        }
+        .smm-root :global(.detail-flow-row) {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+        }
+        .smm-root :global(.detail-flow-label) {
+          font-size: 11px;
+          color: var(--ui-text-dim);
+          text-transform: uppercase;
+          letter-spacing: 0.6px;
+        }
+        .smm-root :global(.detail-flow-picker) {
+          display: inline-flex;
+          background: rgba(0, 0, 0, 0.25);
+          border: 1px solid var(--node-border);
+          border-radius: 8px;
+          padding: 2px;
+          gap: 2px;
+        }
+        .smm-root :global(.detail-flow-picker.compact) {
+          padding: 1px;
+        }
+        .smm-root :global(.detail-flow-btn) {
+          background: transparent;
+          color: var(--ui-text-dim);
+          border: none;
+          font-size: 13px;
+          font-weight: 600;
+          padding: 4px 8px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-family: inherit;
+          line-height: 1;
+          min-width: 26px;
+          transition: all 0.12s;
+        }
+        .smm-root :global(.detail-flow-picker.compact .detail-flow-btn) {
+          padding: 2px 6px;
+          font-size: 11px;
+          min-width: 22px;
+        }
+        .smm-root :global(.detail-flow-btn:hover:not(:disabled)) {
+          color: var(--node-text);
+          background: rgba(255, 255, 255, 0.05);
+        }
+        .smm-root :global(.detail-flow-btn.is-active) {
+          color: white;
+          background: color-mix(in srgb, var(--accent-c1, var(--selection)) 36%, transparent);
+          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-c1, var(--selection)) 55%, transparent);
+        }
+        .smm-root :global(.detail-flow-btn:disabled) {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+        .smm-root :global(.detail-flowlinks-empty) {
+          font-size: 12px;
+          color: var(--ui-text-dim);
+          font-style: italic;
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px dashed var(--node-border);
+          border-radius: 10px;
+          padding: 10px 12px;
+          text-align: center;
+        }
+        .smm-root :global(.detail-link-list) {
+          list-style: none;
+          margin: 0;
+          padding: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+        }
+        .smm-root :global(.detail-link-row) {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid var(--node-border);
+          border-radius: 10px;
+          padding: 6px 8px;
+        }
+        .smm-root :global(.detail-link-name) {
+          flex: 1;
+          font-size: 12px;
+          color: var(--node-text);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          min-width: 0;
+        }
+        .smm-root :global(.detail-link-remove) {
+          flex-shrink: 0;
+          background: transparent;
+          color: var(--ui-text-dim);
+          border: none;
+          width: 24px;
+          height: 22px;
+          border-radius: 6px;
+          font-size: 12px;
+          cursor: pointer;
+          font-family: inherit;
+          transition: all 0.12s;
+        }
+        .smm-root :global(.detail-link-remove:hover) {
+          color: #fca5a5;
+          background: rgba(239, 68, 68, 0.1);
+        }
+        .smm-root :global(.detail-add-link) {
+          width: 100%;
+          background: rgba(0, 0, 0, 0.25);
+          border: 1px solid var(--node-border);
+          color: var(--node-text);
+          font: inherit;
+          font-size: 12px;
+          padding: 8px 10px;
+          border-radius: 8px;
+          outline: none;
+          appearance: none;
+          cursor: pointer;
+          font-family: inherit;
+          transition: border-color 0.15s;
+        }
+        .smm-root :global(.detail-add-link:hover),
+        .smm-root :global(.detail-add-link:focus) {
+          border-color: color-mix(in srgb, var(--accent-c1, var(--selection)) 50%, var(--node-border));
+        }
+
         .smm-root :global(.detail-comments) {
           margin-top: 8px;
           padding-top: 12px;

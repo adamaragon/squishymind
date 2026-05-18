@@ -155,3 +155,22 @@ export function layoutChildren(
     placeChildAtAngle(data.nodes, parent, siblingIds[i], angle, baseDistance);
   }
 }
+
+/** Strip any `links` on remaining nodes that point at ids in `deletedIds`.
+ *  Called after a node + subtree delete so incoming cross-references don't
+ *  rot into "(missing node)" entries in other nodes' link lists.
+ *  Mutates the passed-in nodes record in place. */
+export function stripIncomingLinks(
+  nodes: Record<string, MindMapNode>,
+  deletedIds: Set<string>,
+): void {
+  if (deletedIds.size === 0) return;
+  for (const id in nodes) {
+    const n = nodes[id];
+    if (!n.links || n.links.length === 0) continue;
+    const filtered = n.links.filter((l) => !deletedIds.has(l.targetId));
+    if (filtered.length !== n.links.length) {
+      n.links = filtered.length > 0 ? filtered : undefined;
+    }
+  }
+}

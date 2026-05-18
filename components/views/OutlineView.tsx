@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { MindMapData, MindMapNode } from '@/lib/types';
 import NodeDetailPanel from './NodeDetailPanel';
+import { stripIncomingLinks } from '@/lib/canvas/layout';
 
 type Props = {
   mindmapId: string;
@@ -192,7 +193,9 @@ function removeNode(d: MindMapData, id: string): MindMapData | null {
   const node = d.nodes[id];
   if (!node) return null;
   const next = cloneData(d);
+  const doomed = new Set<string>();
   const drop = (n: string) => {
+    doomed.add(n);
     for (const c of (next.childIndex[n] || []).slice()) drop(c);
     delete next.nodes[n];
     delete next.childIndex[n];
@@ -203,6 +206,15 @@ function removeNode(d: MindMapData, id: string): MindMapData | null {
       (c) => c !== id,
     );
   }
+  // Deep-clone link arrays on survivors so the strip mutation doesn't
+  // bleed back into the source data (`cloneData` only shallow-clones the
+  // node records).
+  for (const surviving of Object.values(next.nodes)) {
+    if (surviving.links && surviving.links.length > 0) {
+      next.nodes[surviving.id] = { ...surviving, links: surviving.links.slice() };
+    }
+  }
+  stripIncomingLinks(next.nodes, doomed);
   return next;
 }
 
@@ -740,6 +752,10 @@ export default function OutlineView({
             onDelete(id);
           }}
           onClose={() => setDetailNodeId(null)}
+          allNodes={Object.values(data.nodes).map((n) => ({
+            id: n.id,
+            label: n.label,
+          }))}
         />
       )}
 

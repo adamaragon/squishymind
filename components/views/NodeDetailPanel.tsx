@@ -1,7 +1,12 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { Attachment, MindMapNode } from '@/lib/types';
+import type {
+  Attachment,
+  FlowDirection,
+  MindMapNode,
+  NodeLink,
+} from '@/lib/types';
 import { iconForAttachment, humanSize } from '@/lib/attachments';
 
 type Props = {
@@ -17,6 +22,10 @@ type Props = {
   onDelete?: () => void;
   onClose: () => void;
   isRoot: boolean;
+  /** All other nodes in the map, used for the link target picker. The
+   *  current node is filtered out at render time so users can't link a
+   *  node to itself. */
+  allNodes?: Array<{ id: string; label: string }>;
 };
 
 const NOTE_DEBOUNCE_MS = 600;
@@ -29,6 +38,7 @@ export default function NodeDetailPanel({
   onDelete,
   onClose,
   isRoot,
+  allNodes = [],
 }: Props) {
   const [label, setLabel] = useState(node.label);
   const [note, setNote] = useState(node.note || '');
@@ -377,6 +387,18 @@ export default function NodeDetailPanel({
               }}
             />
           </section>
+
+          {/* Flow & Links — direction on the parent edge plus non-structural
+              connections to other nodes. Skipped entirely on the root (no
+              parent, no edge to govern; can still HOLD links, so the links
+              half stays). */}
+          <FlowLinksSection
+            node={node}
+            isRoot={isRoot}
+            readonly={readonly}
+            allNodes={allNodes}
+            onChange={onChange}
+          />
 
           {error && (
             <div className="nd-error" role="alert">
@@ -840,5 +862,323 @@ export default function NodeDetailPanel({
         }
       `}</style>
     </>
+  );
+}
+
+/** Flow direction + non-structural links UI. Standalone so the main
+ *  NodeDetailPanel render stays scannable. */
+function FlowLinksSection({
+  node,
+  isRoot,
+  readonly,
+  allNodes,
+  onChange,
+}: {
+  node: MindMapNode;
+  isRoot: boolean;
+  readonly: boolean;
+  allNodes: Array<{ id: string; label: string }>;
+  onChange: (next: MindMapNode) => void;
+}) {
+  const flow: FlowDirection = node.flowDirection || 'forward';
+  const links = node.links || [];
+
+  // Targets the user can add. Exclude self, already-linked, and missing
+  // labels (defensive in case a stale id was passed in).
+  const linkedIds = new Set(links.map((l) => l.targetId));
+  const availableTargets = allNodes.filter(
+    (n) => n.id !== node.id && !linkedIds.has(n.id),
+  );
+
+  function setFlow(next: FlowDirection) {
+    if (readonly) return;
+    // Persist 'forward' as undefined so we don't bloat the data with
+    // default values; everything else is stored explicitly.
+    const flowDirection = next === 'forward' ? undefined : next;
+    onChange({ ...node, flowDirection });
+  }
+
+  function addLink(targetId: string) {
+    if (readonly || !targetId) return;
+    if (targetId === node.id) return;
+    if (linkedIds.has(targetId)) return;
+    const next: NodeLink = { targetId };
+    onChange({ ...node, links: [...links, next] });
+  }
+
+  function setLinkFlow(targetId: string, next: FlowDirection) {
+    if (readonly) return;
+    const updated = links.map((l) =>
+      l.targetId === targetId
+        ? { ...l, flowDirection: next === 'forward' ? undefined : next }
+        : l,
+    );
+    onChange({ ...node, links: updated });
+  }
+
+  function removeLink(targetId: string) {
+    if (readonly) return;
+    onChange({
+      ...node,
+      links: links.filter((l) => l.targetId !== targetId),
+    });
+  }
+
+  // Don't render anything for a root with no links and a read-only viewer.
+  if (isRoot && readonly && links.length === 0) return null;
+
+  return (
+    <section className="nd-section">
+      <header className="nd-section-head">
+        <h3>
+          <span className="nd-section-icon" aria-hidden>↬</span>
+          Flow &amp; Links
+        </h3>
+        <span className="nd-section-help">
+          {readonly ? 'Read-only' : 'Direction & cross-refs'}
+        </span>
+      </header>
+
+      {/* Parent-edge flow picker — only shown for non-root nodes (root has
+          no incoming structural edge). */}
+      {!isRoot && (
+        <div className="nd-flow-row">
+          <span className="nd-flow-label">Edge from parent</span>
+          <div className="nd-flow-picker">
+            <FlowButton current={flow} value="forward" onSelect={setFlow} disabled={readonly} />
+            <FlowButton current={flow} value="backward" onSelect={setFlow} disabled={readonly} />
+            <FlowButton current={flow} value="both" onSelect={setFlow} disabled={readonly} />
+            <FlowButton current={flow} value="none" onSelect={setFlow} disabled={readonly} />
+          </div>
+        </div>
+      )}
+
+      {/* Links list */}
+      {links.length === 0 ? (
+        <div className="nd-empty-slot">
+          {readonly
+            ? 'No links from this node.'
+            : 'No links yet. Add one below to connect this node to another.'}
+        </div>
+      ) : (
+        <ul className="nd-link-list">
+          {links.map((lk) => {
+            const target = allNodes.find((n) => n.id === lk.targetId);
+            const lkFlow = lk.flowDirection || 'forward';
+            return (
+              <li key={lk.targetId} className="nd-link-row">
+                <span className="nd-link-name" title={target?.label || lk.targetId}>
+                  {target?.label || <em>missing node</em>}
+                </span>
+                <div className="nd-flow-picker nd-flow-picker-compact">
+                  <FlowButton current={lkFlow} value="forward" onSelect={(v) => setLinkFlow(lk.targetId, v)} disabled={readonly} compact />
+                  <FlowButton current={lkFlow} value="backward" onSelect={(v) => setLinkFlow(lk.targetId, v)} disabled={readonly} compact />
+                  <FlowButton current={lkFlow} value="both" onSelect={(v) => setLinkFlow(lk.targetId, v)} disabled={readonly} compact />
+                  <FlowButton current={lkFlow} value="none" onSelect={(v) => setLinkFlow(lk.targetId, v)} disabled={readonly} compact />
+                </div>
+                {!readonly && (
+                  <button
+                    type="button"
+                    className="nd-link-remove"
+                    onClick={() => removeLink(lk.targetId)}
+                    aria-label={`Remove link to ${target?.label || lk.targetId}`}
+                    title="Remove"
+                  >
+                    ✕
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {/* Add-link picker */}
+      {!readonly && availableTargets.length > 0 && (
+        <div className="nd-add-link">
+          <select
+            className="nd-add-link-select"
+            defaultValue=""
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v) {
+                addLink(v);
+                e.target.value = '';
+              }
+            }}
+          >
+            <option value="">+ Add link to another node…</option>
+            {availableTargets.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.label || '(untitled)'}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <style jsx>{`
+        .nd-flow-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          padding: 6px 0 2px;
+        }
+        .nd-flow-label {
+          font-size: 11px;
+          color: var(--text-dim);
+          text-transform: uppercase;
+          letter-spacing: 0.6px;
+        }
+        .nd-flow-picker {
+          display: inline-flex;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          padding: 2px;
+          gap: 2px;
+        }
+        .nd-flow-picker-compact {
+          padding: 1px;
+        }
+        :global(.nd-flow-btn) {
+          background: transparent;
+          color: var(--text-dim);
+          border: none;
+          font-size: 13px;
+          font-weight: 600;
+          padding: 4px 8px;
+          border-radius: 6px;
+          cursor: pointer;
+          transition: all 0.12s;
+          line-height: 1;
+          min-width: 26px;
+        }
+        :global(.nd-flow-picker-compact .nd-flow-btn) {
+          padding: 2px 6px;
+          font-size: 11px;
+          min-width: 22px;
+        }
+        :global(.nd-flow-btn:hover:not(:disabled)) {
+          color: var(--text);
+          background: rgba(255, 255, 255, 0.06);
+        }
+        :global(.nd-flow-btn.is-active) {
+          color: white;
+          background: color-mix(in srgb, var(--nd-accent) 36%, transparent);
+          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nd-accent) 55%, transparent);
+        }
+        :global(.nd-flow-btn:disabled) {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+        .nd-link-list {
+          list-style: none;
+          margin: 0;
+          padding: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+        }
+        .nd-link-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid var(--border);
+          border-radius: 10px;
+          padding: 6px 8px;
+        }
+        .nd-link-name {
+          flex: 1;
+          font-size: 12px;
+          color: var(--text);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          min-width: 0;
+        }
+        .nd-link-remove {
+          flex-shrink: 0;
+          background: transparent;
+          color: var(--text-dim);
+          border: none;
+          width: 24px;
+          height: 22px;
+          border-radius: 6px;
+          font-size: 12px;
+          cursor: pointer;
+          transition: all 0.12s;
+        }
+        .nd-link-remove:hover {
+          color: #fca5a5;
+          background: rgba(239, 68, 68, 0.1);
+        }
+        .nd-add-link {
+          margin-top: 4px;
+        }
+        .nd-add-link-select {
+          width: 100%;
+          background: rgba(0, 0, 0, 0.25);
+          border: 1px solid var(--border);
+          color: var(--text);
+          font: inherit;
+          font-size: 12px;
+          padding: 8px 10px;
+          border-radius: 8px;
+          outline: none;
+          appearance: none;
+          cursor: pointer;
+          transition: border-color 0.15s;
+        }
+        .nd-add-link-select:hover,
+        .nd-add-link-select:focus {
+          border-color: color-mix(in srgb, var(--nd-accent) 50%, var(--border));
+        }
+      `}</style>
+    </section>
+  );
+}
+
+const FLOW_GLYPH: Record<FlowDirection, string> = {
+  forward: '→',
+  backward: '←',
+  both: '↔',
+  none: '—',
+};
+const FLOW_LABEL: Record<FlowDirection, string> = {
+  forward: 'Forward (parent → child)',
+  backward: 'Reverse (child → parent)',
+  both: 'Both directions',
+  none: 'No arrow',
+};
+
+function FlowButton({
+  current,
+  value,
+  onSelect,
+  disabled,
+  compact,
+}: {
+  current: FlowDirection;
+  value: FlowDirection;
+  onSelect: (v: FlowDirection) => void;
+  disabled?: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      className={`nd-flow-btn${current === value ? ' is-active' : ''}`}
+      onClick={() => onSelect(value)}
+      disabled={disabled}
+      data-tip={FLOW_LABEL[value]}
+      aria-label={FLOW_LABEL[value]}
+      aria-pressed={current === value}
+      data-compact={compact ? '1' : undefined}
+    >
+      {FLOW_GLYPH[value]}
+    </button>
   );
 }
