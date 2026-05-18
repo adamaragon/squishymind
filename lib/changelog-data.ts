@@ -17,6 +17,21 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v3.7',
+    title: 'Arrows, flow, and cross-links',
+    date: 'May 2026',
+    commit: 'b14be85',
+    highlights: [
+      'Every parent-child edge can now carry a flow direction — → ← ↔ or no arrow',
+      'New "links" — connect any node to any other node, no parent-child needed',
+      'Links draw as dashed lines so they\'re distinct from the structural tree',
+      'Per-link flow direction too — same → ← ↔ — so you can show influence vs. cause',
+      'Pickers live in the node detail panel (every view, including the canvas)',
+    ],
+    squishyNote:
+      'You can finally tell me which way the thinking goes, darling. I was guessing before.',
+  },
+  {
     version: 'v3.6',
     title: 'Attachments on canvas, click-to-edit in Table',
     date: 'May 2026',
