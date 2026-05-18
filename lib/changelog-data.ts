@@ -17,6 +17,21 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v3.8',
+    title: 'Flow, in motion',
+    date: 'May 2026',
+    commit: 'd2db387',
+    highlights: [
+      'Flow direction now animates — little packets slide along each edge so you can see direction at a glance',
+      'New chip below the + on every node — click to set parent-edge flow, drag to link to another node',
+      'Drag the chip onto any node to create a cross-link; then pick its flow direction inline',
+      'Tree view shows the same arrows and dashed cross-links as the canvas',
+      'Prefers-reduced-motion respected — animation pauses for users who want it still',
+    ],
+    squishyNote:
+      'I can see the thinking move now, darling. It\'s thrilling.',
+  },
+  {
     version: 'v3.7',
     title: 'Arrows, flow, and cross-links',
     date: 'May 2026',
