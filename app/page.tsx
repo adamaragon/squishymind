@@ -27,11 +27,13 @@ export default function HomePage() {
           <p className="text-lg md:text-xl text-[--text-dim] mb-9 max-w-3xl mx-auto leading-relaxed">
             A wobbly, slightly sentient mind-mapping canvas you can talk to, build with friends, or
             click and drag like a normal person.{' '}
-            <span className="text-white">Free during beta.</span>
+            <span className="text-white">
+              Beta is free. Founders get a permanent discount when paid tiers launch.
+            </span>
           </p>
           <div className="flex items-center justify-center gap-3 flex-wrap">
             <Link href="/signup" className="btn btn-primary text-base px-7 py-3">
-              Lock in free forever →
+              Claim Founder Access →
             </Link>
             <Link href="#features" className="btn btn-ghost text-base px-7 py-3">
               Tell me more
@@ -193,11 +195,12 @@ export default function HomePage() {
             There&apos;s a brain in the corner waiting to meet you.
           </h2>
           <p className="text-[--text-dim] mb-7 text-lg leading-relaxed">
-            Sign up while we&apos;re in beta and your account stays free forever.
-            Or just click the brain in the bottom-right and have Squishy do the talking — your call.
+            Sign up during beta to lock in Founder Access — Premium for half price,
+            forever. Or just click the brain in the bottom-right and have Squishy do
+            the talking — your call.
           </p>
           <Link href="/signup" className="btn btn-primary text-base px-8 py-3">
-            Sign up — free forever
+            Sign up — claim Founder Access
           </Link>
           <p className="text-xs text-[--text-dim] mt-4">
             We promise this is the last time we&apos;ll ask.

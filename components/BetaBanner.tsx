@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 const STORAGE_KEY = 'squishymind:beta-banner-dismissed';
@@ -41,10 +42,14 @@ export default function BetaBanner() {
       >
         <span className="inline-block h-1.5 w-1.5 rounded-full bg-pink-400 animate-pulse" />
         <span className="text-center">
-          <span className="font-medium">Now in beta.</span>{' '}
-          <span className="text-[--text-dim]">
-            Sign up now and it stays free forever.
-          </span>
+          <span className="font-medium">🧠 We&apos;re in beta.</span>{' '}
+          <Link
+            href="/founder-access"
+            className="text-[--text-dim] hover:text-white transition-colors underline-offset-2 hover:underline"
+          >
+            Sign up now and lock in Founder pricing — half off Premium forever
+            when it launches. →
+          </Link>
         </span>
         <button
           onClick={dismiss}

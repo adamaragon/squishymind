@@ -31,6 +31,9 @@ export default function Footer({ minimal = false }: { minimal?: boolean }) {
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-pink-400 animate-pulse" />
             What&apos;s new
           </Link>
+          <Link href="/pricing" className="hover:text-white transition-colors">
+            Pricing
+          </Link>
           <Link href="/" className="hover:text-white transition-colors">
             Home
           </Link>

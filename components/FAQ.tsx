@@ -4,6 +4,10 @@ import { useState } from 'react';
 
 const faqs = [
   {
+    q: "What's the deal with “Founder Access”?",
+    a: "Beta is free for everybody. When we launch our paid tier (Squishy Premium, $3.99/month) you'll have already locked in Founder pricing — $1.99/month or $14.99/year, for as long as you stay subscribed. You'll also keep a more generous free tier with 8 maps and 40 voice minutes per month, even if you never upgrade to Premium. We can't promise free forever, because the voice agent costs us money to run — but we can promise Founder pricing forever, and that's a real perk we'd rather honour than break.",
+  },
+  {
     q: 'Do I have to use the voice agent?',
     a: "Absolutely not. Squishy is a feature, not a religion. Click and drag works, keyboard shortcuts work, the whole tool functions perfectly without ever talking to her. She's there if you want her, muted if you don't.",
   },
@@ -17,27 +21,27 @@ const faqs = [
   },
   {
     q: 'Wait — is collaboration going to cost money?',
-    a: 'Eventually, yes. Multi-user features (invites, live cursors, real-time sync, comments) will be on a paid Premium tier after beta. While the beta banner is still up at the top of the page, everything’s free — and if you signed up during beta, those features stay free forever on your account. Sign up now, lock in the deal, ignore us later when we put up a paywall.',
+    a: 'Eventually, yes. Multi-user features (invites, live cursors, real-time sync, comments) will be on the paid Premium tier after beta. While the beta banner is up at the top of the page, everything’s free — and if you sign up during beta you get Founder Access: Premium for $1.99/month (half off) when it launches, plus a more generous free tier you keep even if you never upgrade. Sign up now, lock in the deal, decide later.',
   },
   {
     q: 'How long is the beta?',
-    a: "As long as it takes us to feel proud of it. Probably a few months. We'll let you know clearly before it ends — we'd rather not spring pricing on you like a trapdoor.",
+    a: "As long as it takes us to feel proud of it. Probably four to six more months. We'll let you know clearly before paid tiers launch — we'd rather not spring pricing on you like a trapdoor.",
   },
   {
-    q: 'Will signing up now really be free forever?',
-    a: 'Yes. Your account stays on the free-forever plan, regardless of what we charge new users later. Even if our future investors get ideas about “monetization.” We’ve put it in writing. The writing is on this page.',
+    q: 'What does Founder Access actually get me?',
+    a: 'Three permanent things: (1) Premium for half price — $1.99/month or $14.99/year, locked in for as long as you stay subscribed; (2) a more generous free tier even if you never pay us — 8 maps, 150 nodes per map, 40 voice minutes a month, versus 5/100/20 for new users post-launch; (3) a small Founder badge on your profile. The longer page at /founder-access has the full breakdown.',
   },
   {
     q: 'When does pricing kick in for new users?',
-    a: "After beta. Likely a small monthly fee with a generous free tier. We'll announce well in advance — and beta users keep their grandfathered free plan. We're not going to be cute about this.",
+    a: "When paid tiers launch (likely the next four to six months). New users post-launch get the standard free tier and pay $3.99/month or $29.99/year for Premium. Beta signups don't see any of those higher prices — Founder pricing is already yours.",
   },
   {
     q: 'What happens to my mind maps if pricing kicks in?',
-    a: "Nothing. They're yours. Beta users keep everything they've built and continue at no cost. New users will be able to view any map you share with them.",
+    a: "Nothing. They're yours. Founder Access free tier covers 8 maps and 150 nodes per map — enough to keep working without paying. If you have more than that already, you'll keep them all but won't be able to create new maps until you upgrade or trim.",
   },
   {
     q: "How do I know I'm a beta user?",
-    a: "If you sign up while this banner is still showing at the top of the page, you're in. Once we leave beta, the banner comes down and so does the free-forever offer. Now go sign up.",
+    a: "If you sign up while this banner is still showing at the top of the page, you're in — Founder Access is automatic. Once paid tiers launch, the banner comes down and new signups get the standard free tier. Until then, every account is a Founder.",
   },
   {
     q: 'Why is the brain pink?',
@@ -49,7 +53,7 @@ const faqs = [
   },
   {
     q: 'How do I cancel?',
-    a: "There's nothing to cancel — it's free, remember? To delete your account: Account page, two clicks, no email, no exit interview. We respect your right to leave. Reluctantly.",
+    a: "To delete your account: Account page, two clicks, no email, no exit interview. We respect your right to leave. Reluctantly. If you ever come back, your Founder pricing is still available.",
   },
 ];
 
