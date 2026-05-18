@@ -11,6 +11,16 @@ import {
   type PresenceState,
 } from '@/lib/realtime';
 import { track } from '@/lib/track';
+import { iconForAttachment, humanSize } from '@/lib/attachments';
+import {
+  COLOR_COUNT,
+  cloneData,
+  nextIdFromNodes,
+  curvePath,
+  nodeOverlaps as nodeOverlapsRaw,
+  placeChildAtAngle as placeChildAtAngleRaw,
+  layoutChildren as layoutChildrenRaw,
+} from '@/lib/canvas/layout';
 
 export type MindMapCanvasProps = {
   mindmapId: string;
@@ -40,24 +50,9 @@ type InternalState = {
   theme: Theme;
 };
 
-const COLOR_COUNT = 5;
-
-function cloneData(d: MindMapData): MindMapData {
-  return {
-    nodes: JSON.parse(JSON.stringify(d.nodes || {})),
-    childIndex: JSON.parse(JSON.stringify(d.childIndex || {})),
-    rootId: d.rootId,
-  };
-}
-
-function nextIdFromNodes(nodes: Record<string, MindMapNode>): number {
-  let max = 0;
-  for (const id of Object.keys(nodes)) {
-    const m = id.match(/^n(\d+)$/);
-    if (m) max = Math.max(max, parseInt(m[1], 10));
-  }
-  return max + 1;
-}
+// (COLOR_COUNT, cloneData, nextIdFromNodes moved to lib/canvas/layout.ts —
+// imported above. Kept as a single source of truth so the alt views can
+// share them too if they ever need to.)
 
 export default function MindMapCanvas({
   mindmapId,
@@ -535,85 +530,25 @@ export default function MindMapCanvas({
       return addNode(parentId, label, x, y);
     }
 
-    // Re-spread every child of `parentId` evenly across the parent's arc.
-    // Existing placeChild uses each sibling's stale total at insertion time,
-    // so children added one-by-one (via voice) end up stacked at the +arc edge.
-    // Call this after batch / repeat-voice creates to redistribute.
-    //
-    // Each sibling is then pushed outward along its angle (in steps) until it
-    // clears any other node in the map, so a new branch doesn't slam into an
-    // existing distant cousin.
-    const MIN_NODE_SEPARATION = 140; // px between centers
-    const PUSH_STEP = 30;
-    const MAX_PUSH_STEPS = 12;
-
+    // Thin closures that bind the live canvas `state` to the pure layout
+    // helpers in lib/canvas/layout.ts. The math lives there; here we only
+    // pass `state.nodes` / `state` so existing call sites stay terse.
     function nodeOverlaps(x: number, y: number, ignoreId: string): boolean {
-      for (const id in state.nodes) {
-        if (id === ignoreId) continue;
-        const other = state.nodes[id];
-        if (!other) continue;
-        const d = Math.hypot(x - other.x, y - other.y);
-        if (d < MIN_NODE_SEPARATION) return true;
-      }
-      return false;
+      return nodeOverlapsRaw(state.nodes, x, y, ignoreId);
     }
-
     function placeChildAtAngle(
       parent: MindMapNode,
       childId: string,
       angle: number,
       startDistance: number,
     ) {
-      const child = state.nodes[childId];
-      if (!child) return;
-      let distance = startDistance;
-      let x = parent.x + Math.cos(angle) * distance;
-      let y = parent.y + Math.sin(angle) * distance;
-      let steps = 0;
-      while (nodeOverlaps(x, y, childId) && steps < MAX_PUSH_STEPS) {
-        distance += PUSH_STEP;
-        x = parent.x + Math.cos(angle) * distance;
-        y = parent.y + Math.sin(angle) * distance;
-        steps++;
-      }
-      child.x = x;
-      child.y = y;
+      placeChildAtAngleRaw(state.nodes, parent, childId, angle, startDistance);
     }
-
     function layoutChildren(parentId: string) {
-      const parent = state.nodes[parentId];
-      if (!parent) return;
-      const siblingIds = state.childIndex[parentId] || [];
-      const total = siblingIds.length;
-      if (total === 0) return;
-      const baseDistance = parent.depth === 0 ? 220 : 180;
-
-      if (parent.parentId == null) {
-        // Root — full-circle distribution. Reserve 6 slots so a brain with
-        // 1–5 children doesn't crowd onto a single hemisphere.
-        const slots = Math.max(total, 6);
-        for (let i = 0; i < total; i++) {
-          const id = siblingIds[i];
-          const angle = (i / slots) * Math.PI * 2;
-          placeChildAtAngle(parent, id, angle, baseDistance);
-        }
-        return;
-      }
-
-      const gp = state.nodes[parent.parentId];
-      if (!gp) return;
-      const baseAngle = Math.atan2(parent.y - gp.y, parent.x - gp.x);
-      const arcSpread = Math.PI * 0.85;
-
-      if (total === 1) {
-        placeChildAtAngle(parent, siblingIds[0], baseAngle, baseDistance);
-        return;
-      }
-
-      for (let i = 0; i < total; i++) {
-        const angle = baseAngle - arcSpread / 2 + (i / (total - 1)) * arcSpread;
-        placeChildAtAngle(parent, siblingIds[i], angle, baseDistance);
-      }
+      // `state` carries `rootId`, `nodes`, `childIndex` — the same shape as
+      // MindMapData, so we can pass it straight through. (state has more
+      // fields like pan/zoom but the helper only reads the three above.)
+      layoutChildrenRaw(state, parentId);
     }
 
     function addSibling(nodeId: string, label = 'New sibling'): MindMapNode | null {
@@ -812,27 +747,7 @@ export default function MindMapCanvas({
       };
     }
 
-    function curvePath(
-      x1: number,
-      y1: number,
-      x2: number,
-      y2: number,
-      t = 0,
-      phase = 0,
-    ) {
-      const dx = (x2 - x1) * 0.5;
-      const length = Math.hypot(x2 - x1, y2 - y1);
-      const amp = Math.min(18, length * 0.07);
-      const nx = -(y2 - y1) / (length || 1);
-      const ny = (x2 - x1) / (length || 1);
-      const w1 = Math.sin(t * 1.2 + phase) * amp;
-      const w2 = Math.sin(t * 1.5 + phase + 1.7) * amp;
-      const c1x = x1 + dx + nx * w1;
-      const c1y = y1 + 0 + ny * w1;
-      const c2x = x2 - dx + nx * w2;
-      const c2y = y2 - 0 + ny * w2;
-      return `M ${x1} ${y1} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${x2} ${y2}`;
-    }
+    // curvePath moved to lib/canvas/layout.ts — imported above.
 
     function wiggleAllEdges(time: number) {
       edgesG.querySelectorAll('path').forEach((p) => {
@@ -1221,52 +1136,9 @@ export default function MindMapCanvas({
     }
 
     // ---- Generic file attachments ----
-    // Mirrors NodeDetailPanel's icon/size logic so the canvas detail card
-    // shows the same icons + filesize formatting for PDFs, docs, zips, etc.
-    function iconForAttachment(type: string): string {
-      if (type.startsWith('image/')) return '🖼';
-      if (type === 'application/pdf') return '📕';
-      if (
-        type.includes('zip') ||
-        type.includes('compressed') ||
-        type.includes('tar') ||
-        type === 'application/gzip'
-      )
-        return '🗄';
-      if (
-        type === 'application/msword' ||
-        type.includes('wordprocessingml') ||
-        type === 'application/rtf'
-      )
-        return '📘';
-      if (
-        type === 'application/vnd.ms-excel' ||
-        type.includes('spreadsheetml') ||
-        type === 'text/csv'
-      )
-        return '📊';
-      if (
-        type === 'application/vnd.ms-powerpoint' ||
-        type.includes('presentationml')
-      )
-        return '🎞';
-      if (type.startsWith('audio/')) return '🎵';
-      if (type.startsWith('video/')) return '🎬';
-      if (
-        type === 'application/json' ||
-        type === 'application/xml' ||
-        type === 'text/xml'
-      )
-        return '📦';
-      if (type.startsWith('text/')) return '📝';
-      return '📎';
-    }
-    function humanSize(bytes?: number): string {
-      if (!bytes && bytes !== 0) return '';
-      if (bytes < 1024) return `${bytes} B`;
-      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-      return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-    }
+    // iconForAttachment + humanSize are shared with NodeDetailPanel via
+    // lib/attachments.ts; renderDetailAttachments is the imperative-DOM
+    // analogue of the React panel's attachment list.
 
     function renderDetailAttachments(n: MindMapNode, holder: HTMLElement) {
       holder.innerHTML = '';

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MindMapData, MindMapNode, ViewMode } from '@/lib/types';
 import NodeDetailPanel from './NodeDetailPanel';
 
@@ -77,6 +77,16 @@ export default function TableView({
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
   const [density, setDensity] = useState<'comfy' | 'compact'>('comfy');
   const [detailNodeId, setDetailNodeId] = useState<string | null>(null);
+  // Roving tabindex: only ONE cell in the grid is tab-stoppable at a time
+  // (the one in `focusedCell`); the rest get tabIndex=-1. Arrow keys move
+  // focus, so Tab leaves the grid entirely rather than walking every cell.
+  // Standard a11y pattern for grids — see WAI-ARIA Authoring Practices §3.5.
+  const [focusedCell, setFocusedCell] = useState<{ row: number; col: number }>(
+    { row: 0, col: 0 },
+  );
+  // Map of "rowIdx-colIdx" → cell element, populated via ref callbacks so we
+  // can programmatically focus the next cell after arrow-key navigation.
+  const cellRefs = useRef<Map<string, HTMLTableCellElement>>(new Map());
   // Local data state so detail-panel edits feel immediate. Resyncs when the
   // parent reseeds with new initialData (view switch).
   const [data, setData] = useState<MindMapData>(initialData);
@@ -105,6 +115,42 @@ export default function TableView({
     onDataChange?.(updated);
   }
 
+  function openNodeDetail(id: string, rowIdx: number) {
+    setSelectedRow(rowIdx);
+    setDetailNodeId(id);
+  }
+
+  // Move the roving focus by (dRow, dCol). Clamps to the actual cell grid;
+  // for shorter rows, snaps the column to the row's own max depth so users
+  // don't navigate into empty trailing cells.
+  function moveFocus(
+    dRow: number,
+    dCol: number,
+    paths: string[][],
+  ) {
+    setFocusedCell((cur) => {
+      if (paths.length === 0) return cur;
+      const nextRow = Math.max(0, Math.min(paths.length - 1, cur.row + dRow));
+      const path = paths[nextRow];
+      if (!path) return cur;
+      const maxCol = path.length - 1;
+      const nextCol = Math.max(0, Math.min(maxCol, cur.col + dCol));
+      return { row: nextRow, col: nextCol };
+    });
+  }
+
+  // After focusedCell changes, programmatically move DOM focus to the new
+  // cell. Skipped on initial mount so the table doesn't grab focus on load.
+  const isFirstFocus = useRef(true);
+  useEffect(() => {
+    if (isFirstFocus.current) {
+      isFirstFocus.current = false;
+      return;
+    }
+    const key = `${focusedCell.row}-${focusedCell.col}`;
+    cellRefs.current.get(key)?.focus();
+  }, [focusedCell]);
+
   const paths = useMemo(() => walkPaths(data), [data]);
   // Every path starts with the root, which is identical across rows and
   // makes the first column an empty echo. Drop it from the view; the root
@@ -119,6 +165,18 @@ export default function TableView({
     () => visiblePaths.reduce((acc, p) => Math.max(acc, p.length), 0),
     [visiblePaths],
   );
+
+  // Clamp focused cell back into bounds when rows / depth shrink under it
+  // (e.g. user deletes a leaf, or the parent re-seeds with a thinner tree).
+  useEffect(() => {
+    setFocusedCell((cur) => {
+      if (visiblePaths.length === 0) return { row: 0, col: 0 };
+      const row = Math.min(cur.row, visiblePaths.length - 1);
+      const col = Math.min(cur.col, visiblePaths[row].length - 1);
+      if (row === cur.row && col === cur.col) return cur;
+      return { row, col };
+    });
+  }, [visiblePaths]);
   const rootLabel = data.rootId
     ? (data.nodes[data.rootId]?.label || 'Untitled mind map')
     : null;
@@ -131,11 +189,6 @@ export default function TableView({
     const branches = totalNodes - leaves;
     return { totalNodes, leaves, branches, noted };
   }, [data, paths]);
-
-  function openNodeDetail(id: string, rowIdx: number) {
-    setSelectedRow(rowIdx);
-    setDetailNodeId(id);
-  }
 
   void mindmapId;
   void initialTitle;
@@ -231,7 +284,13 @@ export default function TableView({
             </p>
           </div>
         ) : (
-          <table className="tv-grid">
+          <table
+            className="tv-grid"
+            role="grid"
+            aria-label={`${rootLabel || 'Mind map'} — table view`}
+            aria-rowcount={visiblePaths.length}
+            aria-colcount={maxDepth + 3 + (readonly ? 0 : 1)}
+          >
             <thead>
               <tr>
                 <th className="tv-th tv-th-rowno" scope="col">
@@ -328,6 +387,11 @@ export default function TableView({
                       return (
                         <td
                           key={colIdx}
+                          ref={(el) => {
+                            const key = `${rowIdx}-${colIdx}`;
+                            if (el) cellRefs.current.set(key, el);
+                            else cellRefs.current.delete(key);
+                          }}
                           className={[
                             'tv-cell',
                             'tv-cell-clickable',
@@ -338,16 +402,74 @@ export default function TableView({
                             .join(' ')}
                           onClick={(e) => {
                             e.stopPropagation();
+                            setFocusedCell({ row: rowIdx, col: colIdx });
                             openNodeDetail(id, rowIdx);
+                          }}
+                          onFocus={() => {
+                            // Mouse-focusing a non-focused cell updates the
+                            // roving target so Tab-out / Tab-back returns
+                            // to the cell the user last interacted with.
+                            if (
+                              focusedCell.row !== rowIdx ||
+                              focusedCell.col !== colIdx
+                            ) {
+                              setFocusedCell({ row: rowIdx, col: colIdx });
+                            }
                           }}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' || e.key === ' ') {
                               e.preventDefault();
                               openNodeDetail(id, rowIdx);
+                              return;
+                            }
+                            if (e.key === 'ArrowRight') {
+                              e.preventDefault();
+                              moveFocus(0, 1, visiblePaths);
+                              return;
+                            }
+                            if (e.key === 'ArrowLeft') {
+                              e.preventDefault();
+                              moveFocus(0, -1, visiblePaths);
+                              return;
+                            }
+                            if (e.key === 'ArrowDown') {
+                              e.preventDefault();
+                              moveFocus(1, 0, visiblePaths);
+                              return;
+                            }
+                            if (e.key === 'ArrowUp') {
+                              e.preventDefault();
+                              moveFocus(-1, 0, visiblePaths);
+                              return;
+                            }
+                            if (e.key === 'Home') {
+                              e.preventDefault();
+                              setFocusedCell({
+                                row: e.ctrlKey || e.metaKey ? 0 : rowIdx,
+                                col: 0,
+                              });
+                              return;
+                            }
+                            if (e.key === 'End') {
+                              e.preventDefault();
+                              const targetRow =
+                                e.ctrlKey || e.metaKey
+                                  ? visiblePaths.length - 1
+                                  : rowIdx;
+                              setFocusedCell({
+                                row: targetRow,
+                                col: visiblePaths[targetRow].length - 1,
+                              });
+                              return;
                             }
                           }}
-                          role="button"
-                          tabIndex={0}
+                          role="gridcell"
+                          tabIndex={
+                            focusedCell.row === rowIdx &&
+                            focusedCell.col === colIdx
+                              ? 0
+                              : -1
+                          }
                           aria-label={`Open details for ${node?.label || 'this node'}`}
                           title={node?.note || node?.label || ''}
                           data-depth={colIdx % 5}
