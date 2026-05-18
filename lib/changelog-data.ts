@@ -17,6 +17,20 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v4.1',
+    title: 'Share buttons everywhere',
+    date: 'May 2026',
+    commit: 'cd34c8a',
+    highlights: [
+      'New share row on Home, Pricing, Founder Access, and Changelog — X, Facebook, LinkedIn, Reddit, WhatsApp, Telegram, email, copy link',
+      'On mobile and Safari, a native "Share…" button opens iMessage, AirDrop, Messenger, whatever you have installed',
+      'Per-page copy — the founder page invites people to grab founder pricing, the changelog invites them to peek at what\'s new',
+      'Canvas minimap moved to the top-right corner so the Squishy voice agent stops sitting on top of it',
+    ],
+    squishyNote:
+      'Tell everyone, darling. I sound better in a crowd.',
+  },
+  {
     version: 'v4.0',
     title: 'Flow chip lands in Tree view',
     date: 'May 2026',
