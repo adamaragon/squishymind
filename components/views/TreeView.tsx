@@ -1,9 +1,18 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { MindMapData, MindMapNode } from '@/lib/types';
+import type { FlowDirection, MindMapData, MindMapNode } from '@/lib/types';
 import NodeDetailPanel from './NodeDetailPanel';
 import { stripIncomingLinks } from '@/lib/canvas/layout';
+
+// Same picker glyphs/labels as the canvas + detail panel so the three
+// surfaces speak the same visual language.
+const FLOW_DIRS: Array<{ value: FlowDirection; glyph: string; label: string }> = [
+  { value: 'forward', glyph: '→', label: 'Forward (parent → child)' },
+  { value: 'backward', glyph: '←', label: 'Reverse (child → parent)' },
+  { value: 'both', glyph: '↔', label: 'Both directions' },
+  { value: 'none', glyph: '—', label: 'No arrow' },
+];
 
 type Props = {
   mindmapId: string;
@@ -237,10 +246,36 @@ export default function TreeView({
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [zoom, setZoom] = useState(1);
   const [detailNodeId, setDetailNodeId] = useState<string | null>(null);
+  // Flow-chip interaction state — mirrors the canvas's flow handle:
+  // click → open a parent-edge picker on the same card; drag → start
+  // creating a link, drop on another card to open a picker for the new
+  // link's flow direction.
+  const [flowDrag, setFlowDrag] = useState<{
+    sourceId: string;
+    anchorX: number;
+    anchorY: number;
+    startSX: number;
+    startSY: number;
+    cursorX: number;
+    cursorY: number;
+    moved: boolean;
+  } | null>(null);
+  const [parentPicker, setParentPicker] = useState<string | null>(null);
+  const [linkPicker, setLinkPicker] = useState<{
+    sourceId: string;
+    targetId: string;
+  } | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const focusOnNextRender = useRef<{ id: string; caret?: 'end' } | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  // Latest data snapshot for the document-level mouseup handler (the
+  // effect installs once per drag, so a closed-over `data` would go
+  // stale across re-renders during the drag).
+  const dataRef = useRef(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
 
   useEffect(() => {
     setData(initialData);
@@ -301,6 +336,188 @@ export default function TreeView({
       onTitleChange?.(next.label || initialTitle);
     }
   }
+
+  // Apply a parent-edge flow direction to a node. 'forward' persists as
+  // undefined so we don't bloat the JSON with the default value
+  // (matches the canvas behaviour).
+  const applyParentFlow = useCallback(
+    (nodeId: string, dir: FlowDirection) => {
+      const src = dataRef.current;
+      const node = src.nodes[nodeId];
+      if (!node) return;
+      const updated: MindMapData = {
+        ...src,
+        nodes: {
+          ...src.nodes,
+          [nodeId]: {
+            ...node,
+            flowDirection: dir === 'forward' ? undefined : dir,
+          },
+        },
+      };
+      commit(updated);
+    },
+    [commit],
+  );
+
+  // Apply a flow direction to a specific link in source.links. Same
+  // 'forward' → undefined normalization as parent-edge flow.
+  const applyLinkFlow = useCallback(
+    (sourceId: string, targetId: string, dir: FlowDirection) => {
+      const src = dataRef.current;
+      const node = src.nodes[sourceId];
+      if (!node) return;
+      const links = (node.links || []).map((l) =>
+        l.targetId === targetId
+          ? { ...l, flowDirection: dir === 'forward' ? undefined : dir }
+          : l,
+      );
+      const updated: MindMapData = {
+        ...src,
+        nodes: {
+          ...src.nodes,
+          [sourceId]: { ...node, links },
+        },
+      };
+      commit(updated);
+    },
+    [commit],
+  );
+
+  // Try to create a non-structural link from source → target. Returns
+  // true on success so the caller can open the new link's picker. Blocks:
+  // self-link, direct parent (already connected by tree edge), direct
+  // child (ditto), and duplicate links — same set of guards the canvas
+  // uses to keep flow chips from drawing redundant lines.
+  const createLink = useCallback(
+    (sourceId: string, targetId: string): boolean => {
+      const src = dataRef.current;
+      if (sourceId === targetId) return false;
+      const sourceNode = src.nodes[sourceId];
+      const targetNode = src.nodes[targetId];
+      if (!sourceNode || !targetNode) return false;
+      if (sourceNode.parentId === targetId) return false;
+      if (targetNode.parentId === sourceId) return false;
+      if ((sourceNode.links || []).some((l) => l.targetId === targetId)) {
+        return false;
+      }
+      const updated: MindMapData = {
+        ...src,
+        nodes: {
+          ...src.nodes,
+          [sourceId]: {
+            ...sourceNode,
+            links: [...(sourceNode.links || []), { targetId }],
+          },
+        },
+      };
+      commit(updated);
+      return true;
+    },
+    [commit],
+  );
+
+  // Document-level mouse listeners for an active flow-chip drag. Installed
+  // once per drag (when sourceId becomes non-null) and torn down on release.
+  // Re-reads `dataRef` on drop so the latest links snapshot is checked.
+  const flowDragSourceId = flowDrag?.sourceId ?? null;
+  useEffect(() => {
+    if (!flowDragSourceId) return;
+    function onMove(ev: MouseEvent) {
+      setFlowDrag((d) => {
+        if (!d) return d;
+        const moved =
+          d.moved ||
+          Math.hypot(ev.clientX - d.startSX, ev.clientY - d.startSY) > 4;
+        return {
+          ...d,
+          cursorX: ev.clientX,
+          cursorY: ev.clientY,
+          moved,
+        };
+      });
+    }
+    function onUp(ev: MouseEvent) {
+      setFlowDrag((d) => {
+        if (!d) return d;
+        if (!d.moved) {
+          // Click — open the parent-edge picker. Root has no parent edge,
+          // so the click is a no-op on root (drag still works there).
+          const node = dataRef.current.nodes[d.sourceId];
+          if (node?.parentId) {
+            setParentPicker(d.sourceId);
+          }
+        } else {
+          // Drag — hit-test the drop point for a target card.
+          const dropEl = document.elementFromPoint(ev.clientX, ev.clientY);
+          const cardEl =
+            (dropEl?.closest('[data-tree-card-id]') as HTMLElement | null) ||
+            null;
+          const targetId = cardEl?.dataset.treeCardId || '';
+          if (targetId && targetId !== d.sourceId) {
+            if (createLink(d.sourceId, targetId)) {
+              setLinkPicker({ sourceId: d.sourceId, targetId });
+            }
+          }
+        }
+        return null;
+      });
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+  }, [flowDragSourceId, createLink]);
+
+  // Outside-click dismissal for the open pickers. The card-anchored
+  // pickers themselves stopPropagation on their own mousedown so we
+  // don't immediately close on the same tick.
+  useEffect(() => {
+    if (!parentPicker && !linkPicker) return;
+    function onDown(ev: MouseEvent) {
+      const t = ev.target as HTMLElement | null;
+      if (t && t.closest('.tr-flow-mini-picker')) return;
+      setParentPicker(null);
+      setLinkPicker(null);
+    }
+    // setTimeout so the click that opened the picker doesn't dismiss it.
+    const id = setTimeout(
+      () => document.addEventListener('mousedown', onDown, true),
+      0,
+    );
+    return () => {
+      clearTimeout(id);
+      document.removeEventListener('mousedown', onDown, true);
+    };
+  }, [parentPicker, linkPicker]);
+
+  // Start a flow-chip interaction. Captures the chip's screen-space
+  // centre so the ghost line can anchor there for the duration of the drag.
+  const onFlowMouseDown = useCallback(
+    (sourceId: string, e: React.MouseEvent) => {
+      if (readonly) return;
+      e.stopPropagation();
+      e.preventDefault();
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      setFlowDrag({
+        sourceId,
+        anchorX: rect.left + rect.width / 2,
+        anchorY: rect.top + rect.height / 2,
+        startSX: e.clientX,
+        startSY: e.clientY,
+        cursorX: e.clientX,
+        cursorY: e.clientY,
+        moved: false,
+      });
+      // Opening a flow drag/click also clears any leftover picker so we
+      // don't stack two on screen.
+      setParentPicker(null);
+      setLinkPicker(null);
+    },
+    [readonly],
+  );
 
   function onAddChild(parentId: string) {
     if (readonly) return;
@@ -845,6 +1062,14 @@ export default function TreeView({
                   isCollapsed={isCollapsed}
                   childCount={childCount}
                   readonly={readonly}
+                  // Each card can host at most one picker at a time —
+                  // either its own parent-edge picker, or it's the
+                  // target of a freshly-created link picker.
+                  parentPickerOpen={parentPicker === id}
+                  linkPickerOpen={
+                    linkPicker && linkPicker.targetId === id ? linkPicker : null
+                  }
+                  isDraggingFlow={flowDrag?.sourceId === id}
                   inputRef={(el) => {
                     if (el) inputRefs.current[id] = el;
                     else delete inputRefs.current[id];
@@ -860,12 +1085,62 @@ export default function TreeView({
                   onToggleCollapse={() => toggleCollapse(id)}
                   onOpenDetails={() => setDetailNodeId(id)}
                   onDelete={() => onDelete(id)}
+                  onFlowMouseDown={(e) => onFlowMouseDown(id, e)}
+                  onPickParentFlow={(v) => {
+                    applyParentFlow(id, v);
+                    setParentPicker(null);
+                  }}
+                  onPickLinkFlow={(v) => {
+                    if (linkPicker && linkPicker.targetId === id) {
+                      applyLinkFlow(linkPicker.sourceId, id, v);
+                    }
+                    setLinkPicker(null);
+                  }}
                 />
               );
             })}
           </div>
         </div>
       </div>
+
+      {/* Flow-chip drag ghost — dashed cubic curve from the chip anchor
+          (captured at mousedown) to the live cursor position. Fixed-
+          positioned overlay so we don't have to translate screen ↔ world
+          coords mid-drag. pointer-events: none so the underlying
+          elementFromPoint hit-test reaches the actual card. */}
+      {flowDrag && flowDrag.moved && (
+        <svg
+          className="tr-flow-ghost-overlay"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            width: '100vw',
+            height: '100vh',
+            pointerEvents: 'none',
+            zIndex: 50,
+          }}
+          aria-hidden
+        >
+          {(() => {
+            const x1 = flowDrag.anchorX;
+            const y1 = flowDrag.anchorY;
+            const x2 = flowDrag.cursorX;
+            const y2 = flowDrag.cursorY;
+            const dx = (x2 - x1) * 0.5;
+            return (
+              <path
+                d={`M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`}
+                fill="none"
+                stroke="#06b6d4"
+                strokeWidth={2}
+                strokeDasharray="6 5"
+                strokeLinecap="round"
+                opacity={0.7}
+              />
+            );
+          })()}
+        </svg>
+      )}
 
       {detailNodeId && data.nodes[detailNodeId] && (
         <NodeDetailPanel
@@ -1182,6 +1457,9 @@ function TreeNodeCard({
   isCollapsed,
   childCount,
   readonly,
+  parentPickerOpen,
+  linkPickerOpen,
+  isDraggingFlow,
   inputRef,
   onSelect,
   onHoverChange,
@@ -1191,6 +1469,9 @@ function TreeNodeCard({
   onToggleCollapse,
   onOpenDetails,
   onDelete,
+  onFlowMouseDown,
+  onPickParentFlow,
+  onPickLinkFlow,
 }: {
   node: MindMapNode;
   x: number;
@@ -1200,6 +1481,9 @@ function TreeNodeCard({
   isCollapsed: boolean;
   childCount: number;
   readonly: boolean;
+  parentPickerOpen: boolean;
+  linkPickerOpen: { sourceId: string; targetId: string } | null;
+  isDraggingFlow: boolean;
   inputRef: (el: HTMLInputElement | null) => void;
   onSelect: () => void;
   onHoverChange: (hovered: boolean) => void;
@@ -1209,17 +1493,30 @@ function TreeNodeCard({
   onToggleCollapse: () => void;
   onOpenDetails: () => void;
   onDelete: () => void;
+  onFlowMouseDown: (e: React.MouseEvent) => void;
+  onPickParentFlow: (v: FlowDirection) => void;
+  onPickLinkFlow: (v: FlowDirection) => void;
 }) {
   const hasNote = !!node.note?.trim();
   const hasImage = !!node.imageUrl;
   const attachCount = node.attachments?.length ?? 0;
   const accent = ACCENT_PALETTE[(node.colorIdx ?? 0) % 5];
   const accentAlt = ACCENT_PALETTE[((node.colorIdx ?? 0) + 2) % 5];
+  // Combined picker open flag — used to keep the chip visible while
+  // either picker is showing (so the source/target relationship stays
+  // legible). Card also surfaces a glow during an active drag.
+  const anyPickerOpen = parentPickerOpen || !!linkPickerOpen;
   return (
     <div
+      // data-tree-card-id powers the elementFromPoint hit-test that the
+      // flow-chip drop handler uses to find which card the user
+      // released over.
+      data-tree-card-id={node.id}
       className={`tr-card ${isSelected ? 'is-selected' : ''} ${isRoot ? 'is-root' : ''} ${
         isCollapsed ? 'is-collapsed' : ''
-      } ${childCount === 0 ? 'is-leaf' : ''}`}
+      } ${childCount === 0 ? 'is-leaf' : ''} ${isDraggingFlow ? 'is-flow-source' : ''} ${
+        anyPickerOpen ? 'has-picker' : ''
+      }`}
       style={{
         left: x,
         top: y,
@@ -1371,6 +1668,98 @@ function TreeNodeCard({
           <span className="tr-card-add-glyph" aria-hidden>＋</span>
           <span className="tr-card-add-label">Add</span>
         </button>
+      )}
+
+      {/* Flow chip — sits below the Add pill. Click opens a parent-edge
+          flow picker (skipped on root since root has no parent edge);
+          drag creates a link to whatever card you drop onto, then opens
+          a picker for the new link's direction. Same UX as the canvas's
+          .flow-handle so the two views feel like the same product. */}
+      {!readonly && (
+        <button
+          type="button"
+          className="tr-card-flow-chip"
+          aria-label="Set flow direction or drag to link"
+          data-tip="Click for flow · drag to link"
+          onMouseDown={onFlowMouseDown}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <svg
+            viewBox="0 0 16 16"
+            width="11"
+            height="11"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M3 8 H 11.5 M 8.5 5 L 12 8 L 8.5 11" />
+          </svg>
+        </button>
+      )}
+
+      {/* Inline picker — opens above the card. Two cases: parent-edge
+          picker (clicking the chip on a non-root) and link picker (after
+          dropping a flow drag onto this card). Only one renders at a
+          time per card. */}
+      {parentPickerOpen && (
+        <div
+          className="tr-flow-mini-picker"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {FLOW_DIRS.map(({ value, glyph, label }) => {
+            const active = (node.flowDirection || 'forward') === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                className={`tr-flow-mini-btn ${active ? 'is-active' : ''}`}
+                data-flow={value}
+                title={label}
+                aria-label={label}
+                aria-pressed={active ? 'true' : 'false'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPickParentFlow(value);
+                }}
+              >
+                {glyph}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {linkPickerOpen && (
+        <div
+          className="tr-flow-mini-picker"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {FLOW_DIRS.map(({ value, glyph, label }) => {
+            // 'forward' is the implicit default for new links so it
+            // reads as active on first open.
+            const active = value === 'forward';
+            return (
+              <button
+                key={value}
+                type="button"
+                className={`tr-flow-mini-btn ${active ? 'is-active' : ''}`}
+                data-flow={value}
+                title={label}
+                aria-label={label}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPickLinkFlow(value);
+                }}
+              >
+                {glyph}
+              </button>
+            );
+          })}
+        </div>
       )}
 
       {/* (Details trigger moved inline into the chip row inside the
@@ -1739,6 +2128,156 @@ function TreeNodeCard({
           border-color: rgba(239, 68, 68, 0.65);
           color: #fee2e2;
           transform: scale(1.08);
+        }
+
+        /* Flow chip — sits below the Add pill on the right edge. Smaller
+           and more muted than Add so the primary action (add a child)
+           still reads as primary. Reveals on hover/select like Add; also
+           reveals while ANY picker is open so the relationship between
+           chip and picker stays legible. */
+        .tr-card-flow-chip {
+          position: absolute;
+          right: -10px;
+          bottom: -10px;
+          width: 22px;
+          height: 22px;
+          border-radius: 50%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+          background: rgba(15, 17, 36, 0.95);
+          color: color-mix(in srgb, var(--tr-accent) 80%, white);
+          border: 1.5px solid color-mix(
+            in srgb,
+            var(--tr-accent) 55%,
+            rgba(255, 255, 255, 0.12)
+          );
+          cursor: grab;
+          opacity: 0;
+          transform: scale(0.85);
+          transition:
+            transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+            background 0.15s,
+            color 0.15s,
+            box-shadow 0.15s,
+            border-color 0.15s,
+            opacity 0.15s;
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
+          z-index: 2;
+        }
+        .tr-card-flow-chip:active {
+          cursor: grabbing;
+        }
+        .tr-card:hover .tr-card-flow-chip,
+        .tr-card.is-selected .tr-card-flow-chip,
+        .tr-card.has-picker .tr-card-flow-chip,
+        .tr-card.is-flow-source .tr-card-flow-chip {
+          opacity: 1;
+          transform: scale(1);
+        }
+        .tr-card-flow-chip:hover {
+          background: var(--tr-accent);
+          color: white;
+          transform: scale(1.1);
+          border-color: color-mix(in srgb, var(--tr-accent) 90%, white);
+        }
+        .tr-card.is-flow-source .tr-card-flow-chip {
+          background: var(--tr-accent);
+          color: white;
+          border-color: color-mix(in srgb, var(--tr-accent) 90%, white);
+          box-shadow:
+            0 4px 10px rgba(0, 0, 0, 0.45),
+            0 0 0 4px color-mix(in srgb, var(--tr-accent) 28%, transparent);
+        }
+        .is-root .tr-card-flow-chip {
+          background: rgba(0, 0, 0, 0.45);
+          border-color: rgba(255, 255, 255, 0.4);
+          color: white;
+        }
+        .is-root .tr-card-flow-chip:hover {
+          background: rgba(255, 255, 255, 0.2);
+          border-color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* Flow-source glow on the card itself so the drag origin is
+           obvious even when the cursor's far away. */
+        .tr-card.is-flow-source {
+          box-shadow:
+            0 1px 0 rgba(255, 255, 255, 0.08) inset,
+            0 14px 36px rgba(0, 0, 0, 0.55),
+            0 0 0 2px color-mix(in srgb, var(--tr-accent) 50%, transparent),
+            0 0 42px color-mix(in srgb, var(--tr-accent) 35%, transparent);
+        }
+
+        /* Inline picker — 4-button popup that floats above the card.
+           Same colour-coded active states as the canvas picker so the
+           two surfaces speak the same visual language. */
+        .tr-flow-mini-picker {
+          position: absolute;
+          top: -42px;
+          left: 50%;
+          transform: translateX(-50%);
+          display: inline-flex;
+          gap: 2px;
+          padding: 3px;
+          border-radius: 10px;
+          background: rgba(8, 9, 18, 0.96);
+          border: 1px solid var(--border);
+          box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
+          z-index: 10;
+          animation: tr-flow-pop-in 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+        }
+        @keyframes tr-flow-pop-in {
+          from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(4px) scale(0.85);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0) scale(1);
+          }
+        }
+        .tr-flow-mini-btn {
+          background: transparent;
+          color: var(--text-dim);
+          border: none;
+          font-size: 13px;
+          font-weight: 600;
+          padding: 5px 9px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-family: inherit;
+          line-height: 1;
+          min-width: 26px;
+          transition: all 0.12s;
+        }
+        .tr-flow-mini-btn:hover {
+          color: var(--text);
+          background: rgba(255, 255, 255, 0.08);
+        }
+        .tr-flow-mini-btn.is-active {
+          color: white;
+          background: rgba(255, 255, 255, 0.1);
+          box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+        }
+        .tr-flow-mini-btn[data-flow='forward'].is-active {
+          background: rgba(16, 185, 129, 0.34);
+          box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.65);
+        }
+        .tr-flow-mini-btn[data-flow='backward'].is-active {
+          background: rgba(245, 158, 11, 0.34);
+          box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.65);
+        }
+        .tr-flow-mini-btn[data-flow='both'].is-active {
+          background: rgba(6, 182, 212, 0.34);
+          box-shadow: inset 0 0 0 1px rgba(6, 182, 212, 0.65);
+        }
+        .tr-flow-mini-btn[data-flow='none'].is-active {
+          background: rgba(148, 163, 184, 0.34);
+          box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.65);
         }
       `}</style>
     </div>
