@@ -1066,8 +1066,24 @@ function FlowLinksSection({
         }
         :global(.nd-flow-btn.is-active) {
           color: white;
-          background: color-mix(in srgb, var(--nd-accent) 36%, transparent);
-          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nd-accent) 55%, transparent);
+          background: rgba(255, 255, 255, 0.1);
+          box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+        }
+        :global(.nd-flow-btn[data-flow="forward"].is-active) {
+          background: rgba(16, 185, 129, 0.32);
+          box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.6);
+        }
+        :global(.nd-flow-btn[data-flow="backward"].is-active) {
+          background: rgba(245, 158, 11, 0.32);
+          box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.6);
+        }
+        :global(.nd-flow-btn[data-flow="both"].is-active) {
+          background: rgba(6, 182, 212, 0.32);
+          box-shadow: inset 0 0 0 1px rgba(6, 182, 212, 0.6);
+        }
+        :global(.nd-flow-btn[data-flow="none"].is-active) {
+          background: rgba(148, 163, 184, 0.32);
+          box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.6);
         }
         :global(.nd-flow-btn:disabled) {
           opacity: 0.5;
@@ -1177,6 +1193,9 @@ function FlowButton({
       aria-label={FLOW_LABEL[value]}
       aria-pressed={current === value}
       data-compact={compact ? '1' : undefined}
+      // data-flow drives per-direction active-state colour in CSS so the
+      // picker echoes the flow-arrow palette (→ emerald, ← amber, etc.).
+      data-flow={value}
     >
       {FLOW_GLYPH[value]}
     </button>

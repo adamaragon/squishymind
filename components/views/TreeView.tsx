@@ -682,41 +682,48 @@ export default function TreeView({
                   />
                 );
               })}
-              {/* Animated flow overlay for tree edges — dashed packets
-                  sliding along each edge in the indicated direction.
-                  Skipped when flow === 'none'. */}
+              {/* Animated flow markers for tree edges — actual triangle
+                  arrows riding the curve via SVG <animateMotion>. Per-
+                  direction colour: forward = emerald, backward = amber.
+                  'both' renders one of each. 'none' renders nothing. */}
               {edgePaths.map((e) => {
                 if (e.flow === 'none') return null;
-                const colour = ACCENT_PALETTE[e.colorIdx % 5];
                 const out: React.ReactNode[] = [];
                 if (e.flow === 'forward' || e.flow === 'both') {
                   out.push(
-                    <path
+                    <g
                       key={`${e.key}-fwd`}
-                      d={e.d}
-                      fill="none"
-                      stroke={colour}
-                      strokeWidth={2.2}
-                      strokeLinecap="round"
-                      strokeDasharray="4 14"
-                      className="tr-flow tr-flow-fwd"
+                      className="tr-flow-arrow tr-flow-arrow-fwd"
                       pointerEvents="none"
-                    />,
+                    >
+                      <path d="M -9 -6 L 7 0 L -9 6 Z" />
+                      <animateMotion
+                        dur="2.6s"
+                        repeatCount="indefinite"
+                        rotate="auto"
+                        path={e.d}
+                      />
+                    </g>,
                   );
                 }
                 if (e.flow === 'backward' || e.flow === 'both') {
                   out.push(
-                    <path
+                    <g
                       key={`${e.key}-back`}
-                      d={e.d}
-                      fill="none"
-                      stroke={colour}
-                      strokeWidth={2.2}
-                      strokeLinecap="round"
-                      strokeDasharray="4 14"
-                      className="tr-flow tr-flow-back"
+                      className="tr-flow-arrow tr-flow-arrow-back"
                       pointerEvents="none"
-                    />,
+                    >
+                      <path d="M -9 -6 L 7 0 L -9 6 Z" />
+                      <animateMotion
+                        dur="2.6s"
+                        repeatCount="indefinite"
+                        rotate="auto"
+                        path={e.d}
+                        keyPoints="1;0"
+                        keyTimes="0;1"
+                        calcMode="linear"
+                      />
+                    </g>,
                   );
                 }
                 return out;
@@ -748,40 +755,47 @@ export default function TreeView({
                   />
                 );
               })}
-              {/* Flow overlay for link edges — same sliding-packets logic
-                  in a slightly brighter neutral so the motion reads on top
-                  of the dashed link line. */}
+              {/* Same traveling-arrow treatment for link edges, with
+                  lighter tints so a link arrow is distinguishable from a
+                  tree-edge arrow if the two cross over each other. */}
               {linkPaths.map((lk) => {
                 if (lk.flow === 'none') return null;
                 const out: React.ReactNode[] = [];
                 if (lk.flow === 'forward' || lk.flow === 'both') {
                   out.push(
-                    <path
+                    <g
                       key={`${lk.key}-fwd`}
-                      d={lk.d}
-                      fill="none"
-                      stroke="#e2e8f0"
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                      strokeDasharray="4 14"
-                      className="tr-flow tr-flow-fwd tr-flow-link"
+                      className="tr-flow-arrow tr-flow-arrow-link tr-flow-arrow-fwd"
                       pointerEvents="none"
-                    />,
+                    >
+                      <path d="M -9 -6 L 7 0 L -9 6 Z" />
+                      <animateMotion
+                        dur="2.6s"
+                        repeatCount="indefinite"
+                        rotate="auto"
+                        path={lk.d}
+                      />
+                    </g>,
                   );
                 }
                 if (lk.flow === 'backward' || lk.flow === 'both') {
                   out.push(
-                    <path
+                    <g
                       key={`${lk.key}-back`}
-                      d={lk.d}
-                      fill="none"
-                      stroke="#e2e8f0"
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                      strokeDasharray="4 14"
-                      className="tr-flow tr-flow-back tr-flow-link"
+                      className="tr-flow-arrow tr-flow-arrow-link tr-flow-arrow-back"
                       pointerEvents="none"
-                    />,
+                    >
+                      <path d="M -9 -6 L 7 0 L -9 6 Z" />
+                      <animateMotion
+                        dur="2.6s"
+                        repeatCount="indefinite"
+                        rotate="auto"
+                        path={lk.d}
+                        keyPoints="1;0"
+                        keyTimes="0;1"
+                        calcMode="linear"
+                      />
+                    </g>,
                   );
                 }
                 return out;
@@ -1049,30 +1063,30 @@ export default function TreeView({
           filter: drop-shadow(0 0 6px currentColor);
         }
 
-        /* Flow overlays — dashed packets sliding along the edge to make
-           direction visible at rest. Total dash period 4 + 14 = 18, so
-           the keyframe offset matches one full cycle. */
-        .tr-flow {
-          opacity: 0.7;
+        /* Flow markers — actual triangle arrows riding the curve via SVG
+           <animateMotion>. Per-direction colour matches the canvas so the
+           two views speak the same visual language. */
+        .tr-flow-arrow path {
+          stroke: none;
         }
-        .tr-flow-link {
-          opacity: 0.8;
+        .tr-flow-arrow-fwd path {
+          fill: #10b981;
+          filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.6));
         }
-        .tr-flow-fwd {
-          animation: tr-flow-fwd 2.4s linear infinite;
+        .tr-flow-arrow-back path {
+          fill: #f59e0b;
+          filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.6));
         }
-        .tr-flow-back {
-          animation: tr-flow-back 2.4s linear infinite;
+        .tr-flow-arrow-link.tr-flow-arrow-fwd path {
+          fill: #6ee7b7;
+          filter: drop-shadow(0 0 4px rgba(110, 231, 183, 0.55));
         }
-        @keyframes tr-flow-fwd {
-          to { stroke-dashoffset: -18; }
-        }
-        @keyframes tr-flow-back {
-          to { stroke-dashoffset: 18; }
+        .tr-flow-arrow-link.tr-flow-arrow-back path {
+          fill: #fcd34d;
+          filter: drop-shadow(0 0 4px rgba(252, 211, 77, 0.55));
         }
         @media (prefers-reduced-motion: reduce) {
-          .tr-flow-fwd,
-          .tr-flow-back { animation: none; }
+          .tr-flow-arrow { display: none; }
         }
 
         /* ---- Hint footer ---- */

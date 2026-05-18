@@ -1174,6 +1174,9 @@ export default function MindMapCanvas({
         b.title = label;
         b.setAttribute('aria-label', label);
         b.setAttribute('aria-pressed', current === value ? 'true' : 'false');
+        // data-flow lets CSS colour the active state per direction so the
+        // picker echoes the flow-arrow palette (forward = emerald, etc.).
+        b.setAttribute('data-flow', value);
         if (readonlyRef.current) b.disabled = true;
         b.addEventListener('click', (ev) => {
           ev.stopPropagation();
@@ -1211,6 +1214,7 @@ export default function MindMapCanvas({
         btn.title = label;
         btn.setAttribute('aria-label', label);
         btn.setAttribute('aria-pressed', current === value ? 'true' : 'false');
+        btn.setAttribute('data-flow', value);
         // Block the mousedown so the picker itself doesn't get caught by
         // any node-level drag/drop handlers.
         btn.addEventListener('mousedown', (e) => e.stopPropagation());
@@ -2417,15 +2421,16 @@ export default function MindMapCanvas({
             ? ' marker-start="url(#arrow-start-tree)"'
             : '';
         html += `<path class="edge-path${highlight}" d="${d}" data-from="${p.id}" data-to="${n.id}" data-phase="${phase}"${markerStart}${markerEnd} />`;
-        // Flow overlays: dashed packets sliding along the curve. One per
-        // direction; 'both' gets two. 'none' gets none. The overlay shares
-        // data-from/data-to so wiggleAllEdges keeps it locked to the
-        // breathing tree-edge path.
+        // Flow markers: actual triangle arrows riding the curve via SVG
+        // <animateMotion>. Bigger than the line stroke (18×12 px) so
+        // direction reads at a glance. Forward = emerald, backward =
+        // amber. 'both' renders one of each. 'none' renders no arrow.
+        // keyPoints="1;0" reverses the motion for backward.
         if (flow === 'forward' || flow === 'both') {
-          html += `<path class="edge-flow flow-fwd" d="${d}" data-from="${p.id}" data-to="${n.id}" data-phase="${phase}" pointer-events="none" />`;
+          html += `<g class="flow-arrow flow-arrow-fwd" pointer-events="none"><path d="M -9 -6 L 7 0 L -9 6 Z" /><animateMotion dur="2.6s" repeatCount="indefinite" rotate="auto" path="${d}" /></g>`;
         }
         if (flow === 'backward' || flow === 'both') {
-          html += `<path class="edge-flow flow-back" d="${d}" data-from="${p.id}" data-to="${n.id}" data-phase="${phase}" pointer-events="none" />`;
+          html += `<g class="flow-arrow flow-arrow-back" pointer-events="none"><path d="M -9 -6 L 7 0 L -9 6 Z" /><animateMotion dur="2.6s" repeatCount="indefinite" rotate="auto" path="${d}" keyPoints="1;0" keyTimes="0;1" calcMode="linear" /></g>`;
         }
       });
 
@@ -2456,12 +2461,14 @@ export default function MindMapCanvas({
               ? ' marker-start="url(#arrow-start-link)"'
               : '';
           html += `<path class="edge-path edge-link${highlight}" d="${d}" data-from="${n.id}" data-to="${lk.targetId}" data-phase="${phase}" data-link="1"${markerStart}${markerEnd} />`;
-          // Same overlay pattern for links — packets riding the dashed line.
+          // Same traveling-arrow pattern for links; link variants use
+          // lighter (paler) tints of the same direction colours so a link
+          // arrow doesn't get visually confused with a tree edge arrow.
           if (flow === 'forward' || flow === 'both') {
-            html += `<path class="edge-flow edge-flow-link flow-fwd" d="${d}" data-from="${n.id}" data-to="${lk.targetId}" data-phase="${phase}" pointer-events="none" />`;
+            html += `<g class="flow-arrow flow-arrow-link flow-arrow-fwd" pointer-events="none"><path d="M -9 -6 L 7 0 L -9 6 Z" /><animateMotion dur="2.6s" repeatCount="indefinite" rotate="auto" path="${d}" /></g>`;
           }
           if (flow === 'backward' || flow === 'both') {
-            html += `<path class="edge-flow edge-flow-link flow-back" d="${d}" data-from="${n.id}" data-to="${lk.targetId}" data-phase="${phase}" pointer-events="none" />`;
+            html += `<g class="flow-arrow flow-arrow-link flow-arrow-back" pointer-events="none"><path d="M -9 -6 L 7 0 L -9 6 Z" /><animateMotion dur="2.6s" repeatCount="indefinite" rotate="auto" path="${d}" keyPoints="1;0" keyTimes="0;1" calcMode="linear" /></g>`;
           }
         }
       }
@@ -4640,8 +4647,24 @@ export default function MindMapCanvas({
         }
         .smm-root :global(.flow-mini-btn.is-active) {
           color: white;
-          background: color-mix(in srgb, var(--selection) 38%, transparent);
-          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--selection) 60%, transparent);
+          background: rgba(255, 255, 255, 0.1);
+          box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+        }
+        .smm-root :global(.flow-mini-btn[data-flow="forward"].is-active) {
+          background: rgba(16, 185, 129, 0.34);
+          box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.65);
+        }
+        .smm-root :global(.flow-mini-btn[data-flow="backward"].is-active) {
+          background: rgba(245, 158, 11, 0.34);
+          box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.65);
+        }
+        .smm-root :global(.flow-mini-btn[data-flow="both"].is-active) {
+          background: rgba(6, 182, 212, 0.34);
+          box-shadow: inset 0 0 0 1px rgba(6, 182, 212, 0.65);
+        }
+        .smm-root :global(.flow-mini-btn[data-flow="none"].is-active) {
+          background: rgba(148, 163, 184, 0.34);
+          box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.65);
         }
 
         .smm-root :global(.edge-path) {
@@ -4686,52 +4709,45 @@ export default function MindMapCanvas({
           stroke: none;
           opacity: 0.75;
         }
-        /* Flow overlay paths — small dashed packets that slide along the
-           curve via stroke-dashoffset animation, making direction visible
-           at a glance. Sits above the structural edge stroke (drawn after
-           in the SVG paint order). 'forward' / 'backward' classes pick
-           opposite animations; 'both' renders one of each, slightly out
-           of phase so they don't collide visually. */
-        .smm-root :global(.edge-flow) {
-          fill: none;
-          stroke: var(--edge);
-          stroke-width: 2.2;
-          stroke-linecap: round;
-          stroke-dasharray: 4 14;
-          opacity: 0.7;
-          pointer-events: none;
+        /* Flow markers — actual triangle arrows riding the edge curve via
+           SVG <animateMotion>. Sized 16×12 (bigger than the 2px line
+           stroke) so direction reads at a glance. Per-direction colours
+           are part of the system vocabulary now:
+             forward  = emerald   (#10b981)
+             backward = amber     (#f59e0b)
+             both     = one of each, so a bidirectional edge is visually
+                        two-toned and unambiguous
+           Link arrows use slightly desaturated tints so they don't
+           compete with tree-edge arrows in a busy map. */
+        .smm-root :global(.flow-arrow path) {
+          stroke: none;
         }
-        .smm-root :global(.edge-flow-link) {
-          stroke: var(--selection);
-          opacity: 0.85;
+        .smm-root :global(.flow-arrow-fwd path) {
+          fill: #10b981;
+          filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.6));
         }
-        .smm-root :global(.edge-flow.flow-fwd) {
-          animation: smm-flow-fwd 2.4s linear infinite;
+        .smm-root :global(.flow-arrow-back path) {
+          fill: #f59e0b;
+          filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.6));
         }
-        .smm-root :global(.edge-flow.flow-back) {
-          animation: smm-flow-back 2.4s linear infinite;
+        .smm-root :global(.flow-arrow-link.flow-arrow-fwd path) {
+          fill: #6ee7b7;
+          filter: drop-shadow(0 0 4px rgba(110, 231, 183, 0.55));
         }
-        @keyframes smm-flow-fwd {
-          /* Total dash cycle is 4 + 14 = 18; negative offset slides
-             along the path in its forward direction (parent → child). */
-          to { stroke-dashoffset: -18; }
+        .smm-root :global(.flow-arrow-link.flow-arrow-back path) {
+          fill: #fcd34d;
+          filter: drop-shadow(0 0 4px rgba(252, 211, 77, 0.55));
         }
-        @keyframes smm-flow-back {
-          to { stroke-dashoffset: 18; }
+        /* In-detail mode dims the arrows so the focused card stays the
+           focal point. (SMIL <animateMotion> can't be CSS-paused, so we
+           rely on opacity to fade out the visual signal.) */
+        .smm-root.in-detail-mode :global(.flow-arrow) {
+          opacity: 0.18;
         }
-        /* In-detail mode, dim flow overlays along with structural edges
-           so the focused card stays the centre of attention. */
-        .smm-root.in-detail-mode :global(.edge-flow) {
-          opacity: 0.15;
-          animation-play-state: paused;
-        }
-        /* Reduced motion preference disables the animation entirely;
-           static dashes still show direction implicitly via the markers. */
+        /* Reduced motion hides the moving arrows entirely; the static
+           marker arrowheads at the endpoints still communicate direction. */
         @media (prefers-reduced-motion: reduce) {
-          .smm-root :global(.edge-flow.flow-fwd),
-          .smm-root :global(.edge-flow.flow-back) {
-            animation: none;
-          }
+          .smm-root :global(.flow-arrow) { display: none; }
         }
         @keyframes smm-flow {
           to {
@@ -4919,10 +4935,28 @@ export default function MindMapCanvas({
           color: var(--node-text);
           background: rgba(255, 255, 255, 0.05);
         }
+        /* Active state colour-codes by direction so the picker echoes the
+           flow-arrow palette: → emerald, ← amber, ↔ cyan, — slate. */
         .smm-root :global(.detail-flow-btn.is-active) {
           color: white;
-          background: color-mix(in srgb, var(--accent-c1, var(--selection)) 36%, transparent);
-          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-c1, var(--selection)) 55%, transparent);
+          background: rgba(255, 255, 255, 0.1);
+          box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+        }
+        .smm-root :global(.detail-flow-btn[data-flow="forward"].is-active) {
+          background: rgba(16, 185, 129, 0.32);
+          box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.6);
+        }
+        .smm-root :global(.detail-flow-btn[data-flow="backward"].is-active) {
+          background: rgba(245, 158, 11, 0.32);
+          box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.6);
+        }
+        .smm-root :global(.detail-flow-btn[data-flow="both"].is-active) {
+          background: rgba(6, 182, 212, 0.32);
+          box-shadow: inset 0 0 0 1px rgba(6, 182, 212, 0.6);
+        }
+        .smm-root :global(.detail-flow-btn[data-flow="none"].is-active) {
+          background: rgba(148, 163, 184, 0.32);
+          box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.6);
         }
         .smm-root :global(.detail-flow-btn:disabled) {
           opacity: 0.5;
