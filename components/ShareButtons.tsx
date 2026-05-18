@@ -366,3 +366,304 @@ function ShareStyles() {
     `}</style>
   );
 }
+
+// Compact share button for the top nav. Renders as a single icon-style
+// trigger; clicking it opens a small popover with the same network
+// buttons. On mobile/Safari the trigger fires the native share sheet
+// directly instead of opening the popover, so the nav stays one click
+// from "send this to a friend" everywhere.
+export function NavShareButton({
+  url,
+  text = 'Your brain, but squishier — try SquishyMind',
+}: {
+  url?: string;
+  text?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [resolvedUrl, setResolvedUrl] = useState(url || '');
+  const [canNativeShare, setCanNativeShare] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!url && typeof window !== 'undefined') {
+      setResolvedUrl(window.location.origin + window.location.pathname);
+    }
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      setCanNativeShare(true);
+    }
+  }, [url]);
+
+  // Outside-click + Escape to dismiss the popover. setTimeout so the
+  // click that opened it doesn't dismiss on the same tick.
+  useEffect(() => {
+    if (!open) return;
+    function onDown(ev: MouseEvent) {
+      const t = ev.target as HTMLElement | null;
+      if (t && t.closest('.nav-share-pop')) return;
+      if (t && t.closest('.nav-share-trigger')) return;
+      setOpen(false);
+    }
+    function onKey(ev: KeyboardEvent) {
+      if (ev.key === 'Escape') setOpen(false);
+    }
+    const id = setTimeout(() => {
+      document.addEventListener('mousedown', onDown);
+      document.addEventListener('keydown', onKey);
+    }, 0);
+    return () => {
+      clearTimeout(id);
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const encodedUrl = encodeURIComponent(resolvedUrl);
+  const encodedText = encodeURIComponent(text);
+
+  function openShare(href: string) {
+    window.open(href, '_blank', 'noopener,noreferrer,width=600,height=600');
+    setOpen(false);
+  }
+
+  async function onTriggerClick() {
+    // Native share takes precedence on supported browsers — one click
+    // straight to the share sheet (Messages / AirDrop / Messenger / etc.).
+    if (canNativeShare && navigator.share) {
+      try {
+        await navigator.share({
+          title: 'SquishyMind',
+          text,
+          url: resolvedUrl,
+        });
+        return;
+      } catch {
+        // Fallthrough to popover on cancel.
+      }
+    }
+    setOpen((v) => !v);
+  }
+
+  async function copyLink() {
+    if (!resolvedUrl) return;
+    try {
+      await navigator.clipboard.writeText(resolvedUrl);
+      setCopied(true);
+      setTimeout(() => {
+        setCopied(false);
+        setOpen(false);
+      }, 1100);
+    } catch {
+      window.prompt('Copy this URL:', resolvedUrl);
+    }
+  }
+
+  return (
+    <div className="nav-share-wrap">
+      <button
+        type="button"
+        className="nav-share-trigger"
+        onClick={onTriggerClick}
+        aria-label="Share SquishyMind"
+        aria-haspopup="menu"
+        aria-expanded={open ? 'true' : 'false'}
+        title="Share"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          width="16"
+          height="16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <circle cx="18" cy="5" r="3" />
+          <circle cx="6" cy="12" r="3" />
+          <circle cx="18" cy="19" r="3" />
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+        </svg>
+        <span className="nav-share-trigger-label">Share</span>
+      </button>
+      {open && (
+        <div className="nav-share-pop" role="menu">
+          <div className="nav-share-pop-arrow" aria-hidden />
+          <div className="nav-share-pop-grid">
+            {NETWORKS.map((n) => (
+              <button
+                key={n.key}
+                type="button"
+                onClick={() => openShare(n.href(encodedUrl, encodedText))}
+                className="nav-share-pop-btn"
+                aria-label={n.label}
+                title={n.label}
+                style={{ ['--sb-brand' as string]: n.brand }}
+                role="menuitem"
+              >
+                {n.icon}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={copyLink}
+            className={`nav-share-pop-copy ${copied ? 'is-copied' : ''}`}
+            role="menuitem"
+          >
+            {copied ? (
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <rect x="9" y="9" width="13" height="13" rx="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+            )}
+            <span>{copied ? 'Copied!' : 'Copy link'}</span>
+          </button>
+        </div>
+      )}
+
+      <style jsx>{`
+        .nav-share-wrap {
+          position: relative;
+        }
+        .nav-share-trigger {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          height: 36px;
+          padding: 0 12px;
+          background: transparent;
+          border: 1px solid transparent;
+          color: var(--text-dim, #a1a1aa);
+          border-radius: 9px;
+          font-size: 13px;
+          font-weight: 500;
+          cursor: pointer;
+          transition:
+            background 0.15s,
+            color 0.15s,
+            border-color 0.15s;
+          font-family: inherit;
+        }
+        .nav-share-trigger:hover {
+          color: white;
+          background: rgba(255, 255, 255, 0.06);
+        }
+        .nav-share-trigger[aria-expanded='true'] {
+          color: white;
+          background: rgba(139, 92, 246, 0.14);
+          border-color: rgba(139, 92, 246, 0.5);
+        }
+        /* Hide the label on tight viewports so the icon alone fits next
+           to the auth buttons — keeps the nav from wrapping on mobile. */
+        @media (max-width: 480px) {
+          .nav-share-trigger-label {
+            display: none;
+          }
+          .nav-share-trigger {
+            padding: 0 9px;
+          }
+        }
+
+        .nav-share-pop {
+          position: absolute;
+          top: calc(100% + 8px);
+          right: 0;
+          z-index: 60;
+          padding: 10px;
+          background: rgba(10, 11, 22, 0.96);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 12px;
+          box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          animation: nav-share-pop-in 0.16s cubic-bezier(0.34, 1.56, 0.64, 1);
+          min-width: 200px;
+        }
+        @keyframes nav-share-pop-in {
+          from {
+            opacity: 0;
+            transform: translateY(-4px) scale(0.96);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+        .nav-share-pop-arrow {
+          position: absolute;
+          top: -5px;
+          right: 16px;
+          width: 10px;
+          height: 10px;
+          background: rgba(10, 11, 22, 0.96);
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          border-left: 1px solid rgba(255, 255, 255, 0.1);
+          transform: rotate(45deg);
+        }
+        .nav-share-pop-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 4px;
+        }
+        .nav-share-pop-btn {
+          --sb-brand: #64748b;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 36px;
+          height: 36px;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: var(--text, #e5e7eb);
+          border-radius: 8px;
+          cursor: pointer;
+          transition:
+            background 0.16s,
+            border-color 0.16s,
+            color 0.16s,
+            transform 0.16s;
+        }
+        .nav-share-pop-btn:hover {
+          background: color-mix(in srgb, var(--sb-brand) 75%, rgba(0, 0, 0, 0.2));
+          border-color: var(--sb-brand);
+          color: white;
+          transform: translateY(-1px);
+        }
+        .nav-share-pop-copy {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          width: 100%;
+          margin-top: 8px;
+          height: 32px;
+          background: rgba(6, 182, 212, 0.1);
+          border: 1px solid rgba(6, 182, 212, 0.3);
+          color: #67e8f9;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.15s;
+          font-family: inherit;
+        }
+        .nav-share-pop-copy:hover {
+          background: rgba(6, 182, 212, 0.2);
+          border-color: rgba(6, 182, 212, 0.5);
+          color: white;
+        }
+        .nav-share-pop-copy.is-copied {
+          background: rgba(16, 185, 129, 0.16);
+          border-color: rgba(16, 185, 129, 0.5);
+          color: #6ee7b7;
+        }
+      `}</style>
+    </div>
+  );
+}

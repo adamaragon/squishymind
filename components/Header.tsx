@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { NavShareButton } from '@/components/ShareButtons';
 
 export default async function Header() {
   const supabase = await createClient();
@@ -18,6 +19,10 @@ export default async function Header() {
         <span className="text-xl font-semibold gradient-text">SquishyMind</span>
       </Link>
       <nav className="flex items-center gap-2">
+        {/* Compact share trigger — popover on desktop, native share
+            sheet on mobile/Safari. Visible to everyone (signed in or
+            out) since growth lives in the nav. */}
+        <NavShareButton />
         {user ? (
           <>
             <Link href="/dashboard" className="btn btn-ghost">My maps</Link>

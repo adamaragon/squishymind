@@ -184,6 +184,15 @@ export default function HomePage() {
           </div>
         </details>
 
+        {/* Share row — sits above Recently Shipped because share intent
+            peaks right after someone's just read the feature pitch, not
+            two scroll-screens later by the footer. */}
+        <ShareButtons
+          heading="Like SquishyMind? Pass it on."
+          blurb="Beam the squishy brain to a friend on whatever they use — X, WhatsApp, Messenger, email…"
+          text="Your brain, but squishier. Try SquishyMind →"
+        />
+
         {/* Recently shipped */}
         <RecentShipped />
 
@@ -208,11 +217,6 @@ export default function HomePage() {
           </p>
         </section>
 
-        <ShareButtons
-          heading="Like SquishyMind? Pass it on."
-          blurb="Beam the squishy brain to a friend on whatever they use — X, WhatsApp, Messenger, email…"
-          text="Your brain, but squishier. Try SquishyMind →"
-        />
       </main>
 
       <Footer />
