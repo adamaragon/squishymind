@@ -392,13 +392,15 @@ export default function TreeView({
     }
   }
 
-  // Build edge paths. Gradient stroke ID per parent colorIdx so each subtree
-  // has its own colour signature flowing outward.
+  // Build tree edge paths. Gradient stroke ID per parent colorIdx so each
+  // subtree has its own colour signature flowing outward.
   const edgePaths: Array<{
     d: string;
     colorIdx: number;
     key: string;
     isHighlight: boolean;
+    /** Direction of flow — drives arrowhead placement. */
+    flow: 'forward' | 'backward' | 'both' | 'none';
   }> = [];
   for (const [parentId, kids] of Object.entries(data.childIndex)) {
     if (collapsed.has(parentId)) continue;
@@ -425,6 +427,49 @@ export default function TreeView({
         colorIdx: parentNode?.colorIdx ?? 0,
         key: `${parentId}->${childId}`,
         isHighlight,
+        flow: data.nodes[childId]?.flowDirection || 'forward',
+      });
+    }
+  }
+
+  // Build link paths. Non-structural edges between any two visible cards.
+  // Endpoints anchor at the card MIDDLE on the side closer to the target,
+  // so links don't always exit the right edge like tree edges do.
+  const linkPaths: Array<{
+    d: string;
+    key: string;
+    isHighlight: boolean;
+    flow: 'forward' | 'backward' | 'both' | 'none';
+  }> = [];
+  for (const n of Object.values(data.nodes)) {
+    if (!n.links || n.links.length === 0) continue;
+    const sourcePos = layout.positions[n.id];
+    if (!sourcePos) continue;
+    const sourceH = layout.heights[n.id] ?? CARD_BASE;
+    for (const lk of n.links) {
+      const targetPos = layout.positions[lk.targetId];
+      if (!targetPos) continue;
+      const targetH = layout.heights[lk.targetId] ?? CARD_BASE;
+      // Pick the side of each card that faces the other so the line
+      // doesn't have to cut across the cards.
+      const sCenter = sourcePos.x + CARD_WIDTH / 2;
+      const tCenter = targetPos.x + CARD_WIDTH / 2;
+      const fromRight = tCenter > sCenter;
+      const x1 = sourcePos.x + (fromRight ? CARD_WIDTH : 0) + PAD_X;
+      const y1 = sourcePos.y + sourceH / 2 + PAD_Y;
+      const x2 = targetPos.x + (fromRight ? 0 : CARD_WIDTH) + PAD_X;
+      const y2 = targetPos.y + targetH / 2 + PAD_Y;
+      const cx = (x1 + x2) / 2;
+      const isHighlight =
+        selectedId === n.id ||
+        selectedId === lk.targetId ||
+        hoveredId === n.id ||
+        hoveredId === lk.targetId;
+      linkPaths.push({
+        d: `M ${x1} ${y1} C ${cx} ${y1}, ${cx} ${y2}, ${x2} ${y2}`,
+        key: `link:${n.id}->${lk.targetId}`,
+        isHighlight,
+        flow: lk.flowDirection || 'forward',
       });
     }
   }
@@ -558,18 +603,112 @@ export default function TreeView({
                     <stop offset="100%" stopColor={c} stopOpacity="0.75" />
                   </linearGradient>
                 ))}
+                {/* Arrow markers — one pair per accent for tree edges,
+                    plus one pair for link edges in a neutral tint. Each
+                    marker is a filled triangle that inherits fill from
+                    the path's `color` CSS property (which we set per
+                    path), so a single marker def works for both
+                    accent-coloured tree edges and dashed link edges. */}
+                {ACCENT_PALETTE.map((c, i) => (
+                  <g key={`m-${i}`}>
+                    <marker
+                      id={`tr-arrow-end-${i}`}
+                      viewBox="0 0 10 10"
+                      refX="9"
+                      refY="5"
+                      markerWidth="6"
+                      markerHeight="6"
+                      orient="auto-start-reverse"
+                    >
+                      <path d="M 0 0 L 10 5 L 0 10 Z" fill={c} />
+                    </marker>
+                    <marker
+                      id={`tr-arrow-start-${i}`}
+                      viewBox="0 0 10 10"
+                      refX="1"
+                      refY="5"
+                      markerWidth="6"
+                      markerHeight="6"
+                      orient="auto"
+                    >
+                      <path d="M 10 0 L 0 5 L 10 10 Z" fill={c} />
+                    </marker>
+                  </g>
+                ))}
+                <marker
+                  id="tr-arrow-end-link"
+                  viewBox="0 0 10 10"
+                  refX="9"
+                  refY="5"
+                  markerWidth="6"
+                  markerHeight="6"
+                  orient="auto-start-reverse"
+                >
+                  <path d="M 0 0 L 10 5 L 0 10 Z" fill="#cbd5e1" opacity="0.8" />
+                </marker>
+                <marker
+                  id="tr-arrow-start-link"
+                  viewBox="0 0 10 10"
+                  refX="1"
+                  refY="5"
+                  markerWidth="6"
+                  markerHeight="6"
+                  orient="auto"
+                >
+                  <path d="M 10 0 L 0 5 L 10 10 Z" fill="#cbd5e1" opacity="0.8" />
+                </marker>
               </defs>
-              {edgePaths.map((e) => (
-                <path
-                  key={e.key}
-                  d={e.d}
-                  fill="none"
-                  stroke={`url(#tr-edge${e.isHighlight ? '-hl' : ''}-${e.colorIdx % 5})`}
-                  strokeWidth={e.isHighlight ? 3 : 2.2}
-                  strokeLinecap="round"
-                  className={e.isHighlight ? 'tr-edge-hl' : ''}
-                />
-              ))}
+              {edgePaths.map((e) => {
+                const idx = e.colorIdx % 5;
+                const markerEnd =
+                  e.flow === 'forward' || e.flow === 'both'
+                    ? `url(#tr-arrow-end-${idx})`
+                    : undefined;
+                const markerStart =
+                  e.flow === 'backward' || e.flow === 'both'
+                    ? `url(#tr-arrow-start-${idx})`
+                    : undefined;
+                return (
+                  <path
+                    key={e.key}
+                    d={e.d}
+                    fill="none"
+                    stroke={`url(#tr-edge${e.isHighlight ? '-hl' : ''}-${idx})`}
+                    strokeWidth={e.isHighlight ? 3 : 2.2}
+                    strokeLinecap="round"
+                    markerStart={markerStart}
+                    markerEnd={markerEnd}
+                    className={e.isHighlight ? 'tr-edge-hl' : ''}
+                  />
+                );
+              })}
+              {/* Link edges — dashed, neutral colour, sit above tree edges
+                  but below cards. Each gets its own arrow markers based
+                  on the link's flow direction. */}
+              {linkPaths.map((lk) => {
+                const markerEnd =
+                  lk.flow === 'forward' || lk.flow === 'both'
+                    ? 'url(#tr-arrow-end-link)'
+                    : undefined;
+                const markerStart =
+                  lk.flow === 'backward' || lk.flow === 'both'
+                    ? 'url(#tr-arrow-start-link)'
+                    : undefined;
+                return (
+                  <path
+                    key={lk.key}
+                    d={lk.d}
+                    fill="none"
+                    stroke="#cbd5e1"
+                    strokeOpacity={lk.isHighlight ? 0.85 : 0.45}
+                    strokeWidth={lk.isHighlight ? 2.2 : 1.6}
+                    strokeDasharray="6 5"
+                    strokeLinecap="round"
+                    markerStart={markerStart}
+                    markerEnd={markerEnd}
+                  />
+                );
+              })}
             </svg>
 
             {/* Nodes */}
