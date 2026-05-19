@@ -73,6 +73,11 @@ export default function MindMapCanvas({
   const edgesSvgRef = useRef<SVGSVGElement | null>(null);
   const edgesGRef = useRef<SVGGElement | null>(null);
   const nodesLayerRef = useRef<HTMLDivElement | null>(null);
+  // Mid-line chip layer for link flow editing. Each link gets a small
+  // chip rendered at the curve's midpoint; clicking it opens the flow
+  // picker for THAT specific link. Lives between edges and nodes so the
+  // chips sit on top of the lines but underneath the cards.
+  const linkChipsLayerRef = useRef<HTMLDivElement | null>(null);
   const zoomLabelRef = useRef<HTMLSpanElement | null>(null);
   const minimapCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const particlesCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -144,6 +149,7 @@ export default function MindMapCanvas({
     const edgesSvg = edgesSvgRef.current!;
     const edgesG = edgesGRef.current!;
     const nodesLayer = nodesLayerRef.current!;
+    const linkChipsLayer = linkChipsLayerRef.current!;
     const zoomLabel = zoomLabelRef.current!;
     const minimapCanvas = minimapCanvasRef.current!;
     const particlesCanvas = particlesCanvasRef.current!;
@@ -1010,12 +1016,13 @@ export default function MindMapCanvas({
         });
       }
 
-      // Flow & Links — direction picker for the parent-child edge plus
-      // non-structural links to other nodes. Always rendered (read-only
-      // viewers can still see existing links) except on the brain root
-      // when there are no links at all.
-      const flowLinksSection = buildFlowLinksSection(n);
-      if (flowLinksSection) wrap.appendChild(flowLinksSection);
+      // Flow & Links section removed from the detail card — flow editing
+      // now lives on the surfaces the flow actually appears on:
+      //   - Parent-edge flow: chip-on-node click (already wired)
+      //   - Link flow: mid-line chip on each link (renderLinkChips)
+      // The panel-based list was confusing once a node had several
+      // links because the rows were just labelled "Link to X" with
+      // no visual tie back to which arrow they controlled.
 
       // Comments section — appended for every non-brain node, for any reader.
       // Compose form only renders when the current user is authenticated.
@@ -1035,166 +1042,6 @@ export default function MindMapCanvas({
       { value: 'both', glyph: '↔', label: 'Both directions' },
       { value: 'none', glyph: '—', label: 'No arrow' },
     ];
-
-    function buildFlowLinksSection(n: MindMapNode): HTMLElement | null {
-      const isRoot = n.id === state.rootId;
-      const links = n.links || [];
-      // Root + no links + readonly = render nothing.
-      if (isRoot && readonlyRef.current && links.length === 0) return null;
-
-      const section = document.createElement('div');
-      section.className = 'detail-flowlinks';
-      section.addEventListener('mousedown', (e) => e.stopPropagation());
-      section.addEventListener('click', (e) => e.stopPropagation());
-
-      const label = document.createElement('div');
-      label.className = 'detail-section-label';
-      label.textContent = 'Flow & Links';
-      section.appendChild(label);
-
-      // Parent-edge flow picker (skip for root — no parent edge to govern).
-      if (!isRoot) {
-        const flowRow = document.createElement('div');
-        flowRow.className = 'detail-flow-row';
-        const flowLabel = document.createElement('span');
-        flowLabel.className = 'detail-flow-label';
-        flowLabel.textContent = 'Edge from parent';
-        flowRow.appendChild(flowLabel);
-        flowRow.appendChild(buildFlowPicker(n.flowDirection || 'forward', (v) => {
-          if (readonlyRef.current) return;
-          // Persist 'forward' as undefined so the JSON doesn't bloat with defaults.
-          n.flowDirection = v === 'forward' ? undefined : v;
-          scheduleSave();
-          renderAll();
-        }));
-        section.appendChild(flowRow);
-      }
-
-      // Links list
-      if (links.length === 0) {
-        const empty = document.createElement('div');
-        empty.className = 'detail-flowlinks-empty';
-        empty.textContent = readonlyRef.current
-          ? 'No links from this node.'
-          : 'No links yet. Pick a target below to connect this node.';
-        section.appendChild(empty);
-      } else {
-        const list = document.createElement('ul');
-        list.className = 'detail-link-list';
-        links.forEach((lk) => {
-          const target = state.nodes[lk.targetId];
-          const row = document.createElement('li');
-          row.className = 'detail-link-row';
-          const name = document.createElement('span');
-          name.className = 'detail-link-name';
-          name.textContent = target?.label || '(missing node)';
-          name.title = target?.label || lk.targetId;
-          row.appendChild(name);
-          row.appendChild(
-            buildFlowPicker(lk.flowDirection || 'forward', (v) => {
-              if (readonlyRef.current) return;
-              const updated = (n.links || []).map((l) =>
-                l.targetId === lk.targetId
-                  ? { ...l, flowDirection: v === 'forward' ? undefined : v }
-                  : l,
-              );
-              n.links = updated;
-              scheduleSave();
-              renderAll();
-            }, true),
-          );
-          if (!readonlyRef.current) {
-            const remove = document.createElement('button');
-            remove.type = 'button';
-            remove.className = 'detail-link-remove';
-            remove.textContent = '✕';
-            remove.title = 'Remove link';
-            remove.setAttribute('aria-label', `Remove link to ${target?.label || lk.targetId}`);
-            remove.addEventListener('click', (ev) => {
-              ev.stopPropagation();
-              n.links = (n.links || []).filter((l) => l.targetId !== lk.targetId);
-              scheduleSave();
-              renderAll();
-            });
-            row.appendChild(remove);
-          }
-          list.appendChild(row);
-        });
-        section.appendChild(list);
-      }
-
-      // Add-link picker (editor only). Excludes self, already-linked
-      // targets, and direct parent + direct children (the structural
-      // tree edge already connects those, so a link would draw a second
-      // redundant line on top).
-      if (!readonlyRef.current) {
-        const linkedIds = new Set(links.map((l) => l.targetId));
-        const directChildren = new Set(state.childIndex[n.id] || []);
-        const targets = Object.values(state.nodes).filter(
-          (o) =>
-            o.id !== n.id &&
-            !linkedIds.has(o.id) &&
-            o.id !== n.parentId &&
-            !directChildren.has(o.id),
-        );
-        if (targets.length > 0) {
-          const pick = document.createElement('select');
-          pick.className = 'detail-add-link';
-          const placeholder = document.createElement('option');
-          placeholder.value = '';
-          placeholder.textContent = '+ Add link to another node…';
-          pick.appendChild(placeholder);
-          // Sort by label for predictable ordering.
-          targets
-            .slice()
-            .sort((a, b) => (a.label || '').localeCompare(b.label || ''))
-            .forEach((t) => {
-              const opt = document.createElement('option');
-              opt.value = t.id;
-              opt.textContent = t.label || '(untitled)';
-              pick.appendChild(opt);
-            });
-          pick.addEventListener('change', () => {
-            if (!pick.value) return;
-            n.links = [...(n.links || []), { targetId: pick.value }];
-            scheduleSave();
-            renderAll();
-          });
-          section.appendChild(pick);
-        }
-      }
-
-      return section;
-    }
-
-    function buildFlowPicker(
-      current: import('@/lib/types').FlowDirection,
-      onPick: (v: import('@/lib/types').FlowDirection) => void,
-      compact = false,
-    ): HTMLElement {
-      const wrap = document.createElement('div');
-      wrap.className = compact ? 'detail-flow-picker compact' : 'detail-flow-picker';
-      FLOW_DIRS.forEach(({ value, glyph, label }) => {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'detail-flow-btn' + (current === value ? ' is-active' : '');
-        b.textContent = glyph;
-        b.title = label;
-        b.setAttribute('aria-label', label);
-        b.setAttribute('aria-pressed', current === value ? 'true' : 'false');
-        // data-flow lets CSS colour the active state per direction so the
-        // picker echoes the flow-arrow palette (forward = emerald, etc.).
-        b.setAttribute('data-flow', value);
-        if (readonlyRef.current) b.disabled = true;
-        b.addEventListener('click', (ev) => {
-          ev.stopPropagation();
-          if (readonlyRef.current) return;
-          onPick(value);
-        });
-        wrap.appendChild(b);
-      });
-      return wrap;
-    }
 
     /** Pop a tiny 4-button flow picker next to `nodeEl` so users can set
      *  direction without opening the full detail panel. Used by the
@@ -2583,6 +2430,98 @@ export default function MindMapCanvas({
           /* some browsers throw if SMIL isn't supported — silently ignore. */
         }
       });
+      renderLinkChips();
+    }
+
+    // Render one mid-line chip per link. Each chip opens the flow
+    // picker for THAT specific link when clicked — so the picker
+    // visually corresponds to the line it controls, no label-to-arrow
+    // mapping required. Chips sit between the edges SVG and the node
+    // cards in the stacking order. Hover-revealed by default to keep
+    // the canvas uncluttered.
+    function renderLinkChips() {
+      linkChipsLayer.innerHTML = '';
+      const all = Object.values(state.nodes);
+      const sel = state.selectedId;
+      for (const n of all) {
+        if (!n.links || n.links.length === 0) continue;
+        for (const lk of n.links) {
+          const t = state.nodes[lk.targetId];
+          if (!t) continue;
+          // Chip sits at the geometric midpoint of the endpoints. Close
+          // enough to the visual midpoint of the wiggling curve at any
+          // wiggle phase — keeping the chip locked to the curve's true
+          // t=0.5 would require sampling the path every frame, which
+          // adds DOM thrash for negligible visual benefit.
+          const mx = (n.x + t.x) / 2;
+          const my = (n.y + t.y) / 2;
+          const flow = lk.flowDirection || 'forward';
+          const chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = 'link-chip';
+          chip.style.left = `${mx}px`;
+          chip.style.top = `${my}px`;
+          chip.setAttribute('data-flow', flow);
+          chip.setAttribute(
+            'data-tip',
+            `Flow · ${t.label || 'unlabelled'}`,
+          );
+          chip.setAttribute(
+            'aria-label',
+            `Edit flow for link to ${t.label || 'unlabelled'}`,
+          );
+          if (sel && (sel === n.id || sel === lk.targetId)) {
+            chip.classList.add('is-highlight');
+          }
+          // Chip glyph mirrors the current direction so a glance reads
+          // the state without opening the picker.
+          const glyph =
+            flow === 'forward'
+              ? '→'
+              : flow === 'backward'
+                ? '←'
+                : flow === 'both'
+                  ? '↔'
+                  : '—';
+          chip.textContent = glyph;
+          if (readonlyRef.current) {
+            chip.disabled = true;
+            chip.classList.add('is-readonly');
+          } else {
+            chip.addEventListener('mousedown', (e) => e.stopPropagation());
+            chip.addEventListener('click', (e) => {
+              e.stopPropagation();
+              showInlineFlowPicker(
+                chip,
+                lk.flowDirection || 'forward',
+                (v) => {
+                  const owner = state.nodes[n.id];
+                  if (!owner) return;
+                  owner.links = (owner.links || []).map((l) =>
+                    l.targetId === lk.targetId
+                      ? { ...l, flowDirection: v === 'forward' ? undefined : v }
+                      : l,
+                  );
+                  scheduleSave();
+                  renderAll();
+                },
+                // Unlink in the same picker — same affordance as the
+                // just-created link picker.
+                () => {
+                  const owner = state.nodes[n.id];
+                  if (!owner) return;
+                  owner.links = (owner.links || []).filter(
+                    (l) => l.targetId !== lk.targetId,
+                  );
+                  scheduleSave();
+                  renderAll();
+                },
+              );
+            });
+          }
+          linkChipsLayer.appendChild(chip);
+        }
+      }
     }
 
     function applyTransform() {
@@ -4133,6 +4072,7 @@ export default function MindMapCanvas({
           <svg ref={edgesSvgRef} className="smm-edges">
             <g ref={edgesGRef} />
           </svg>
+          <div ref={linkChipsLayerRef} className="smm-link-chips" />
           <div ref={nodesLayerRef} className="smm-nodes" />
         </div>
         <canvas ref={particlesCanvasRef} className="smm-particles" />
@@ -4418,6 +4358,82 @@ export default function MindMapCanvas({
           position: absolute;
           overflow: visible;
           pointer-events: none;
+        }
+        /* Mid-line link chip layer — sits above edges, below nodes. */
+        .smm-link-chips {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+        }
+        .smm-root :global(.link-chip) {
+          position: absolute;
+          transform: translate(-50%, -50%) scale(0.7);
+          width: 22px;
+          height: 22px;
+          padding: 0;
+          margin: 0;
+          font-size: 12px;
+          font-weight: 700;
+          line-height: 1;
+          font-family: inherit;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(15, 17, 36, 0.92);
+          color: var(--ui-text-dim);
+          border: 1px solid rgba(255, 255, 255, 0.18);
+          border-radius: 50%;
+          cursor: pointer;
+          opacity: 0;
+          transition:
+            opacity 0.18s ease,
+            transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+            background 0.15s,
+            color 0.15s,
+            border-color 0.15s,
+            box-shadow 0.15s;
+          z-index: 3;
+          pointer-events: auto;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.55);
+        }
+        /* Per-direction colour echoes the flow-arrow palette so the
+           chip glyph reads the same as the moving arrow on the line. */
+        .smm-root :global(.link-chip[data-flow='forward']) {
+          color: #6ee7b7;
+          border-color: rgba(110, 231, 183, 0.45);
+        }
+        .smm-root :global(.link-chip[data-flow='backward']) {
+          color: #fcd34d;
+          border-color: rgba(252, 211, 77, 0.45);
+        }
+        .smm-root :global(.link-chip[data-flow='both']) {
+          color: #67e8f9;
+          border-color: rgba(103, 232, 249, 0.45);
+        }
+        .smm-root :global(.link-chip[data-flow='none']) {
+          color: #cbd5e1;
+          border-color: rgba(203, 213, 225, 0.35);
+        }
+        /* Reveal on hover within the world and when the link's source
+           or target node is selected (so the chip is visible while
+           you're editing related state). */
+        .smm-root :global(.smm-world:hover .link-chip),
+        .smm-root :global(.link-chip.is-highlight),
+        .smm-root :global(.link-chip:hover) {
+          opacity: 1;
+          transform: translate(-50%, -50%) scale(1);
+        }
+        .smm-root :global(.link-chip:hover) {
+          transform: translate(-50%, -50%) scale(1.18);
+          background: color-mix(in srgb, currentColor 40%, rgba(15, 17, 36, 0.95));
+          border-color: currentColor;
+          color: white;
+          box-shadow:
+            0 6px 18px rgba(0, 0, 0, 0.6),
+            0 0 0 4px color-mix(in srgb, currentColor 18%, transparent);
+        }
+        .smm-root :global(.link-chip.is-readonly) {
+          cursor: default;
         }
 
         .smm-root :global(.node) {
@@ -5038,161 +5054,6 @@ export default function MindMapCanvas({
           80% {
             transform: scale(1.04) rotate(-2deg) skewX(-2deg);
           }
-        }
-        /* Flow & Links — imperative twin of the alt-view NodeDetailPanel
-           section. Same vocabulary (segmented flow picker, link rows with
-           per-link picker, add-link select) so users get the same UI
-           regardless of which view they reached the detail card from. */
-        .smm-root :global(.detail-flowlinks) {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          padding-top: 6px;
-        }
-        .smm-root :global(.detail-flow-row) {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 8px;
-        }
-        .smm-root :global(.detail-flow-label) {
-          font-size: 11px;
-          color: var(--ui-text-dim);
-          text-transform: uppercase;
-          letter-spacing: 0.6px;
-        }
-        .smm-root :global(.detail-flow-picker) {
-          display: inline-flex;
-          background: rgba(0, 0, 0, 0.25);
-          border: 1px solid var(--node-border);
-          border-radius: 8px;
-          padding: 2px;
-          gap: 2px;
-        }
-        .smm-root :global(.detail-flow-picker.compact) {
-          padding: 1px;
-        }
-        .smm-root :global(.detail-flow-btn) {
-          background: transparent;
-          color: var(--ui-text-dim);
-          border: none;
-          font-size: 13px;
-          font-weight: 600;
-          padding: 4px 8px;
-          border-radius: 6px;
-          cursor: pointer;
-          font-family: inherit;
-          line-height: 1;
-          min-width: 26px;
-          transition: all 0.12s;
-        }
-        .smm-root :global(.detail-flow-picker.compact .detail-flow-btn) {
-          padding: 2px 6px;
-          font-size: 11px;
-          min-width: 22px;
-        }
-        .smm-root :global(.detail-flow-btn:hover:not(:disabled)) {
-          color: var(--node-text);
-          background: rgba(255, 255, 255, 0.05);
-        }
-        /* Active state colour-codes by direction so the picker echoes the
-           flow-arrow palette: → emerald, ← amber, ↔ cyan, — slate. */
-        .smm-root :global(.detail-flow-btn.is-active) {
-          color: white;
-          background: rgba(255, 255, 255, 0.1);
-          box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
-        }
-        .smm-root :global(.detail-flow-btn[data-flow="forward"].is-active) {
-          background: rgba(16, 185, 129, 0.32);
-          box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.6);
-        }
-        .smm-root :global(.detail-flow-btn[data-flow="backward"].is-active) {
-          background: rgba(245, 158, 11, 0.32);
-          box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.6);
-        }
-        .smm-root :global(.detail-flow-btn[data-flow="both"].is-active) {
-          background: rgba(6, 182, 212, 0.32);
-          box-shadow: inset 0 0 0 1px rgba(6, 182, 212, 0.6);
-        }
-        .smm-root :global(.detail-flow-btn[data-flow="none"].is-active) {
-          background: rgba(148, 163, 184, 0.32);
-          box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.6);
-        }
-        .smm-root :global(.detail-flow-btn:disabled) {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-        .smm-root :global(.detail-flowlinks-empty) {
-          font-size: 12px;
-          color: var(--ui-text-dim);
-          font-style: italic;
-          background: rgba(255, 255, 255, 0.02);
-          border: 1px dashed var(--node-border);
-          border-radius: 10px;
-          padding: 10px 12px;
-          text-align: center;
-        }
-        .smm-root :global(.detail-link-list) {
-          list-style: none;
-          margin: 0;
-          padding: 0;
-          display: flex;
-          flex-direction: column;
-          gap: 5px;
-        }
-        .smm-root :global(.detail-link-row) {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid var(--node-border);
-          border-radius: 10px;
-          padding: 6px 8px;
-        }
-        .smm-root :global(.detail-link-name) {
-          flex: 1;
-          font-size: 12px;
-          color: var(--node-text);
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          min-width: 0;
-        }
-        .smm-root :global(.detail-link-remove) {
-          flex-shrink: 0;
-          background: transparent;
-          color: var(--ui-text-dim);
-          border: none;
-          width: 24px;
-          height: 22px;
-          border-radius: 6px;
-          font-size: 12px;
-          cursor: pointer;
-          font-family: inherit;
-          transition: all 0.12s;
-        }
-        .smm-root :global(.detail-link-remove:hover) {
-          color: #fca5a5;
-          background: rgba(239, 68, 68, 0.1);
-        }
-        .smm-root :global(.detail-add-link) {
-          width: 100%;
-          background: rgba(0, 0, 0, 0.25);
-          border: 1px solid var(--node-border);
-          color: var(--node-text);
-          font: inherit;
-          font-size: 12px;
-          padding: 8px 10px;
-          border-radius: 8px;
-          outline: none;
-          appearance: none;
-          cursor: pointer;
-          font-family: inherit;
-          transition: border-color 0.15s;
-        }
-        .smm-root :global(.detail-add-link:hover),
-        .smm-root :global(.detail-add-link:focus) {
-          border-color: color-mix(in srgb, var(--accent-c1, var(--selection)) 50%, var(--node-border));
         }
 
         .smm-root :global(.detail-comments) {

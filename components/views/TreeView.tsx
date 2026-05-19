@@ -265,6 +265,17 @@ export default function TreeView({
     sourceId: string;
     targetId: string;
   } | null>(null);
+  // Mid-line link chip click — opens a picker anchored to the chip
+  // for editing an EXISTING link's flow (or unlinking). Distinct
+  // from linkPicker (which fires on freshly-created links and is
+  // anchored to the target card).
+  const [linkChipPicker, setLinkChipPicker] = useState<{
+    sourceId: string;
+    targetId: string;
+    /** Chip world coords for the picker overlay. */
+    mx: number;
+    my: number;
+  } | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const focusOnNextRender = useRef<{ id: string; caret?: 'end' } | null>(null);
@@ -516,12 +527,14 @@ export default function TreeView({
   // pickers themselves stopPropagation on their own mousedown so we
   // don't immediately close on the same tick.
   useEffect(() => {
-    if (!parentPicker && !linkPicker) return;
+    if (!parentPicker && !linkPicker && !linkChipPicker) return;
     function onDown(ev: MouseEvent) {
       const t = ev.target as HTMLElement | null;
       if (t && t.closest('.tr-flow-mini-picker')) return;
+      if (t && t.closest('.tr-link-chip')) return;
       setParentPicker(null);
       setLinkPicker(null);
+      setLinkChipPicker(null);
     }
     // setTimeout so the click that opened the picker doesn't dismiss it.
     const id = setTimeout(
@@ -532,7 +545,7 @@ export default function TreeView({
       clearTimeout(id);
       document.removeEventListener('mousedown', onDown, true);
     };
-  }, [parentPicker, linkPicker]);
+  }, [parentPicker, linkPicker, linkChipPicker]);
 
   // Start a flow-chip interaction. Captures the chip's screen-space
   // centre so the ghost line can anchor there for the duration of the drag.
@@ -704,6 +717,14 @@ export default function TreeView({
     pathId: string;
     isHighlight: boolean;
     flow: 'forward' | 'backward' | 'both' | 'none';
+    /** Owner and target IDs so the mid-line chip knows which link
+     *  it's editing when it opens the picker. */
+    sourceId: string;
+    targetId: string;
+    /** Curve midpoint in world coords — anchor for the mid-line chip. */
+    mx: number;
+    my: number;
+    targetLabel: string;
   }> = [];
   for (const n of Object.values(data.nodes)) {
     if (!n.links || n.links.length === 0) continue;
@@ -735,6 +756,11 @@ export default function TreeView({
         pathId: `tr-link-${n.id}-${lk.targetId}`,
         isHighlight,
         flow: lk.flowDirection || 'forward',
+        sourceId: n.id,
+        targetId: lk.targetId,
+        mx: (x1 + x2) / 2,
+        my: (y1 + y2) / 2,
+        targetLabel: data.nodes[lk.targetId]?.label || '',
       });
     }
   }
@@ -1081,6 +1107,108 @@ export default function TreeView({
               })}
             </svg>
 
+            {/* Mid-line link chips — each click opens the flow picker
+                for THAT specific link, anchored to the chip's position.
+                Hover-revealed so they stay out of the way on busy maps. */}
+            {linkPaths.map((lk) => {
+              const glyph =
+                lk.flow === 'forward'
+                  ? '→'
+                  : lk.flow === 'backward'
+                    ? '←'
+                    : lk.flow === 'both'
+                      ? '↔'
+                      : '—';
+              const isOpen =
+                linkChipPicker !== null &&
+                linkChipPicker.sourceId === lk.sourceId &&
+                linkChipPicker.targetId === lk.targetId;
+              return (
+                <div
+                  key={`chip:${lk.key}`}
+                  className={`tr-link-chip-wrap ${isOpen ? 'is-open' : ''}`}
+                  style={{ left: lk.mx, top: lk.my }}
+                >
+                  <button
+                    type="button"
+                    className="tr-link-chip"
+                    data-flow={lk.flow}
+                    data-tip={`Flow · ${lk.targetLabel || 'unlabelled'}`}
+                    aria-label={`Edit flow for link to ${lk.targetLabel || 'unlabelled'}`}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (readonly) return;
+                      setParentPicker(null);
+                      setLinkPicker(null);
+                      setLinkChipPicker({
+                        sourceId: lk.sourceId,
+                        targetId: lk.targetId,
+                        mx: lk.mx,
+                        my: lk.my,
+                      });
+                    }}
+                  >
+                    {glyph}
+                  </button>
+                  {isOpen && (
+                    <div
+                      className="tr-flow-mini-picker"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {FLOW_DIRS.map(({ value, glyph: g, label }) => {
+                        const active = lk.flow === value;
+                        return (
+                          <button
+                            key={value}
+                            type="button"
+                            className={`tr-flow-mini-btn ${active ? 'is-active' : ''}`}
+                            data-flow={value}
+                            title={label}
+                            aria-label={label}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              applyLinkFlow(lk.sourceId, lk.targetId, value);
+                              setLinkChipPicker(null);
+                            }}
+                          >
+                            {g}
+                          </button>
+                        );
+                      })}
+                      <span className="tr-flow-mini-sep" aria-hidden />
+                      <button
+                        type="button"
+                        className="tr-flow-mini-btn tr-flow-mini-remove"
+                        title="Remove link"
+                        aria-label="Remove link"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeLink(lk.sourceId, lk.targetId);
+                          setLinkChipPicker(null);
+                        }}
+                      >
+                        <svg
+                          viewBox="0 0 14 14"
+                          width="12"
+                          height="12"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden
+                        >
+                          <path d="M3 3 L11 11 M11 3 L3 11" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
             {/* Nodes */}
             {layout.order.map((id) => {
               const node = data.nodes[id];
@@ -1415,6 +1543,83 @@ export default function TreeView({
         }
         .tr-edge-hl {
           filter: drop-shadow(0 0 6px currentColor);
+        }
+
+        /* Mid-line link chip — sits at the midpoint of each link path.
+           Hover-revealed by default; stays visible while its picker is
+           open. Click opens the flow picker for THAT link, anchored to
+           the chip via the wrapper's position: relative. */
+        .tr-link-chip-wrap {
+          position: absolute;
+          transform: translate(-50%, -50%);
+          width: 0;
+          height: 0;
+          z-index: 4;
+        }
+        .tr-link-chip {
+          position: absolute;
+          left: 0;
+          top: 0;
+          transform: translate(-50%, -50%) scale(0.7);
+          width: 22px;
+          height: 22px;
+          padding: 0;
+          margin: 0;
+          font-size: 12px;
+          font-weight: 700;
+          line-height: 1;
+          font-family: inherit;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(15, 17, 36, 0.92);
+          color: var(--text-dim);
+          border: 1px solid rgba(255, 255, 255, 0.18);
+          border-radius: 50%;
+          cursor: pointer;
+          opacity: 0;
+          transition:
+            opacity 0.18s ease,
+            transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+            background 0.15s,
+            color 0.15s,
+            border-color 0.15s,
+            box-shadow 0.15s;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.55);
+          pointer-events: auto;
+        }
+        .tr-link-chip[data-flow='forward'] {
+          color: #6ee7b7;
+          border-color: rgba(110, 231, 183, 0.45);
+        }
+        .tr-link-chip[data-flow='backward'] {
+          color: #fcd34d;
+          border-color: rgba(252, 211, 77, 0.45);
+        }
+        .tr-link-chip[data-flow='both'] {
+          color: #67e8f9;
+          border-color: rgba(103, 232, 249, 0.45);
+        }
+        .tr-link-chip[data-flow='none'] {
+          color: #cbd5e1;
+          border-color: rgba(203, 213, 225, 0.35);
+        }
+        /* Reveal on hover of the scroll area, and stay visible while
+           the chip's picker is open. */
+        .tr-scroll:hover .tr-link-chip,
+        .tr-link-chip-wrap.is-open .tr-link-chip,
+        .tr-link-chip:hover {
+          opacity: 1;
+          transform: translate(-50%, -50%) scale(1);
+        }
+        .tr-link-chip:hover {
+          transform: translate(-50%, -50%) scale(1.18);
+          background: color-mix(in srgb, currentColor 40%, rgba(15, 17, 36, 0.95));
+          border-color: currentColor;
+          color: white;
+          box-shadow:
+            0 6px 18px rgba(0, 0, 0, 0.6),
+            0 0 0 4px color-mix(in srgb, currentColor 18%, transparent);
         }
 
         /* Flow markers — actual triangle arrows riding the curve via SVG
