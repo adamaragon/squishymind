@@ -17,6 +17,20 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v4.3',
+    title: 'Flow controls live on the lines now',
+    date: 'May 2026',
+    commit: 'f8eebf7',
+    highlights: [
+      'Every link gets its own little chip at the midpoint of the line — click it to edit that link\'s flow direction or unlink it',
+      'Chip glyph reads the current state at a glance: → forward, ← backward, ↔ both, — none',
+      'Detail panel\'s Flow & Links section is gone — once you had three links the stacked pickers were impossible to map back to which arrow each one controlled',
+      'Mid-line chips land in Tree view too',
+    ],
+    squishyNote:
+      'Now the picker IS the line, darling. You always knew which one you were poking.',
+  },
+  {
     version: 'v4.2',
     title: 'Unlink in the picker · arrows that keep going',
     date: 'May 2026',
