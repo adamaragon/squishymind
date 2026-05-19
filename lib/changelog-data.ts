@@ -17,6 +17,19 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v4.2',
+    title: 'Unlink in the picker · arrows that keep going',
+    date: 'May 2026',
+    commit: 'cd7556d',
+    highlights: [
+      'New X button in the link picker — drop on the wrong card by accident? Undo it without leaving the flow',
+      'Fixed: flow arrows used to quietly stop animating after a few edits. They now keep traveling no matter how much you fiddle',
+      'Compact "Share" button now lives in the top nav on every page — popover on desktop, native share sheet on mobile',
+    ],
+    squishyNote:
+      'I tried to keep the arrows moving while you weren\'t looking, darling. I really did.',
+  },
+  {
     version: 'v4.1',
     title: 'Share buttons everywhere',
     date: 'May 2026',
