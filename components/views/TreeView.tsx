@@ -308,6 +308,26 @@ export default function TreeView({
 
   const layout = useMemo(() => computeLayout(data, collapsed), [data, collapsed]);
 
+  // Re-activate any SMIL <animateMotion> after each data change. Newly-
+  // created SMIL elements inherit an implicit begin="0s" that resolves
+  // to "0s after document timeline start" — which is in the past on a
+  // page that's been up for a while, so Chromium silently refuses to
+  // activate them. beginElement() forces an activation now, so the
+  // flow arrows keep moving even after multiple edits. Same fix the
+  // canvas applies after each renderEdges.
+  const treeRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = treeRef.current;
+    if (!el) return;
+    el.querySelectorAll('animateMotion').forEach((a) => {
+      try {
+        (a as unknown as SVGAnimationElement).beginElement();
+      } catch {
+        /* SMIL not supported — silently ignore. */
+      }
+    });
+  }, [data]);
+
   // Stats
   const stats = useMemo(() => {
     const totalNodes = Object.keys(data.nodes).length;
@@ -372,6 +392,27 @@ export default function TreeView({
           ? { ...l, flowDirection: dir === 'forward' ? undefined : dir }
           : l,
       );
+      const updated: MindMapData = {
+        ...src,
+        nodes: {
+          ...src.nodes,
+          [sourceId]: { ...node, links },
+        },
+      };
+      commit(updated);
+    },
+    [commit],
+  );
+
+  // Remove a link from source.links — used by the "Unlink" affordance
+  // in the just-created-link picker so the user can undo a mis-drop
+  // without diving into the detail panel.
+  const removeLink = useCallback(
+    (sourceId: string, targetId: string) => {
+      const src = dataRef.current;
+      const node = src.nodes[sourceId];
+      if (!node || !node.links) return;
+      const links = node.links.filter((l) => l.targetId !== targetId);
       const updated: MindMapData = {
         ...src,
         nodes: {
@@ -699,7 +740,7 @@ export default function TreeView({
   }
 
   return (
-    <div className="tree-view h-full flex flex-col relative">
+    <div className="tree-view h-full flex flex-col relative" ref={treeRef}>
       {/* ---- Toolbar ---- */}
       <div className="tr-toolbar shrink-0">
         <div className="tr-toolbar-left">
@@ -1096,6 +1137,12 @@ export default function TreeView({
                     }
                     setLinkPicker(null);
                   }}
+                  onRemoveLink={() => {
+                    if (linkPicker && linkPicker.targetId === id) {
+                      removeLink(linkPicker.sourceId, id);
+                    }
+                    setLinkPicker(null);
+                  }}
                 />
               );
             })}
@@ -1472,6 +1519,7 @@ function TreeNodeCard({
   onFlowMouseDown,
   onPickParentFlow,
   onPickLinkFlow,
+  onRemoveLink,
 }: {
   node: MindMapNode;
   x: number;
@@ -1496,6 +1544,7 @@ function TreeNodeCard({
   onFlowMouseDown: (e: React.MouseEvent) => void;
   onPickParentFlow: (v: FlowDirection) => void;
   onPickLinkFlow: (v: FlowDirection) => void;
+  onRemoveLink: () => void;
 }) {
   const hasNote = !!node.note?.trim();
   const hasImage = !!node.imageUrl;
@@ -1759,6 +1808,34 @@ function TreeNodeCard({
               </button>
             );
           })}
+          {/* Unlink — only on the link picker, not the parent picker.
+              Lets the user immediately undo a mis-dropped link without
+              opening the detail panel. */}
+          <span className="tr-flow-mini-sep" aria-hidden />
+          <button
+            type="button"
+            className="tr-flow-mini-btn tr-flow-mini-remove"
+            title="Remove link"
+            aria-label="Remove link"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemoveLink();
+            }}
+          >
+            <svg
+              viewBox="0 0 14 14"
+              width="12"
+              height="12"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="M3 3 L11 11 M11 3 L3 11" />
+            </svg>
+          </button>
         </div>
       )}
 
@@ -2278,6 +2355,26 @@ function TreeNodeCard({
         .tr-flow-mini-btn[data-flow='none'].is-active {
           background: rgba(148, 163, 184, 0.34);
           box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.65);
+        }
+        /* Vertical hairline between the 4 direction buttons and the
+           Unlink (X) action so the X reads as a separate danger
+           affordance, not a 5th flow mode. */
+        .tr-flow-mini-sep {
+          display: inline-block;
+          width: 1px;
+          align-self: stretch;
+          margin: 4px 2px;
+          background: rgba(255, 255, 255, 0.12);
+        }
+        .tr-flow-mini-remove {
+          color: #fca5a5;
+          background: rgba(239, 68, 68, 0.08);
+          padding: 5px 7px;
+        }
+        .tr-flow-mini-remove:hover {
+          color: #fee2e2;
+          background: rgba(239, 68, 68, 0.28);
+          box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.55);
         }
       `}</style>
     </div>

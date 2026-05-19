@@ -1204,6 +1204,7 @@ export default function MindMapCanvas({
       nodeEl: HTMLElement,
       current: import('@/lib/types').FlowDirection,
       onPick: (v: import('@/lib/types').FlowDirection) => void,
+      onRemove?: () => void,
     ) {
       // Single picker on screen at a time — close any leftover.
       document
@@ -1233,6 +1234,35 @@ export default function MindMapCanvas({
         });
         picker.appendChild(btn);
       });
+
+      // Optional unlink button — only rendered when a remove handler is
+      // supplied. The link-creation flow passes it so the user can
+      // immediately undo a just-created link if they dropped on the
+      // wrong card. Parent-edge picker doesn't get it (you can't
+      // unlink a structural tree edge from the picker).
+      if (onRemove) {
+        const sep = document.createElement('span');
+        sep.className = 'flow-mini-sep';
+        sep.setAttribute('aria-hidden', 'true');
+        picker.appendChild(sep);
+
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'flow-mini-btn flow-mini-remove';
+        remove.title = 'Remove link';
+        remove.setAttribute('aria-label', 'Remove link');
+        remove.innerHTML =
+          '<svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden>'
+          + '<path d="M3 3 L11 11 M11 3 L3 11" />'
+          + '</svg>';
+        remove.addEventListener('mousedown', (e) => e.stopPropagation());
+        remove.addEventListener('click', (e) => {
+          e.stopPropagation();
+          onRemove();
+          picker.remove();
+        });
+        picker.appendChild(remove);
+      }
 
       nodeEl.appendChild(picker);
 
@@ -2300,18 +2330,32 @@ export default function MindMapCanvas({
                 `[data-id="${CSS.escape(targetId)}"]`,
               ) as HTMLElement | null;
               if (freshTarget) {
-                showInlineFlowPicker(freshTarget, 'forward', (v) => {
-                  owner.links = (owner.links || []).map((l) =>
-                    l.targetId === targetId
-                      ? {
-                          ...l,
-                          flowDirection: v === 'forward' ? undefined : v,
-                        }
-                      : l,
-                  );
-                  scheduleSave();
-                  renderAll();
-                });
+                showInlineFlowPicker(
+                  freshTarget,
+                  'forward',
+                  (v) => {
+                    owner.links = (owner.links || []).map((l) =>
+                      l.targetId === targetId
+                        ? {
+                            ...l,
+                            flowDirection: v === 'forward' ? undefined : v,
+                          }
+                        : l,
+                    );
+                    scheduleSave();
+                    renderAll();
+                  },
+                  // Unlink — removes the just-created link entirely.
+                  // Useful when the user drops on the wrong card and
+                  // wants to undo without diving into the detail panel.
+                  () => {
+                    owner.links = (owner.links || []).filter(
+                      (l) => l.targetId !== targetId,
+                    );
+                    scheduleSave();
+                    renderAll();
+                  },
+                );
               }
             }
 
@@ -2524,6 +2568,21 @@ export default function MindMapCanvas({
       }
 
       edgesG.innerHTML = html;
+      // SMIL <animateMotion> created via innerHTML inherits an implicit
+      // begin="0s" that resolves to "0 seconds after document timeline
+      // start". On a page that's been up for a while, that resolved
+      // time is in the past — Chromium silently refuses to activate the
+      // new element and the arrows stop moving. Calling beginElement()
+      // on each one forces an activation at "now", which is what we
+      // actually meant. Fixes the bug where arrows stopped after
+      // editing a few flows.
+      edgesG.querySelectorAll('animateMotion').forEach((el) => {
+        try {
+          (el as unknown as SVGAnimationElement).beginElement();
+        } catch {
+          /* some browsers throw if SMIL isn't supported — silently ignore. */
+        }
+      });
     }
 
     function applyTransform() {
@@ -4715,6 +4774,27 @@ export default function MindMapCanvas({
         .smm-root :global(.flow-mini-btn[data-flow="none"].is-active) {
           background: rgba(148, 163, 184, 0.34);
           box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.65);
+        }
+        /* Visual separator between the 4 direction options and the
+           unlink action — small vertical hairline so the X feels like
+           a distinct danger affordance rather than a 5th direction. */
+        .smm-root :global(.flow-mini-sep) {
+          display: inline-block;
+          width: 1px;
+          align-self: stretch;
+          margin: 4px 2px;
+          background: rgba(255, 255, 255, 0.12);
+        }
+        .smm-root :global(.flow-mini-remove) {
+          min-width: 26px;
+          color: #fca5a5;
+          background: rgba(239, 68, 68, 0.08);
+          padding: 5px 7px;
+        }
+        .smm-root :global(.flow-mini-remove:hover) {
+          color: #fee2e2;
+          background: rgba(239, 68, 68, 0.28);
+          box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.55);
         }
 
         .smm-root :global(.edge-path) {
