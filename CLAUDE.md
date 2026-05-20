@@ -121,6 +121,23 @@ last-50 feed. When adding a new client event, add the name to the
 `CLIENT_EVENTS` set in `lib/analytics.ts` AND wire the `track()` call in
 the same commit — don't leave dead allow-list entries.
 
+## Squishy agent (ElevenLabs)
+The voice agent's system prompt + tool definitions live on ElevenLabs'
+dashboard (agent ID hardcoded in `components/SquishyWidget.tsx`). Our
+repo only embeds the widget and bridges client tool calls back to the
+canvas. The current paste-ready system prompt and tool JSON live at
+`docs/squishy-agent-config.md` — update that doc and the dashboard
+whenever you add/rename/remove a tool in `CANVAS_TOOLS` (in
+`lib/squishy-tools.ts`), or change something the agent would describe.
+
+Dynamic variables pushed in:
+- `current_page` from `pathToPageName(pathname)` in `lib/squishy.ts`
+- `is_logged_in` from auth check
+- `collaborator_count` from `squishymind:collaborator-count` event
+
+When you add a new top-level route, add it to `pathToPageName` so
+Squishy doesn't say "unknown page" on it.
+
 ## Sound effects
 Pre-baked ElevenLabs clips live under `public/sfx/`:
 - `pop.mp3` / `stretch.mp3` / `aww.mp3` / `ooooh.mp3` — legacy single clips
