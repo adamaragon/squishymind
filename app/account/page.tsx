@@ -6,6 +6,12 @@ import Footer from '@/components/Footer';
 import { createClient } from '@/lib/supabase/server';
 import DeleteAccountButton from './DeleteAccountButton';
 import SignOutButton from './SignOutButton';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Account — SquishyMind',
+  description: 'Your SquishyMind profile, founder status, and account settings.',
+};
 
 async function deleteAccount() {
   'use server';

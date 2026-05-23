@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/admin';
 import UserActions from './UserActions';
 
 export const dynamic = 'force-dynamic';
@@ -15,6 +16,7 @@ export default async function AdminUserDetail({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireAdmin();
   const { id } = await params;
   const admin = createAdminClient();
 

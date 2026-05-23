@@ -46,7 +46,9 @@ export default function GlobalError({
               error id · {error.digest}
             </p>
           )}
-          {error?.message && (
+          {/* Dev-only. In prod the digest is enough to look up server-side
+              without leaking internals to the user. */}
+          {process.env.NODE_ENV !== 'production' && error?.message && (
             <p style={{ marginTop: 8, fontSize: 11, color: '#ff8aa8', wordBreak: 'break-word' }}>
               {error.message}
             </p>

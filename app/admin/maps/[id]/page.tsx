@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/admin';
 import MapActions from './MapActions';
 
 export const dynamic = 'force-dynamic';
@@ -21,6 +22,7 @@ export default async function AdminMapDetail({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireAdmin();
   const { id } = await params;
   const admin = createAdminClient();
 

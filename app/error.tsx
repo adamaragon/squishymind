@@ -32,7 +32,10 @@ export default function AppError({
         {error?.digest && (
           <p className="mt-5 text-xs text-[--text-dim] font-mono">error id · {error.digest}</p>
         )}
-        {error?.message && (
+        {/* Never surface raw error messages to end-users in production —
+            they can leak stack traces, internal paths, or env names.
+            The digest above is enough to look it up server-side. */}
+        {process.env.NODE_ENV !== 'production' && error?.message && (
           <p className="mt-2 text-xs text-red-300 break-words">{error.message}</p>
         )}
       </div>

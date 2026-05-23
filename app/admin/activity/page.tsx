@@ -1,9 +1,11 @@
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminActivity() {
+  await requireAdmin();
   const admin = createAdminClient();
 
   // Pull the last 30 days of events. Cap at 5k rows for safety; on a beta

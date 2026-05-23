@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -5,8 +6,13 @@ import { NextResponse } from 'next/server';
 
 /** Used by /admin server components and pages. Redirects to /dashboard if
  *  the current user isn't authed or isn't flagged is_admin. Returns the
- *  auth user + their profile row so callers don't need to refetch. */
-export async function requireAdmin() {
+ *  auth user + their profile row so callers don't need to refetch.
+ *
+ *  Wrapped in React.cache so calling it from both the admin layout AND
+ *  the page itself is free (per-request memoization) — this lets every
+ *  page call requireAdmin() for defense-in-depth without paying for a
+ *  second profile query. */
+export const requireAdmin = cache(async function requireAdminImpl() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -21,7 +27,7 @@ export async function requireAdmin() {
 
   if (!profile?.is_admin) redirect('/dashboard');
   return { user, profile };
-}
+});
 
 /** Same gate for API routes — returns the user when admin, otherwise a
  *  JSON 401/403 response the caller can return directly. */

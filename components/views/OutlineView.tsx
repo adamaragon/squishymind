@@ -64,13 +64,6 @@ function setLabel(d: MindMapData, id: string, label: string): MindMapData {
   return next;
 }
 
-function setNote(d: MindMapData, id: string, note: string): MindMapData {
-  const next = cloneData(d);
-  const n = next.nodes[id];
-  if (!n) return d;
-  next.nodes[id] = { ...n, note };
-  return next;
-}
 
 function addSiblingAfter(d: MindMapData, afterId: string): {
   data: MindMapData;
@@ -217,9 +210,6 @@ function removeNode(d: MindMapData, id: string): MindMapData | null {
   stripIncomingLinks(next.nodes, doomed);
   return next;
 }
-
-// Silence: setNote is kept around for parity with future note-editing UI.
-void setNote;
 
 // Five-accent palette aligned with the canvas/colorIdx system.
 const ACCENT_PALETTE = [
@@ -752,20 +742,6 @@ export default function OutlineView({
             onDelete(id);
           }}
           onClose={() => setDetailNodeId(null)}
-          allNodes={(() => {
-            // Exclude the focused node, its direct parent, and its
-            // direct children — those already share a structural edge.
-            const focused = data.nodes[detailNodeId];
-            const childIds = new Set(data.childIndex[detailNodeId] || []);
-            return Object.values(data.nodes)
-              .filter(
-                (n) =>
-                  n.id !== detailNodeId &&
-                  n.id !== focused?.parentId &&
-                  !childIds.has(n.id),
-              )
-              .map((n) => ({ id: n.id, label: n.label }));
-          })()}
         />
       )}
 

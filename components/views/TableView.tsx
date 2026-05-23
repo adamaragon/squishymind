@@ -80,9 +80,13 @@ function removeNodeFromData(d: MindMapData, id: string): MindMapData | null {
 }
 
 export default function TableView({
-  mindmapId,
+  // mindmapId + initialTitle are part of the shared view-component
+  // interface so callers can pass identical props to all four views.
+  // TableView happens not to need them today; underscore signals
+  // intentionally-unused without resorting to a `void` statement.
+  mindmapId: _mindmapId,
   initialData,
-  initialTitle,
+  initialTitle: _initialTitle,
   readonly = false,
   onSwitchView,
   onDataChange,
@@ -202,9 +206,6 @@ export default function TableView({
     const branches = totalNodes - leaves;
     return { totalNodes, leaves, branches, noted };
   }, [data, paths]);
-
-  void mindmapId;
-  void initialTitle;
 
   const detailNode = detailNodeId ? data.nodes[detailNodeId] : null;
 
@@ -637,19 +638,6 @@ export default function TableView({
             applyDeleteNode(id);
           }}
           onClose={() => setDetailNodeId(null)}
-          allNodes={(() => {
-            // Exclude the focused node, its direct parent, and its
-            // direct children — those already share a structural edge.
-            const childIds = new Set(data.childIndex[detailNode.id] || []);
-            return Object.values(data.nodes)
-              .filter(
-                (n) =>
-                  n.id !== detailNode.id &&
-                  n.id !== detailNode.parentId &&
-                  !childIds.has(n.id),
-              )
-              .map((n) => ({ id: n.id, label: n.label }));
-          })()}
         />
       )}
 

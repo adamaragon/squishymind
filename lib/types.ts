@@ -63,6 +63,9 @@ export type Mindmap = {
   data: MindMapData;
   visibility: Visibility;
   share_token: string;
+  /** Optional URL-friendly slug; null until the user picks one (or never).
+   *  Unique when non-null. Added in migration 0006_slug.sql. */
+  slug: string | null;
   created_at: string;
   updated_at: string;
 };

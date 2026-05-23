@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/admin';
 import CommentRow from './CommentRow';
 
 export const dynamic = 'force-dynamic';
@@ -11,6 +12,7 @@ export default async function AdminCommentsPage({
 }: {
   searchParams: SearchParams;
 }) {
+  await requireAdmin();
   const { q } = await searchParams;
   const admin = createAdminClient();
 

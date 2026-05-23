@@ -3,7 +3,18 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MindMapData, MindMapNode } from '@/lib/types';
 import { registerCanvasHandler, type CanvasResult } from '@/lib/canvas-bus';
-import { templates as TEMPLATES } from '@/lib/templates';
+// Templates are lazy-loaded via loadTemplates() below — the bundle (17 KB
+// of static template data) shouldn't ship with the editor's first paint;
+// it only gets fetched the first time the user calls list_templates or
+// apply_template. Cached after first fetch so subsequent calls are sync.
+type Template = (typeof import('@/lib/templates'))['templates'][number];
+let templatesCache: readonly Template[] | null = null;
+async function loadTemplates(): Promise<readonly Template[]> {
+  if (templatesCache) return templatesCache;
+  const mod = await import('@/lib/templates');
+  templatesCache = mod.templates;
+  return templatesCache;
+}
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
 import {
   colorForUser,
@@ -3702,7 +3713,7 @@ export default function MindMapCanvas({
     // ---- Squishy voice command handler ----
     // Read-only viewers (share/[token]) still register the handler so list /
     // focus / fit work, but mutation commands return a clean error.
-    const unregisterCanvasHandler = registerCanvasHandler((cmd): CanvasResult | undefined => {
+    const unregisterCanvasHandler = registerCanvasHandler(async (cmd): Promise<CanvasResult | undefined> => {
       const isMutation =
         cmd.type === 'create_node' ||
         cmd.type === 'create_nodes_batch' ||
@@ -3917,7 +3928,8 @@ export default function MindMapCanvas({
       }
 
       if (cmd.type === 'list_templates') {
-        const summaries = TEMPLATES.map((t) => ({
+        const list = await loadTemplates();
+        const summaries = list.map((t) => ({
           id: t.id,
           name: t.name,
           description: t.description,
@@ -3926,7 +3938,8 @@ export default function MindMapCanvas({
       }
 
       if (cmd.type === 'apply_template') {
-        const template = TEMPLATES.find((t) => t.id === cmd.template_id);
+        const list = await loadTemplates();
+        const template = list.find((t) => t.id === cmd.template_id);
         if (!template) {
           return { success: false, error: `No template with id ${cmd.template_id}` };
         }

@@ -61,19 +61,6 @@ function newId(d: MindMapData): string {
   return `n${max + 1}`;
 }
 
-function recomputeDepths(d: MindMapData) {
-  if (!d.rootId) return;
-  const walk = (id: string, depth: number) => {
-    const node = d.nodes[id];
-    if (!node) return;
-    node.depth = depth;
-    for (const k of d.childIndex[id] || []) walk(k, depth + 1);
-  };
-  walk(d.rootId, 0);
-}
-// Keep recomputeDepths referenced so unused-warnings don't fire while the
-// function is held for future re-layout work.
-void recomputeDepths;
 
 function setLabel(d: MindMapData, id: string, label: string): MindMapData {
   const next = cloneData(d);
@@ -1330,21 +1317,6 @@ export default function TreeView({
             onDelete(id);
           }}
           onClose={() => setDetailNodeId(null)}
-          allNodes={(() => {
-            // Exclude the focused node, its direct parent, and its direct
-            // children — those already share a structural edge so a link
-            // would render a second redundant line.
-            const focused = data.nodes[detailNodeId];
-            const childIds = new Set(data.childIndex[detailNodeId] || []);
-            return Object.values(data.nodes)
-              .filter(
-                (n) =>
-                  n.id !== detailNodeId &&
-                  n.id !== focused?.parentId &&
-                  !childIds.has(n.id),
-              )
-              .map((n) => ({ id: n.id, label: n.label }));
-          })()}
         />
       )}
 

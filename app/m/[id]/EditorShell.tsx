@@ -1,20 +1,45 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import ShareDialog from '@/components/ShareDialog';
 import MembersPanel from '@/components/MembersPanel';
 import MindMapCanvas from '@/components/MindMapCanvas';
-import OutlineView from '@/components/views/OutlineView';
-import TreeView from '@/components/views/TreeView';
-import TableView from '@/components/views/TableView';
 import ViewSwitcher from '@/components/ViewSwitcher';
 import { loadViewMode, saveViewMode } from '@/lib/squishy';
 import { track } from '@/lib/track';
 import { registerCanvasHandler } from '@/lib/canvas-bus';
 import type { MindMapData, ViewMode, Visibility } from '@/lib/types';
+
+// The three non-default views are code-split — most editor sessions stay
+// on the canvas, so 175 KB of view JS shouldn't ship until someone
+// actually flips the switcher. ssr:false because all three depend on
+// browser-only APIs (resize observers, drag handlers).
+const OutlineView = dynamic(() => import('@/components/views/OutlineView'), {
+  ssr: false,
+  loading: () => <ViewSwitchLoader label="Outline" />,
+});
+const TreeView = dynamic(() => import('@/components/views/TreeView'), {
+  ssr: false,
+  loading: () => <ViewSwitchLoader label="Tree" />,
+});
+const TableView = dynamic(() => import('@/components/views/TableView'), {
+  ssr: false,
+  loading: () => <ViewSwitchLoader label="Table" />,
+});
+
+// Tiny loading state — sits where the view will mount so the switcher
+// doesn't appear broken during the lazy chunk fetch (usually one frame).
+function ViewSwitchLoader({ label }: { label: string }) {
+  return (
+    <div className="h-full flex items-center justify-center text-[--text-dim] text-sm">
+      Loading {label}…
+    </div>
+  );
+}
 
 function toSlug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);

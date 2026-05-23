@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +28,7 @@ export default async function AdminUsersPage({
 }: {
   searchParams: SearchParams;
 }) {
+  await requireAdmin();
   const { q, filter } = await searchParams;
   const admin = createAdminClient();
 
@@ -40,7 +42,13 @@ export default async function AdminUsersPage({
     .limit(200);
 
   if (q && q.trim()) {
-    const term = `%${q.trim()}%`;
+    // PostgREST's .or() takes a comma-separated filter string. Raw user
+    // input containing `,` `(` `)` `*` would either break the filter or
+    // (worst case on a misconfigured backend) allow a curious admin to
+    // pivot the query. Strip the metacharacters; ilike's `%` wildcards
+    // are added explicitly below.
+    const safe = q.trim().replace(/[,()*]/g, '');
+    const term = `%${safe}%`;
     query = query.or(`email.ilike.${term},display_name.ilike.${term}`);
   }
   if (filter === 'founders') query = query.eq('is_founder', true);

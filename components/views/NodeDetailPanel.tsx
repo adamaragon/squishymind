@@ -22,10 +22,6 @@ type Props = {
   onDelete?: () => void;
   onClose: () => void;
   isRoot: boolean;
-  /** Legacy prop — was used by the in-panel link picker. Retained for
-   *  backward compatibility with callers but unused since flow editing
-   *  moved to the mid-line chips on the canvas/tree surfaces. */
-  allNodes?: Array<{ id: string; label: string }>;
 };
 
 const NOTE_DEBOUNCE_MS = 600;
@@ -38,8 +34,6 @@ export default function NodeDetailPanel({
   onDelete,
   onClose,
   isRoot,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  allNodes: _allNodes = [],
 }: Props) {
   const [label, setLabel] = useState(node.label);
   const [note, setNote] = useState(node.note || '');

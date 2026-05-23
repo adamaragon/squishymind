@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +19,10 @@ function timeAgo(date: string | null | undefined): string {
 }
 
 export default async function AdminOverview() {
+  // Defense-in-depth: every admin page calls requireAdmin() directly so
+  // an accidental layout opt-out can't leak service-role data. React.cache
+  // memoizes this per-request, so the layout's call costs nothing here.
+  await requireAdmin();
   const admin = createAdminClient();
 
   // Pull everything in parallel — admin client bypasses RLS so totals are honest.

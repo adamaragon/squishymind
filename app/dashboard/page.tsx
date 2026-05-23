@@ -8,6 +8,12 @@ import NewMapButton from '@/components/NewMapButton';
 import ImportButton from '@/components/ImportButton';
 import { createClient } from '@/lib/supabase/server';
 import type { Mindmap } from '@/lib/types';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Dashboard — SquishyMind',
+  description: 'Your mind maps. Create, rename, delete, or open one.',
+};
 
 async function deleteMindmap(formData: FormData) {
   'use server';

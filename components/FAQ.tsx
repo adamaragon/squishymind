@@ -57,30 +57,67 @@ const faqs = [
   },
 ];
 
+// FAQPage schema — gives Google rich-result eligibility (collapsible Q&A
+// directly in SERPs). Rendered once at the top of the section.
+const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map((f) => ({
+    '@type': 'Question',
+    name: f.q,
+    acceptedAnswer: { '@type': 'Answer', text: f.a },
+  })),
+};
+
 export default function FAQ() {
   const [openIdx, setOpenIdx] = useState<number | null>(0);
 
   return (
-    <section className="max-w-3xl mx-auto px-6 py-16">
-      <h2 className="text-3xl font-semibold mb-8 text-center">Beta, simply.</h2>
+    <section className="max-w-3xl mx-auto px-6 py-16" aria-labelledby="faq-heading">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
+      <h2 id="faq-heading" className="text-3xl font-semibold mb-8 text-center">
+        Beta, simply.
+      </h2>
       <div className="space-y-3">
-        {faqs.map((f, i) => (
-          <button
-            key={i}
-            onClick={() => setOpenIdx(openIdx === i ? null : i)}
-            className={`glass rounded-xl w-full text-left p-5 transition-all hover:border-white/20 ${
-              openIdx === i ? 'border-violet-500/40' : ''
-            }`}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <span className="font-medium">{f.q}</span>
-              <span className="text-[--text-dim] shrink-0">{openIdx === i ? '−' : '+'}</span>
+        {faqs.map((f, i) => {
+          const isOpen = openIdx === i;
+          const panelId = `faq-panel-${i}`;
+          const triggerId = `faq-trigger-${i}`;
+          return (
+            <div key={i}>
+              <button
+                id={triggerId}
+                type="button"
+                onClick={() => setOpenIdx(isOpen ? null : i)}
+                aria-expanded={isOpen}
+                aria-controls={panelId}
+                className={`glass rounded-xl w-full text-left p-5 transition-all hover:border-white/20 ${
+                  isOpen ? 'border-violet-500/40' : ''
+                }`}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <span className="font-medium">{f.q}</span>
+                  <span className="text-[--text-dim] shrink-0" aria-hidden>
+                    {isOpen ? '−' : '+'}
+                  </span>
+                </div>
+                {isOpen && (
+                  <div
+                    id={panelId}
+                    role="region"
+                    aria-labelledby={triggerId}
+                    className="text-[--text-dim] text-sm leading-relaxed mt-3"
+                  >
+                    {f.a}
+                  </div>
+                )}
+              </button>
             </div>
-            {openIdx === i && (
-              <p className="text-[--text-dim] text-sm leading-relaxed mt-3">{f.a}</p>
-            )}
-          </button>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

@@ -1,7 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import TemplatePicker from './TemplatePicker';
+import dynamic from 'next/dynamic';
+
+// TemplatePicker bundles the full 17 KB templates dataset. Lazy-loaded so
+// the dashboard doesn't ship it until someone actually clicks "New map".
+const TemplatePicker = dynamic(() => import('./TemplatePicker'), {
+  ssr: false,
+});
 
 type Props = {
   label?: string;

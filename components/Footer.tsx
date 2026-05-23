@@ -20,7 +20,15 @@ export default function Footer({ minimal = false }: { minimal?: boolean }) {
     <footer className="px-6 py-10 border-t border-white/5 mt-16">
       <div className="max-w-5xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-sm text-[--text-dim]">
         <div className="flex items-center gap-3">
-          <img src="/brain.svg" alt="" width={28} height={28} className="opacity-80" />
+          <img
+            src="/brain.svg"
+            alt=""
+            width={28}
+            height={28}
+            loading="lazy"
+            decoding="async"
+            className="opacity-80"
+          />
           <span>SquishyMind · {new Date().getFullYear()}</span>
         </div>
         <nav className="flex items-center gap-5">

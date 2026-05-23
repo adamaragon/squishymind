@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +19,7 @@ export default async function AdminMapsPage({
 }: {
   searchParams: SearchParams;
 }) {
+  await requireAdmin();
   const { q, vis } = await searchParams;
   const admin = createAdminClient();
 
@@ -28,7 +30,10 @@ export default async function AdminMapsPage({
     .limit(200);
 
   if (q && q.trim()) {
-    query = query.or(`title.ilike.%${q.trim()}%,slug.ilike.%${q.trim()}%`);
+    // Strip PostgREST .or() metacharacters from raw user input — see
+    // app/admin/users/page.tsx for the same pattern.
+    const safe = q.trim().replace(/[,()*]/g, '');
+    query = query.or(`title.ilike.%${safe}%,slug.ilike.%${safe}%`);
   }
   if (vis && vis !== 'all') query = query.eq('visibility', vis);
 
