@@ -4,23 +4,52 @@ import { createClient } from '@/lib/supabase/server';
 import MindMapCanvas from '@/components/MindMapCanvas';
 import Footer from '@/components/Footer';
 
+type ShareMindmap = {
+  id: string;
+  title: string;
+  visibility: string;
+  data: import('@/lib/types').MindMapData;
+};
+
 export default async function SharePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const supabase = await createClient();
 
   // The share route accepts two URL forms:
   //  - 32-char hex share_token: unguessable, works for any visibility
-  //    (private/unlisted/public). The token IS the access gate.
+  //    (private/unlisted/public). The token IS the access gate. Resolved
+  //    via the get_mindmap_by_share_token RPC (security definer) because
+  //    the regular RLS policy on mindmaps blocks SELECTs on private rows
+  //    even with a matching token — see migration 0008.
   //  - vanity slug: pretty but guessable, only unlocks unlisted/public.
-  //    Slug URLs never expose private maps.
+  //    Slug URLs never expose private maps; RLS handles that gate directly.
   const isHexToken = /^[0-9a-f]{32}$/i.test(token);
-  const select = supabase
-    .from('mindmaps')
-    .select('id, title, visibility, data');
-  const { data: mindmap } = await (isHexToken
-    ? select.eq('share_token', token)
-    : select.eq('slug', token).in('visibility', ['public', 'unlisted'])
-  ).single();
+
+  let mindmap: ShareMindmap | null = null;
+  if (isHexToken) {
+    const { data } = await supabase.rpc('get_mindmap_by_share_token', {
+      token,
+    });
+    // The RPC returns a setof; PostgREST yields an array even though we
+    // limit 1. Pull the first row, or null.
+    const row = Array.isArray(data) ? data[0] : null;
+    if (row) {
+      mindmap = {
+        id: row.id,
+        title: row.title,
+        visibility: row.visibility,
+        data: row.data,
+      };
+    }
+  } else {
+    const { data } = await supabase
+      .from('mindmaps')
+      .select('id, title, visibility, data')
+      .eq('slug', token)
+      .in('visibility', ['public', 'unlisted'])
+      .single();
+    if (data) mindmap = data as ShareMindmap;
+  }
   if (!mindmap) notFound();
 
   return (
