@@ -4,7 +4,17 @@ export default function Footer({ minimal = false }: { minimal?: boolean }) {
   if (minimal) {
     return (
       <footer className="px-6 py-3 border-t border-white/5 flex items-center justify-between text-xs text-[--text-dim] shrink-0">
-        <span>SquishyMind · {new Date().getFullYear()}</span>
+        <span>
+          SquishyMind · {new Date().getFullYear()}{' '}
+          <a
+            href="https://threesided.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-white transition-colors"
+          >
+            (by ThreeSided Studios)
+          </a>
+        </span>
         <Link
           href="/changelog"
           className="hover:text-white transition-colors flex items-center gap-1.5"
@@ -29,7 +39,17 @@ export default function Footer({ minimal = false }: { minimal?: boolean }) {
             decoding="async"
             className="opacity-80"
           />
-          <span>SquishyMind · {new Date().getFullYear()}</span>
+          <span>
+            SquishyMind · {new Date().getFullYear()}{' '}
+            <a
+              href="https://threesided.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-white transition-colors"
+            >
+              (by ThreeSided Studios)
+            </a>
+          </span>
         </div>
         <nav className="flex items-center gap-5 flex-wrap">
           <Link
