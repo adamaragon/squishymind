@@ -6,7 +6,7 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Sign up — SquishyMind',
   description:
-    "Make a SquishyMind account. Free during beta — every beta signup locks in Founder pricing ($1.99/mo) for life.",
+    "Make a SquishyMind account. Free during beta — every beta signup locks in Founder pricing ($2.99/mo) for life.",
 };
 
 export default function SignupLayout({

@@ -24,7 +24,7 @@ type CompRow = { feature: string; squishy: string; note?: string };
 
 const FEATURE_MATRIX: CompRow[] = [
   { feature: 'Price to start', squishy: 'Free (beta)', note: 'No credit card ever required to get started' },
-  { feature: 'Founder pricing', squishy: '$1.99/month forever', note: 'Locked in at signup during beta — not a trial rate' },
+  { feature: 'Founder pricing', squishy: '$2.99/month forever', note: 'Locked in at signup during beta — not a trial rate' },
   { feature: 'Voice AI assistant', squishy: 'Yes — full canvas control', note: 'Squishy can add, move, expand nodes by voice' },
   { feature: 'AI text expansion', squishy: 'Yes', note: 'On any node, powered by GPT-4o-mini' },
   { feature: 'Real-time collaboration', squishy: 'Yes — live cursors + edits', note: 'Supabase Realtime, ~1s sync' },

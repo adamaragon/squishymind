@@ -5,7 +5,7 @@ import { useState } from 'react';
 const faqs = [
   {
     q: "What's the deal with “Founder Access”?",
-    a: "Beta is free for everybody. When we launch our paid tier (Squishy Premium, $3.99/month) you'll have already locked in Founder pricing — $1.99/month or $14.99/year, for as long as you stay subscribed. You'll also keep a more generous free tier with 8 maps and 40 voice minutes per month, even if you never upgrade to Premium. We can't promise free forever, because the voice agent costs us money to run — but we can promise Founder pricing forever, and that's a real perk we'd rather honour than break.",
+    a: "Beta is free for everybody. When we launch our paid tier (Squishy Premium, $4.99/month) you'll have already locked in Founder pricing — $2.99/month or $24.99/year, for as long as you stay subscribed. You'll also keep a more generous free tier with 8 maps and 40 voice minutes per month, even if you never upgrade to Premium. We can't promise free forever, because the voice agent costs us money to run — but we can promise Founder pricing forever, and that's a real perk we'd rather honour than break.",
   },
   {
     q: 'Do I have to use the voice agent?',
@@ -21,7 +21,7 @@ const faqs = [
   },
   {
     q: 'Wait — is collaboration going to cost money?',
-    a: 'Eventually, yes. Multi-user features (invites, live cursors, real-time sync, comments) will be on the paid Premium tier after beta. While the beta banner is up at the top of the page, everything’s free — and if you sign up during beta you get Founder Access: Premium for $1.99/month (half off) when it launches, plus a more generous free tier you keep even if you never upgrade. Sign up now, lock in the deal, decide later.',
+    a: 'Eventually, yes. Multi-user features (invites, live cursors, real-time sync, comments) will be on the paid Premium tier after beta. While the beta banner is up at the top of the page, everything’s free — and if you sign up during beta you get Founder Access: Premium for $2.99/month (40% off) when it launches, plus a more generous free tier you keep even if you never upgrade. Sign up now, lock in the deal, decide later.',
   },
   {
     q: 'How long is the beta?',
@@ -29,11 +29,11 @@ const faqs = [
   },
   {
     q: 'What does Founder Access actually get me?',
-    a: 'Three permanent things: (1) Premium for half price — $1.99/month or $14.99/year, locked in for as long as you stay subscribed; (2) a more generous free tier even if you never pay us — 8 maps, 150 nodes per map, 40 voice minutes a month, versus 5/100/20 for new users post-launch; (3) a small Founder badge on your profile. The longer page at /founder-access has the full breakdown.',
+    a: 'Three permanent things: (1) Premium for 40% off — $2.99/month or $24.99/year, locked in for as long as you stay subscribed; (2) a more generous free tier even if you never pay us — 8 maps, 150 nodes per map, 40 voice minutes a month, versus 5/100/20 for new users post-launch; (3) a small Founder badge on your profile. The longer page at /founder-access has the full breakdown.',
   },
   {
     q: 'When does pricing kick in for new users?',
-    a: "When paid tiers launch (likely the next four to six months). New users post-launch get the standard free tier and pay $3.99/month or $29.99/year for Premium. Beta signups don't see any of those higher prices — Founder pricing is already yours.",
+    a: "When paid tiers launch (likely the next four to six months). New users post-launch get the standard free tier and pay $4.99/month or $39.99/year for Premium. Beta signups don't see any of those higher prices — Founder pricing is already yours.",
   },
   {
     q: 'What happens to my mind maps if pricing kicks in?',

@@ -7,7 +7,7 @@ import PageViewTracker from '@/components/PageViewTracker';
 export const metadata = {
   title: 'Pricing — SquishyMind Mind Mapping App',
   description:
-    'SquishyMind is free during beta. Sign up now and lock in Founder Access — $1.99/month forever when paid tiers launch. Unlimited maps, voice AI, and real-time collaboration.',
+    'SquishyMind is free during beta. Sign up now and lock in Founder Access — $2.99/month forever when paid tiers launch. Unlimited maps, voice AI, and real-time collaboration.',
 };
 
 const SITE = 'https://www.squishymind.com';
@@ -42,7 +42,7 @@ const pricingJsonLd = [
       {
         '@type': 'Offer',
         name: 'Squishy Premium',
-        price: '3.99',
+        price: '4.99',
         priceCurrency: 'USD',
         billingIncrement: 1,
         priceValidUntil: '2026-12-31',
@@ -53,12 +53,12 @@ const pricingJsonLd = [
       {
         '@type': 'Offer',
         name: 'Founder Access',
-        price: '1.99',
+        price: '2.99',
         priceCurrency: 'USD',
         billingIncrement: 1,
         availability: 'https://schema.org/LimitedAvailability',
         url: `${SITE}/signup`,
-        description: 'Half-price Premium forever, for beta-era signups only.',
+        description: '40%-off Premium forever, for beta-era signups only.',
       },
     ],
   },
@@ -94,8 +94,8 @@ const TIERS: Tier[] = [
     name: 'Squishy Premium',
     badge: 'Most popular',
     badgeTone: 'violet',
-    price: '$3.99',
-    priceSub: '/month — or $29.99/year',
+    price: '$4.99',
+    priceSub: '/month — or $39.99/year',
     tagline: 'For people who think with their mouths open.',
     features: [
       'Unlimited maps',
@@ -120,8 +120,8 @@ const TIERS: Tier[] = [
     name: 'Founder Access',
     badge: 'Beta signups only',
     badgeTone: 'pink',
-    price: '$1.99',
-    priceSub: '/month — or $14.99/year, forever',
+    price: '$2.99',
+    priceSub: '/month — or $24.99/year, forever',
     tagline: 'For people who showed up early.',
     features: [
       'Everything in Premium',
@@ -236,7 +236,7 @@ export default function PricingPage() {
         <ShareButtons
           heading="Know someone who'd grab Founder pricing?"
           blurb="Share this page — it'll save them money for life."
-          text="SquishyMind has $1.99/mo Founder pricing during beta — limited time"
+          text="SquishyMind has $2.99/mo Founder pricing during beta — limited time"
         />
       </main>
       <Footer />

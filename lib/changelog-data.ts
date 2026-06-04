@@ -154,7 +154,7 @@ export const shipped: ShippedEntry[] = [
     commit: '1b33c34',
     highlights: [
       'Retired the "free forever" promise — see /founder-access for why',
-      'Beta signups now get Founder Access: half off Premium ($1.99/mo) forever',
+      'Beta signups now get Founder Access: 40% off Premium ($2.99/mo) forever',
       'Plus a bigger free tier you keep — 8 maps, 150 nodes, 40 voice minutes',
       'New /pricing page lays out the three tiers side by side',
       'Polish: icon-only delete on Tree cards, wider cards, brighter edges',

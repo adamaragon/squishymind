@@ -288,7 +288,7 @@ export default function FeaturesPage() {
             Start for free. Stay for the brain.
           </h2>
           <p className="text-[--text-dim] mb-7 text-lg leading-relaxed">
-            Sign up during beta to lock in Founder Access — Premium at half price, forever.
+            Sign up during beta to lock in Founder Access — Premium at 40% off, forever.
             No credit card, no onboarding flow, no goals survey.
           </p>
           <Link href="/signup" className="btn btn-primary text-base px-8 py-3">

@@ -157,7 +157,7 @@ export default async function BlogPostPage({
             <h2 className="text-2xl font-semibold mb-3">Try it with your own brain</h2>
             <p className="text-[--text-dim] mb-6 leading-relaxed">
               SquishyMind is free during beta. Sign up in 10 seconds and lock in
-              Founder Access — half off Premium, forever.
+              Founder Access — 40% off Premium, forever.
             </p>
             <Link href="/signup" className="btn btn-primary text-base px-7 py-3">
               Sign up free →

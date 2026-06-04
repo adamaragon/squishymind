@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og';
 
 export const runtime = 'edge';
-export const alt = 'Founder Access on SquishyMind — half-price Premium, forever.';
+export const alt = 'Founder Access on SquishyMind — 40%-off Premium, forever.';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -83,7 +83,7 @@ export default async function OG() {
             zIndex: 1,
           }}
         >
-          Half price. Forever.
+          40% off. Forever.
         </div>
 
         <div
@@ -97,7 +97,7 @@ export default async function OG() {
             zIndex: 1,
           }}
         >
-          Every beta signup locks in $1.99/mo (or $14.99/yr) for as long as
+          Every beta signup locks in $2.99/mo (or $24.99/yr) for as long as
           you stay subscribed. Bigger free tier too.
         </div>
 

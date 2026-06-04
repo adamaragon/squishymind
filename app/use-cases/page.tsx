@@ -85,7 +85,7 @@ const USE_CASES: UseCase[] = [
       'Canvas view to map dependencies and relationships visually',
       'Collaborate with engineers and designers in real time',
       'Import sprint data from CSV in seconds',
-      'Founder Access pricing locks in during beta — $1.99/month forever',
+      'Founder Access pricing locks in during beta — $2.99/month forever',
     ],
     cta: 'Build a roadmap →',
   },
@@ -173,7 +173,7 @@ export default function UseCasesPage() {
             See what SquishyMind can do for you.
           </h2>
           <p className="text-[--text-dim] mb-7 text-lg leading-relaxed">
-            Free during beta. Sign up now and lock in Founder Access — half off
+            Free during beta. Sign up now and lock in Founder Access — 40% off
             Premium forever. No credit card.
           </p>
           <div className="flex items-center justify-center gap-3 flex-wrap">

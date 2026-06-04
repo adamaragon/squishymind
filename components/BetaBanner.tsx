@@ -45,7 +45,7 @@ export default function BetaBanner() {
             href="/founder-access"
             className="text-[--text-dim] hover:text-white transition-colors underline-offset-2 hover:underline"
           >
-            Sign up now and lock in Founder pricing — half off Premium forever
+            Sign up now and lock in Founder pricing — 40% off Premium forever
             when it launches. →
           </Link>
         </span>

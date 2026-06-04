@@ -260,7 +260,7 @@ export default function HomePage() {
             There&apos;s a brain in the corner waiting to meet you.
           </h2>
           <p className="text-[--text-dim] mb-7 text-lg leading-relaxed">
-            Sign up during beta to lock in Founder Access — Premium for half price,
+            Sign up during beta to lock in Founder Access — Premium for 40% off,
             forever. Or just click the brain in the bottom-right and have Squishy do
             the talking — your call.
           </p>

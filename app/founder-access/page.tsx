@@ -7,7 +7,7 @@ import PageViewTracker from '@/components/PageViewTracker';
 export const metadata = {
   title: 'Founder Access — SquishyMind Mind Mapping App',
   description:
-    'Sign up during beta and lock in $1.99/month forever — half off Squishy Premium for life, plus a more generous free tier you keep even if you never upgrade.',
+    'Sign up during beta and lock in $2.99/month forever — 40% off Squishy Premium for life, plus a more generous free tier you keep even if you never upgrade.',
 };
 
 const SITE = 'https://www.squishymind.com';
@@ -40,7 +40,7 @@ export default function FounderAccessPage() {
             <span className="gradient-text">Founder Access</span>
           </h1>
           <p className="text-lg text-[--text-dim] max-w-2xl mx-auto leading-relaxed">
-            Half off Premium, forever. A more generous free tier you keep even if you
+            40% off Premium, forever. A more generous free tier you keep even if you
             never pay us. Awarded to every account that signed up during beta.
           </p>
         </section>
@@ -72,12 +72,12 @@ export default function FounderAccessPage() {
           </p>
 
           <h3 className="text-lg font-semibold text-white mt-8 mb-2">
-            1. Half off Premium, forever
+            1. 40% off Premium, forever
           </h3>
           <p className="mb-4">
-            When we launch our paid tier (Squishy Premium, $3.99/month or $29.99/year)
+            When we launch our paid tier (Squishy Premium, $4.99/month or $39.99/year)
             you can subscribe at the Founder rate of{' '}
-            <strong className="text-white">$1.99/month or $14.99/year</strong>. That
+            <strong className="text-white">$2.99/month or $24.99/year</strong>. That
             price is locked for as long as you stay subscribed. If you cancel and come
             back, the Founder price is still available to you.
           </p>
@@ -148,8 +148,8 @@ export default function FounderAccessPage() {
 
         <ShareButtons
           heading="Spread the founder offer."
-          blurb="Beta is ending soon. Send this to anyone who'd want $1.99/mo for life."
-          text="SquishyMind is offering Founder Access during beta — $1.99/mo forever. Don't miss it →"
+          blurb="Beta is ending soon. Send this to anyone who'd want $2.99/mo for life."
+          text="SquishyMind is offering Founder Access during beta — $2.99/mo forever. Don't miss it →"
         />
       </main>
       <Footer />

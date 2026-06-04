@@ -125,7 +125,7 @@ export default function MembersPanel({ mindmapId, isOwner, currentUserId, onClos
           <span className="text-[--text-dim] leading-snug">
             Collaboration — invites, live cursors, real-time sync, comments — will
             be on the paid Premium tier after beta. Free for you right now, and{' '}
-            <span className="text-white">half price forever</span> on Premium if
+            <span className="text-white">40% off forever</span> on Premium if
             you signed up during the beta banner (Founder Access).
           </span>
         </div>
