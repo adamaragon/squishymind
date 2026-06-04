@@ -5,10 +5,64 @@ import ShareButtons from '@/components/ShareButtons';
 import PageViewTracker from '@/components/PageViewTracker';
 
 export const metadata = {
-  title: 'Pricing — SquishyMind',
+  title: 'Pricing — SquishyMind Mind Mapping App',
   description:
-    "Simple pricing. Beta is free. Founder Access locks in when you sign up before paid tiers launch.",
+    'SquishyMind is free during beta. Sign up now and lock in Founder Access — $1.99/month forever when paid tiers launch. Unlimited maps, voice AI, and real-time collaboration.',
 };
+
+const SITE = 'https://www.squishymind.com';
+
+const pricingJsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE },
+      { '@type': 'ListItem', position: 2, name: 'Pricing', item: `${SITE}/pricing` },
+    ],
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: 'SquishyMind',
+    description:
+      'An infinite mind-mapping web app with voice AI, real-time collaboration, multiple view modes, and import/export.',
+    url: `${SITE}/pricing`,
+    brand: { '@type': 'Brand', name: 'SquishyMind' },
+    offers: [
+      {
+        '@type': 'Offer',
+        name: 'Free',
+        price: '0',
+        priceCurrency: 'USD',
+        availability: 'https://schema.org/InStock',
+        url: `${SITE}/signup`,
+        description: '5 maps, 100 nodes per map, 20 voice minutes per month.',
+      },
+      {
+        '@type': 'Offer',
+        name: 'Squishy Premium',
+        price: '3.99',
+        priceCurrency: 'USD',
+        billingIncrement: 1,
+        priceValidUntil: '2026-12-31',
+        availability: 'https://schema.org/PreOrder',
+        url: `${SITE}/signup`,
+        description: 'Unlimited maps and nodes, 200 voice minutes, AI expansion, collaboration.',
+      },
+      {
+        '@type': 'Offer',
+        name: 'Founder Access',
+        price: '1.99',
+        priceCurrency: 'USD',
+        billingIncrement: 1,
+        availability: 'https://schema.org/LimitedAvailability',
+        url: `${SITE}/signup`,
+        description: 'Half-price Premium forever, for beta-era signups only.',
+      },
+    ],
+  },
+];
 
 type Tier = {
   name: string;
@@ -92,6 +146,13 @@ const BADGE_TONES: Record<NonNullable<Tier['badgeTone']>, string> = {
 export default function PricingPage() {
   return (
     <>
+      {pricingJsonLd.map((schema, i) => (
+        <script
+          key={i}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        />
+      ))}
       <PageViewTracker event="pricing_visited" />
       <Header />
       <main className="px-6">

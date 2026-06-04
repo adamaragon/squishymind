@@ -31,7 +31,7 @@ export default function Footer({ minimal = false }: { minimal?: boolean }) {
           />
           <span>SquishyMind · {new Date().getFullYear()}</span>
         </div>
-        <nav className="flex items-center gap-5">
+        <nav className="flex items-center gap-5 flex-wrap">
           <Link
             href="/changelog"
             className="hover:text-white transition-colors flex items-center gap-1.5"
@@ -39,11 +39,17 @@ export default function Footer({ minimal = false }: { minimal?: boolean }) {
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-pink-400 animate-pulse" />
             What&apos;s new
           </Link>
+          <Link href="/features" className="hover:text-white transition-colors">
+            Features
+          </Link>
+          <Link href="/use-cases" className="hover:text-white transition-colors">
+            Use cases
+          </Link>
+          <Link href="/compare" className="hover:text-white transition-colors">
+            Compare
+          </Link>
           <Link href="/pricing" className="hover:text-white transition-colors">
             Pricing
-          </Link>
-          <Link href="/" className="hover:text-white transition-colors">
-            Home
           </Link>
           <Link href="/login" className="hover:text-white transition-colors">
             Log in

@@ -7,9 +7,64 @@ import SquishyCTA from '@/components/SquishyCTA';
 import RecentShipped from '@/components/RecentShipped';
 import FAQ from '@/components/FAQ';
 
+const SITE = 'https://www.squishymind.com';
+
+const homepageJsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': `${SITE}/#organization`,
+      name: 'SquishyMind',
+      url: SITE,
+      logo: { '@type': 'ImageObject', url: `${SITE}/brain.svg` },
+    },
+    {
+      '@type': 'WebSite',
+      '@id': `${SITE}/#website`,
+      url: SITE,
+      name: 'SquishyMind',
+      description: 'A wobbly, lovely, infinite mind-mapping canvas. Free, sign-up takes 10 seconds.',
+      publisher: { '@id': `${SITE}/#organization` },
+    },
+    {
+      '@type': 'SoftwareApplication',
+      '@id': `${SITE}/#app`,
+      name: 'SquishyMind',
+      applicationCategory: 'ProductivityApplication',
+      operatingSystem: 'Web',
+      url: SITE,
+      description:
+        'A mind-mapping web app with a voice AI assistant, real-time collaboration, and beautiful animations. Free during beta.',
+      featureList: [
+        'Voice AI assistant (Squishy)',
+        'Real-time collaboration with live cursors',
+        'Infinite canvas mind mapping',
+        'Multiple view modes — Canvas, Outline, Tree, Table',
+        'Import from Markdown, CSV, OPML, JSON',
+        'PNG and PDF export',
+        'Threaded comments on nodes',
+        'Pre-built templates',
+        'AI text expansion',
+        'Image attachments',
+      ],
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'USD',
+        availability: 'https://schema.org/InStock',
+      },
+    },
+  ],
+};
+
 export default function HomePage() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(homepageJsonLd) }}
+      />
       <Header />
 
       <main className="px-6">

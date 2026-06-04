@@ -9,16 +9,15 @@ const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.squishymind.com';
 // don't read without auth).
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
-    { url: `${SITE}/`, changeFrequency: 'weekly', priority: 1.0 },
-    { url: `${SITE}/pricing`, changeFrequency: 'monthly', priority: 0.8 },
-    {
-      url: `${SITE}/founder-access`,
-      changeFrequency: 'monthly',
-      priority: 0.8,
-    },
-    { url: `${SITE}/changelog`, changeFrequency: 'weekly', priority: 0.6 },
-    { url: `${SITE}/signup`, changeFrequency: 'monthly', priority: 0.5 },
-    { url: `${SITE}/login`, changeFrequency: 'monthly', priority: 0.3 },
+    { url: `${SITE}/`, changeFrequency: 'weekly', priority: 1.0, lastModified: new Date() },
+    { url: `${SITE}/features`, changeFrequency: 'monthly', priority: 0.9, lastModified: new Date('2026-06-04') },
+    { url: `${SITE}/use-cases`, changeFrequency: 'monthly', priority: 0.9, lastModified: new Date('2026-06-04') },
+    { url: `${SITE}/compare`, changeFrequency: 'monthly', priority: 0.8, lastModified: new Date('2026-06-04') },
+    { url: `${SITE}/pricing`, changeFrequency: 'monthly', priority: 0.8, lastModified: new Date() },
+    { url: `${SITE}/founder-access`, changeFrequency: 'monthly', priority: 0.7, lastModified: new Date() },
+    { url: `${SITE}/changelog`, changeFrequency: 'weekly', priority: 0.6, lastModified: new Date() },
+    { url: `${SITE}/signup`, changeFrequency: 'monthly', priority: 0.5, lastModified: new Date('2026-01-01') },
+    { url: `${SITE}/login`, changeFrequency: 'monthly', priority: 0.3, lastModified: new Date('2026-01-01') },
   ];
 
   // Public mindmaps. Wrapped in try/catch so a Supabase outage during build

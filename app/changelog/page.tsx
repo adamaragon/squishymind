@@ -9,8 +9,20 @@ import {
 } from '@/lib/changelog-data';
 
 export const metadata = {
-  title: "What's new — SquishyMind",
-  description: 'See what we shipped recently and what is coming next.',
+  title: 'Changelog & Roadmap — SquishyMind Mind Mapping App',
+  description:
+    'Every feature SquishyMind has shipped, plus what\'s coming next. Voice AI, real-time collaboration, multiple views, templates — see the full history.',
+};
+
+const SITE = 'https://www.squishymind.com';
+
+const changelogJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: SITE },
+    { '@type': 'ListItem', position: 2, name: 'Changelog', item: `${SITE}/changelog` },
+  ],
 };
 
 export default function ChangelogPage() {
@@ -20,6 +32,10 @@ export default function ChangelogPage() {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(changelogJsonLd) }}
+      />
       <Header />
       <main className="px-6">
         {/* Hero */}

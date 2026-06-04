@@ -5,14 +5,29 @@ import ShareButtons from '@/components/ShareButtons';
 import PageViewTracker from '@/components/PageViewTracker';
 
 export const metadata = {
-  title: 'Founder Access — SquishyMind',
+  title: 'Founder Access — SquishyMind Mind Mapping App',
   description:
-    'Beta-era signups get Founder Access — half off Premium forever and a more generous free tier. Here is the honest version of why.',
+    'Sign up during beta and lock in $1.99/month forever — half off Squishy Premium for life, plus a more generous free tier you keep even if you never upgrade.',
+};
+
+const SITE = 'https://www.squishymind.com';
+
+const founderJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: SITE },
+    { '@type': 'ListItem', position: 2, name: 'Founder Access', item: `${SITE}/founder-access` },
+  ],
 };
 
 export default function FounderAccessPage() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(founderJsonLd) }}
+      />
       <PageViewTracker event="founder_access_visited" />
       <Header />
       <main className="px-6">

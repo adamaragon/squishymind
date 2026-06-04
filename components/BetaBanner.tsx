@@ -26,10 +26,8 @@ export default function BetaBanner() {
     }
   }
 
-  if (!visible) return null;
-
   return (
-    <div className="flex justify-center px-6 pt-5">
+    <div className={`flex justify-center px-6 pt-5 ${visible ? '' : 'invisible pointer-events-none select-none'}`}>
       <div
         className="
           inline-flex items-center gap-3 max-w-3xl
