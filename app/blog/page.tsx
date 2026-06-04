@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ShareButtons from '@/components/ShareButtons';
-import { posts } from '@/lib/blog-data';
+import { publishedPosts } from '@/lib/blog-data';
 
 export const metadata = {
   title: 'Blog — Mind Mapping, Focus & Thinking Tools | SquishyMind',
@@ -11,36 +11,6 @@ export const metadata = {
 };
 
 const SITE = 'https://www.squishymind.com';
-
-const blogJsonLd = [
-  {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE },
-      { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE}/blog` },
-    ],
-  },
-  {
-    '@context': 'https://schema.org',
-    '@type': 'Blog',
-    '@id': `${SITE}/blog#blog`,
-    name: 'The SquishyMind Blog',
-    description:
-      'Guides on mind mapping, ADHD-friendly focus, studying, collaboration, and AI-assisted thinking.',
-    url: `${SITE}/blog`,
-    publisher: { '@type': 'Organization', name: 'SquishyMind', url: SITE },
-    blogPost: posts.map((p) => ({
-      '@type': 'BlogPosting',
-      headline: p.title,
-      description: p.description,
-      datePublished: p.date,
-      url: `${SITE}/blog/${p.slug}`,
-      author: { '@type': 'Organization', name: p.author },
-      keywords: p.tags.join(', '),
-    })),
-  },
-];
 
 const CATEGORY_TONE: Record<string, string> = {
   'Mind mapping': 'text-violet-300 border-violet-500/30 bg-violet-500/10',
@@ -51,7 +21,38 @@ const CATEGORY_TONE: Record<string, string> = {
 };
 
 export default function BlogIndexPage() {
-  const [featured, ...rest] = posts;
+  const live = publishedPosts();
+  const [featured, ...rest] = live;
+
+  const blogJsonLd = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: SITE },
+        { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE}/blog` },
+      ],
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Blog',
+      '@id': `${SITE}/blog#blog`,
+      name: 'The SquishyMind Blog',
+      description:
+        'Guides on mind mapping, ADHD-friendly focus, studying, collaboration, and AI-assisted thinking.',
+      url: `${SITE}/blog`,
+      publisher: { '@type': 'Organization', name: 'SquishyMind', url: SITE },
+      blogPost: live.map((p) => ({
+        '@type': 'BlogPosting',
+        headline: p.title,
+        description: p.description,
+        datePublished: p.date,
+        url: `${SITE}/blog/${p.slug}`,
+        author: { '@type': 'Organization', name: p.author },
+        keywords: p.tags.join(', '),
+      })),
+    },
+  ];
 
   return (
     <>

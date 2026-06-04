@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ShareButtons from '@/components/ShareButtons';
-import { posts, getPost } from '@/lib/blog-data';
+import { posts, getPost, isPublished, publishedPosts } from '@/lib/blog-data';
 
 const SITE = 'https://www.squishymind.com';
 
@@ -20,7 +20,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const post = getPost(slug);
-  if (!post) return { title: 'Not found — SquishyMind' };
+  if (!post || !isPublished(post)) return { title: 'Not found — SquishyMind' };
 
   const url = `${SITE}/blog/${post.slug}`;
   return {
@@ -51,14 +51,17 @@ export default async function BlogPostPage({
 }) {
   const { slug } = await params;
   const post = getPost(slug);
-  if (!post) notFound();
+  // Unknown slug OR a queued (future-dated) post both 404 until publish day.
+  if (!post || !isPublished(post)) notFound();
 
   const url = `${SITE}/blog/${post.slug}`;
 
-  // Related posts: same category first, then fill from the rest, max 3.
+  // Related posts: same category first, then fill from the rest, max 3 —
+  // drawn only from posts that are already live.
+  const live = publishedPosts().filter((p) => p.slug !== post.slug);
   const related = [
-    ...posts.filter((p) => p.slug !== post.slug && p.category === post.category),
-    ...posts.filter((p) => p.slug !== post.slug && p.category !== post.category),
+    ...live.filter((p) => p.category === post.category),
+    ...live.filter((p) => p.category !== post.category),
   ].slice(0, 3);
 
   const articleJsonLd = [

@@ -3,8 +3,14 @@
 // (see app/globals.css). This is the same trust model as the JSON-LD blocks
 // elsewhere in the app — the content originates from us, never from users.
 //
-// Dates are real publish dates. Newest first; the index and sitemap both
-// read this order. When you add a post, add it to the TOP of the array.
+// Dates are publish dates. Newest first; the index and sitemap both read
+// this order. When you add a post, add it to the TOP of the array.
+//
+// SCHEDULING: posts with a `date` in the future are "queued" — hidden from
+// the index, sitemap, and direct URL until that date arrives. Because the
+// blog routes render per-request (SSR), a queued post goes live on its date
+// with no redeploy. Use `publishedPosts()` / `isPublished()` everywhere a
+// list of live posts is needed — never iterate `posts` directly in the UI.
 
 export type BlogPost = {
   slug: string;
@@ -32,6 +38,418 @@ export type BlogPost = {
 };
 
 export const posts: BlogPost[] = [
+  {
+    slug: 'weekly-planning-ritual-with-mind-maps',
+    title: 'How to Build a Weekly Planning Ritual With Mind Maps',
+    description:
+      'A simple 15-minute weekly mind mapping ritual to plan your week, see your whole workload at a glance, and start Monday already knowing what matters.',
+    date: '2026-08-13',
+    dateDisplay: 'August 13, 2026',
+    author: 'The SquishyMind Team',
+    category: 'How-to',
+    readingMinutes: 7,
+    tags: ['planning', 'organization', 'productivity', 'weekly review'],
+    excerpt:
+      'Sunday-night dread usually isn’t about the work — it’s about not being able to see the work. A 15-minute weekly mind map fixes that. Here’s the ritual, step by step.',
+    body: `
+<p class="lead">Most weekly planning advice fails for the same reason most diets fail: it asks for more discipline than a tired human actually has on a Sunday evening. The trick isn’t more willpower. It’s a ritual short enough to survive a bad week and visual enough that it actually reduces the noise in your head. Here’s a 15-minute weekly mind map that does both.</p>
+
+<h2>Why a map beats a list for weekly planning</h2>
+<p>A weekly to-do list has a fatal flaw: it flattens everything into one anxious column where a two-minute email sits next to a three-day project, looking equally heavy. A map keeps the structure. Projects branch into tasks. Areas of your life stay visually separate. You can see the <em>shape</em> of your week — where it’s overloaded, where it’s empty, what you’re quietly avoiding — in a single glance. That visibility is the entire benefit.</p>
+
+<h2>The 15-minute ritual</h2>
+<h3>Minutes 0–3: Dump</h3>
+<p>Open your weekly map (start from the Weekly Review template, or duplicate last week’s). Put the week’s dates in the centre and dump everything you know is coming — meetings, deadlines, errands, the thing you promised someone. No order. Just get it down. If you’ve got a voice agent like Squishy, talk it out and let her drop each item onto the canvas.</p>
+<h3>Minutes 3–8: Cluster</h3>
+<p>Group the dump into branches: Work, Personal, Health, and a small one called “Looming” for things that aren’t this week but are casting a shadow. Drag related nodes together. This is where the relief starts — the pile becomes a structure.</p>
+<h3>Minutes 8–12: Prioritise visually</h3>
+<p>Pick the <strong>three things</strong> that, if they happened, would make the week a success. Give them a colour. Everything else is secondary by definition — and seeing it labelled as secondary is permission to stop treating it as urgent.</p>
+<h3>Minutes 12–15: Find the first action</h3>
+<p>For each of your three, decide the genuine first step and note it. Not “finish the deck” — “open the deck and write the three section headers.” Monday-morning you will thank Sunday-evening you for removing the decision.</p>
+
+<blockquote>The goal of weekly planning isn’t to control the week. It’s to walk into Monday already knowing the three things that matter — so the other forty don’t get a vote on your attention.</blockquote>
+
+<h2>Make it stick</h2>
+<p>Two rules keep a ritual alive. First, <strong>same time every week</strong> — attach it to something that already happens (Sunday coffee, Friday wind-down). Second, <strong>let it be imperfect.</strong> A rushed five-minute version on a chaotic week still beats skipping it. The streak matters more than the polish.</p>
+<p>Keep last week’s map. Reviewing what you planned versus what actually happened is its own quiet lesson — you’ll learn how much you really fit in a week, which makes the next plan honest instead of aspirational.</p>
+
+<p>Want a head start? The <a href="/features">Weekly Review template</a> is one of eight built in. <a href="/signup">Start your first weekly map free →</a> Pair it with the <a href="/blog/brain-dump-to-structure-workflow-overwhelmed-minds">brain-dump workflow</a> when a week gets genuinely overwhelming.</p>
+`,
+  },
+  {
+    slug: 'tree-view-untangle-complex-decisions',
+    title: 'From Chaos to Clarity: Using Tree View to Untangle Complex Decisions',
+    description:
+      'How to use a mind map’s Tree View to break down hard decisions, map consequences, and see the path forward. A practical guide to decision trees.',
+    date: '2026-08-06',
+    dateDisplay: 'August 6, 2026',
+    author: 'The SquishyMind Team',
+    category: 'How-to',
+    readingMinutes: 7,
+    tags: ['decision making', 'tree view', 'organization', 'mind mapping'],
+    excerpt:
+      'Hard decisions feel impossible because you’re holding every branch in your head at once. Tree View puts them on the page, in order, where you can finally reason about them one at a time.',
+    body: `
+<p class="lead">A genuinely hard decision — switch jobs, kill a project, move cities — rarely feels hard because the answer is hidden. It feels hard because every possible path, consequence, and second-order effect is swirling in your head simultaneously, and your working memory simply can’t hold it all still long enough to reason. Tree View is the cure: it pins the whole decision down, in order, so you can examine one branch at a time.</p>
+
+<h2>Why a tree, specifically</h2>
+<p>Decisions are naturally hierarchical. A choice leads to outcomes; each outcome leads to further choices and consequences. That’s a tree. A flat pros-and-cons list throws away the structure — it can’t show that a particular “con” only exists if an earlier choice goes a certain way. Tree View, with its clean left-to-right hierarchy, mirrors exactly how a decision actually branches.</p>
+
+<h2>Building the decision tree</h2>
+<h3>1. Put the real question at the root</h3>
+<p>Be precise. Not “my career” but “Should I take the offer from Company B?” A vague root produces a vague tree.</p>
+<h3>2. Branch the genuine options</h3>
+<p>Usually two or three: take it, stay, negotiate. Each becomes a top-level branch. Resist the urge to pre-judge — map them all honestly.</p>
+<h3>3. Map consequences as children</h3>
+<p>Under each option, branch the likely outcomes. Then go one level deeper: what does each outcome <em>lead to</em>? This second layer is where the real insight lives — it’s the stuff you can’t hold in your head, which is why the decision felt impossible.</p>
+<h3>4. Mark the unknowns</h3>
+<p>Some branches end in a question, not an outcome. Give those a colour. A decision often isn’t actually about choosing — it’s about resolving two or three key unknowns. The tree reveals exactly which ones.</p>
+
+<blockquote>You don’t make a hard decision by thinking harder. You make it by getting the branches out of your head and onto a canvas, where you can finally look at one without losing the others.</blockquote>
+
+<h2>Reading the finished tree</h2>
+<p>Step back and look at the whole thing. Three things usually jump out: a branch that’s obviously thinner and scarier than you’d assumed (often the one you were avoiding), a cluster of consequences that all hinge on one unknown (go resolve that first), and — surprisingly often — the realisation that two options aren’t that different at the leaves, which means the decision matters less than your anxiety claimed.</p>
+<p>Tree View also switches losslessly with Canvas, Outline, and Table — so if you want to brainstorm consequences spatially first and then straighten them into a tree, you can. Same map, different lens.</p>
+
+<p><a href="/signup">Map your next hard decision free →</a> Start in Tree View, or read about <a href="/blog/the-4-views-of-a-mind-map">all four views and when to use each</a>.</p>
+`,
+  },
+  {
+    slug: 'science-of-why-visual-maps-stick',
+    title: 'Color, Motion, and Memory: The Science Behind Why Visual Maps Stick',
+    description:
+      'Why do mind maps help you remember more than notes? The cognitive science of spatial memory, dual coding, and colour — and how to use it in your maps.',
+    date: '2026-07-30',
+    dateDisplay: 'July 30, 2026',
+    author: 'The SquishyMind Team',
+    category: 'Mind mapping',
+    readingMinutes: 8,
+    tags: ['memory', 'cognitive science', 'learning', 'mind mapping'],
+    excerpt:
+      'Mind maps aren’t just prettier than notes — they’re wired into how human memory actually works. Here’s the cognitive science of spatial memory, dual coding, and why colour and motion make things stick.',
+    body: `
+<p class="lead">People assume mind maps work because they’re “more creative” or “more visual,” as if those were vague aesthetic virtues. The real reason is more interesting and more concrete: mind maps exploit three specific, well-studied features of human memory. Understanding them tells you how to build maps that actually stick.</p>
+
+<h2>1. Spatial memory: your oldest, strongest filing system</h2>
+<p>Long before humans had language, we had to remember <em>places</em> — where the water was, where the danger lived. The brain’s machinery for spatial memory is ancient and extraordinarily robust. It’s why “memory palace” techniques work: attach information to locations and recall soars.</p>
+<p>A mind map gives every idea a location. Top-left, far branch, near the red node. Those positions become retrieval handles your spatial memory grabs onto automatically. A flat list gives you none of that — every line is in the same featureless column. This is the single biggest reason maps outperform notes for recall.</p>
+
+<h2>2. Dual coding: two memories are better than one</h2>
+<p>Cognitive scientist Allan Paivio’s dual-coding theory holds that we encode information in two channels — verbal and visual — and that information stored in both is far more durable than information stored in one. A plain note is verbal-only. A mind map encodes the same content verbally (the words in the node) <em>and</em> visually (its position, its branch, its colour, its connections). You’re laying down two memory traces for the price of one.</p>
+
+<blockquote>Notes give your brain one thread to pull on later. A map gives it several — the words, the place, the colour, the shape of the branch. When one thread frays, the others still reach the memory.</blockquote>
+
+<h2>3. Colour and motion: attention is the gate to memory</h2>
+<p>You can’t remember what you didn’t attend to, and the brain is biased to attend to colour, contrast, and movement — they signalled “important” on the savannah and they still grab the eye on a screen. This is why SquishyMind’s branches auto-colour and its nodes gently move. It isn’t decoration; it’s recruiting your attention system to mark distinctions your memory will later use. A blue branch and a pink branch are easier to keep separate in memory than two identical grey ones.</p>
+
+<h2>How to build maps that exploit all three</h2>
+<ul>
+<li><strong>Spread out spatially.</strong> Don’t cram. Give distinct ideas distinct positions — the space is doing memory work.</li>
+<li><strong>Let colour mean something.</strong> Use the auto-colouring, but lean into it: one colour per theme makes clusters memorable.</li>
+<li><strong>Keep branch labels short.</strong> A node is a memory cue, not a paragraph. Short labels force you to encode the idea, not transcribe it.</li>
+<li><strong>Rebuild from memory.</strong> The ultimate test and reinforcement: recreate the map blank. Spatial recall is trainable, and rebuilding trains it hard.</li>
+</ul>
+
+<p>None of this requires you to think about cognitive science while you work — a good tool bakes it in. But knowing <em>why</em> the colours and the space and the motion matter helps you stop treating them as frills and start using them as the memory tools they are.</p>
+
+<p><a href="/signup">Build a map your brain will actually remember →</a> Or see the practical version for revision in <a href="/blog/how-students-use-mind-maps-to-study">how students use mind maps to study</a>.</p>
+`,
+  },
+  {
+    slug: 'whats-next-for-squishymind',
+    title: 'What’s Next for SquishyMind: The Features We’re Dreaming Up',
+    description:
+      'A peek at the SquishyMind roadmap — the features and ideas we’re exploring next, from smarter AI to new views, and how beta feedback shapes them.',
+    date: '2026-07-23',
+    dateDisplay: 'July 23, 2026',
+    author: 'The SquishyMind Team',
+    category: 'Product',
+    readingMinutes: 6,
+    tags: ['roadmap', 'product', 'features', 'beta'],
+    excerpt:
+      'We build in the open. Here’s an honest look at the ideas we’re dreaming up next — some close, some far, some maybe-never — and how your beta feedback decides which ones become real.',
+    body: `
+<p class="lead">Most product roadmaps are either marketing fiction or a sacred contract the company immediately regrets signing. Ours is neither. It’s a list of things we’re genuinely excited about, ordered by rough confidence, shared openly — because the best feature ideas have always come from beta users telling us what their brains actually need. Here’s what’s on our minds.</p>
+
+<h2>Close: things we’re actively building</h2>
+<h3>Smarter Squishy</h3>
+<p>Our voice agent already builds branches, reorganises maps, and expands ideas. Next we want her to reason across your <em>whole</em> map — “what am I missing here?”, “which branch is underdeveloped?”, “summarise this for my boss.” Less a command interface, more a thinking partner who’s actually read the room.</p>
+<h3>Presentation mode</h3>
+<p>A way to walk through a map branch-by-branch, full-screen, for sharing your thinking live. Your map is often the best version of your idea — it shouldn’t have to become a slide deck to be presentable.</p>
+
+<h2>Middle distance: ideas we’re prototyping</h2>
+<h3>A timeline view</h3>
+<p>A fifth way to look at your map: laid out along time. For project plans and anything with a sequence, seeing your nodes as a timeline could be the lens that finally makes deadlines feel real.</p>
+<h3>Templates that learn</h3>
+<p>Right now we ship eight templates. We’d like Squishy to generate a custom starting structure from a one-sentence description, then let you save your own as reusable templates — your frameworks, not just ours.</p>
+
+<blockquote>We’d rather ship one feature that changes how you think than ten that pad a comparison table. The roadmap is a filter for that, not a promise.</blockquote>
+
+<h2>Far / maybe: things we’re just daydreaming about</h2>
+<ul>
+<li><strong>Offline-first editing</strong> — map on a plane, sync when you land.</li>
+<li><strong>Deeper integrations</strong> — pull a map from your notes app, push tasks to your tracker.</li>
+<li><strong>A public map gallery</strong> — discover and remix great maps other people have shared.</li>
+<li><strong>Themes beyond the current four</strong> — because some of you have asked for a brain that isn’t pink, and we’re trying not to take it personally.</li>
+</ul>
+
+<h2>How this gets decided</h2>
+<p>Beta feedback, mostly. Every one of these moves up or down based on what beta users tell us and what we watch them struggle with. That’s the real reason <a href="/founder-access">Founder Access</a> exists — the people here early are shaping the product, so it’s only fair they keep founder pricing for life. If something on this list is the thing that would make SquishyMind indispensable for you, tell us. We’re listening, and the brain in the corner has very good hearing.</p>
+
+<p>Follow along on the <a href="/changelog">changelog</a>, where we ship loudly and publicly. <a href="/signup">Join the beta →</a> and help decide what comes next.</p>
+`,
+  },
+  {
+    slug: 'table-view-when-your-brainstorm-is-a-spreadsheet',
+    title: 'Table View: When Your Brainstorm Is Secretly a Spreadsheet',
+    description:
+      'Some mind maps are really structured data in disguise. Table View gives your map rows, columns, and fast inline editing — here’s when and how to use it.',
+    date: '2026-07-16',
+    dateDisplay: 'July 16, 2026',
+    author: 'The SquishyMind Team',
+    category: 'Mind mapping',
+    readingMinutes: 6,
+    tags: ['table view', 'organization', 'data', 'mind mapping'],
+    excerpt:
+      'Not every map wants to be a sprawling canvas. Sometimes your brainstorm is secretly a list with attributes — and Table View turns it into fast, structured, editable rows without losing the map underneath.',
+    body: `
+<p class="lead">Here’s a thing nobody tells you about mind mapping: sometimes the map you’re building is secretly a spreadsheet. You started brainstorming features, or candidates, or content ideas — and what you actually have is a list of things, each with the same handful of attributes. Forcing that onto a sprawling canvas is fighting your own data. That’s exactly what Table View is for.</p>
+
+<h2>The tell: when your map wants to be a table</h2>
+<p>Watch for these signs in a map:</p>
+<ul>
+<li>Most nodes sit at the same level — it’s wide, not deep.</li>
+<li>Each item has the same kind of sub-points (a status, an owner, a priority).</li>
+<li>You keep wanting to compare items side by side rather than see how they branch.</li>
+</ul>
+<p>When a map looks like that, the Canvas is working against you and Table View is the answer. Same underlying map — every node is still a node — just shown as rows you can scan and edit fast.</p>
+
+<h2>What Table View is good at</h2>
+<h3>Fast data entry</h3>
+<p>Click a cell, type, tab, repeat. When you’re entering a lot of similar items, the table’s click-to-edit flow is dramatically faster than placing and labelling nodes on a canvas one at a time.</p>
+<h3>Scanning and comparing</h3>
+<p>Rows align attributes into columns, and aligned columns are what the human eye compares effortlessly. Twenty candidates, each with experience and fit and a note? A table lets you scan down a column. A canvas makes you hunt.</p>
+<h3>Structured collaboration</h3>
+<p>When a team is filling in the same kind of information across many items, a shared table keeps everyone’s entries consistent and legible — no two people inventing different node layouts for the same thing.</p>
+
+<blockquote>The point of four views isn’t variety for its own sake. It’s that the same idea has different natural shapes at different moments — and a tool that lets you switch shapes without losing data is a tool that never makes you fight your own structure.</blockquote>
+
+<h2>The magic: it’s still a map</h2>
+<p>The best part is that Table View isn’t a separate document. Enter your items as rows, then flip to Canvas View and they’re nodes you can branch, connect, and reorganise spatially. Build the list fast in the table, then think about it visually on the canvas. Or the reverse — brainstorm loosely on the canvas, then switch to the table to add structured attributes once the ideas settle. The data flows losslessly between every view.</p>
+
+<p>This is why we built four views instead of insisting one layout fits everything. <a href="/signup">Try Table View free →</a> Or get the full tour in <a href="/blog/the-4-views-of-a-mind-map">the 4 views of a mind map</a>.</p>
+`,
+  },
+  {
+    slug: 'mind-mapping-for-project-management',
+    title: 'Mind Mapping for Project Management: A Practical Guide',
+    description:
+      'How to use mind maps to plan projects, map dependencies, run kickoffs, and keep a team aligned — a practical project management guide with real workflows.',
+    date: '2026-07-09',
+    dateDisplay: 'July 9, 2026',
+    author: 'The SquishyMind Team',
+    category: 'How-to',
+    readingMinutes: 8,
+    tags: ['project management', 'teams', 'planning', 'organization'],
+    excerpt:
+      'Gantt charts are great for tracking a plan and terrible for making one. Mind maps are where the plan is born — the scope, the dependencies, the unknowns. Here’s how to run a project from a map.',
+    body: `
+<p class="lead">Project management tools are mostly built for <em>tracking</em> a plan that already exists — boards, Gantt charts, burndown. But the hardest, most valuable part of a project happens before any of that: figuring out the shape of the work in the first place. That’s thinking, and thinking happens best on a map. Here’s how to use mind mapping across a project’s life.</p>
+
+<h2>Phase 1: Scoping (the map earns its keep here)</h2>
+<p>At the start, you don’t have a task list — you have a fog. Put the project goal at the centre and branch out the major workstreams. Under each, branch the tasks you can see. The visual structure immediately exposes two things a list would hide: which workstream is suspiciously thin (you haven’t thought it through), and which tasks connect across workstreams (your dependencies).</p>
+
+<h2>Phase 2: Dependencies and risk</h2>
+<p>Now use cross-links. Draw connections between nodes in different branches that depend on each other. A map makes dependencies <em>visible</em> as lines, where a task list buries them in prose nobody reads. Then mark the unknowns and risks in a distinct colour. A glance at the finished map tells you where the project is most likely to slip: the heavily-connected node everything waits on, and the red cluster of things you don’t yet know.</p>
+
+<blockquote>A Gantt chart shows you the plan you committed to. A mind map is where you figure out whether that plan makes any sense in the first place. Do the map before you draw the chart.</blockquote>
+
+<h2>Phase 3: The kickoff</h2>
+<p>Walk the team through the map live, in <a href="/features">real-time collaboration</a>. Everyone sees the whole project at once — the workstreams, the dependencies, the risks — instead of a flat backlog with no context. Let people add nodes for things you missed; cursors and live edits mean a kickoff becomes a working session, not a one-way briefing. By the end, the team shares a mental model, not just a task list.</p>
+
+<h2>Phase 4: Living reference</h2>
+<p>Keep the map as the project’s “big picture” home, even after the tasks move into your tracker. When someone asks “why are we doing this?” or “how does my piece fit?”, the map answers in one screen. Use Table View when you need to assign owners and statuses across many tasks; flip to Canvas when you need to re-explain the shape. Update it at each milestone — a project map that stays current is the cheapest alignment tool a team has.</p>
+
+<h2>A quick template to steal</h2>
+<ul>
+<li><strong>Centre:</strong> the project goal, in one sentence.</li>
+<li><strong>Level 1:</strong> workstreams (Design, Build, Launch, etc.).</li>
+<li><strong>Level 2:</strong> tasks under each.</li>
+<li><strong>Cross-links:</strong> dependencies between tasks.</li>
+<li><strong>Colour:</strong> one for risks/unknowns, one for the critical path.</li>
+</ul>
+
+<p>The Project Plan template gives you this structure pre-built. <a href="/signup">Plan your next project free →</a> Or see how product teams specifically use it on the <a href="/use-cases">use cases page</a>.</p>
+`,
+  },
+  {
+    slug: 'why-playful-software-makes-you-more-productive',
+    title: 'Why Playful Software Makes You More Productive, Not Less',
+    description:
+      'Fun in a tool isn’t a distraction from productivity — it’s a driver of it. The psychology of play, flow, and why a delightful app gets more real work done.',
+    date: '2026-07-02',
+    dateDisplay: 'July 2, 2026',
+    author: 'The SquishyMind Team',
+    category: 'Product',
+    readingMinutes: 6,
+    tags: ['design', 'productivity', 'play', 'flow'],
+    excerpt:
+      'There’s a stubborn belief that serious work requires serious-looking tools. The psychology says the opposite: play lowers the stakes, play sustains attention, and play is where your best thinking actually happens.',
+    body: `
+<p class="lead">There’s a quiet puritanism in productivity culture: the belief that if a tool looks fun, it must not be serious — that real work demands grey, grim, frictional software, and anything delightful is a distraction in disguise. It’s a tidy story. It’s also wrong, and the psychology of how people actually think and create says so.</p>
+
+<h2>Play lowers the stakes of starting</h2>
+<p>The hardest part of any creative or cognitive task is the blank page — the moment before you’ve committed anything, when everything you might do feels judged in advance. Playful tools defuse that. When the canvas wobbles a little, when there’s a friendly brain in the corner, when nothing about the interface feels like an exam, you put the first messy idea down sooner. And the first messy idea is the unlock for all the rest.</p>
+
+<h2>Play sustains attention</h2>
+<p>Attention isn’t infinite willpower; it’s heavily modulated by interest. Novelty, responsiveness, small moments of surprise — these keep the brain engaged, which is precisely why monotonous tools quietly drain you and you drift to a browser tab. A tool with personality holds attention longer, and attention is the raw material of every productive session. This is doubly true for anyone whose focus runs on interest rather than discipline — see our piece on <a href="/blog/mind-mapping-for-adhd">mind mapping for ADHD</a>.</p>
+
+<blockquote>Seriousness is about what you’re trying to accomplish, not about how grim your tools look while you do it. The most productive state — flow — is literally described as feeling like play.</blockquote>
+
+<h2>Flow feels like play because it is</h2>
+<p>The most productive mental state we know of — flow, the deep, time-disappears absorption where your best work happens — is characterised by researchers in language that’s indistinguishable from play: intrinsic enjoyment, loss of self-consciousness, the activity feeling rewarding in itself. Tools that feel like play are tools that make flow easier to reach. Tools that feel like a chore push you the other way, into the shallow, effortful, easily-interrupted attention where little of value gets made.</p>
+
+<h2>The honest caveat</h2>
+<p>This isn’t a licence for gimmicks. Play that gets in the way of the work — confetti you have to dismiss, animations that slow you down — is just friction wearing a fun hat. The goal is delight that <em>serves</em> the work: motion that draws your eye to what matters, personality that makes a powerful feature approachable, responsiveness that keeps you in flow. Fun as a feature, not fun as a distraction.</p>
+<p>That’s the line we try to walk with SquishyMind. The brain is charming so you’ll actually use the voice agent. The nodes move so your eye tracks structure. It’s playful on purpose, in service of getting more real thinking done — which is the whole point, and the opposite of frivolous.</p>
+
+<p>We wrote more about the philosophy in <a href="/blog/why-we-made-mind-mapping-fun">why we made mind mapping fun</a>. Or just <a href="/signup">come feel the difference →</a> — it’s free during beta.</p>
+`,
+  },
+  {
+    slug: 'outline-view-vs-canvas-view',
+    title: 'Outline View vs Canvas View: Two Brains, One Map',
+    description:
+      'Canvas View and Outline View show the same mind map two ways — spatial and linear. Here’s when each one wins and how switching between them sharpens your thinking.',
+    date: '2026-06-25',
+    dateDisplay: 'June 25, 2026',
+    author: 'The SquishyMind Team',
+    category: 'Mind mapping',
+    readingMinutes: 6,
+    tags: ['outline view', 'canvas view', 'views', 'mind mapping'],
+    excerpt:
+      'The same map can be a sprawling spatial canvas or a tidy collapsible outline. They’re not rivals — they’re two lenses on one structure, and knowing when to switch is a thinking skill in itself.',
+    body: `
+<p class="lead">Canvas and Outline are the two views people reach for most, and they feel almost opposite: one sprawls across infinite space, the other stacks into a neat vertical list. It’s tempting to pick a favourite and stay there. Don’t. They’re two lenses on the same structure, each strong exactly where the other is weak, and the real skill is knowing when to flip.</p>
+
+<h2>Canvas View: thinking in space</h2>
+<p>The Canvas is where ideas are born. Spatial layout engages your spatial memory, lets you cluster related thoughts physically, and shows relationships — including cross-branch connections — as visible lines. It’s expansive and forgiving, which is exactly what early, messy thinking needs.</p>
+<p><strong>Canvas wins when:</strong> you’re brainstorming, the structure isn’t settled yet, relationships matter more than sequence, or you’re a visual thinker who needs to <em>see</em> the shape of an idea to hold it.</p>
+
+<h2>Outline View: thinking in sequence</h2>
+<p>The Outline is where ideas get disciplined. The same nodes become a collapsible, indented hierarchy — clean, linear, scannable. Collapse a branch to hide detail; expand it to dive in. It’s how a document wants to be structured, and it’s far easier to read top-to-bottom than a busy canvas.</p>
+<p><strong>Outline wins when:</strong> the structure has stabilised, you’re turning a map into writing, you need to share it as a readable document, or the content is genuinely hierarchical (a table of contents, a spec, a nested plan).</p>
+
+<blockquote>Canvas is for divergence — getting ideas out and seeing how they relate. Outline is for convergence — tightening them into a sequence you can act on or write down. Most good thinking needs both, in that order.</blockquote>
+
+<h2>The workflow that uses both</h2>
+<p>Here’s the move that makes the two views more than the sum of their parts: <strong>diverge on the Canvas, converge in the Outline.</strong></p>
+<ul>
+<li>Start on the Canvas. Dump, cluster, connect. Let it be messy and spatial.</li>
+<li>When the shape settles, flip to Outline. Suddenly you see the linear order, spot the gaps, and notice the branch that’s three levels deep when it should be one.</li>
+<li>Found a problem? Flip back to Canvas to rearrange spatially, then return to Outline to check the new sequence.</li>
+</ul>
+<p>Because both views render the same underlying map with zero data loss, switching costs you nothing and reveals something every time. A branch that looked balanced on the canvas can look bloated in the outline — and vice versa. The friction-free flip is itself a thinking tool.</p>
+
+<h2>Don’t forget the other two</h2>
+<p>Canvas and Outline are the headline act, but Tree View (clean hierarchy, great for decisions) and Table View (rows and attributes, great for structured data) round out the set. We cover all four in <a href="/blog/the-4-views-of-a-mind-map">the 4 views of a mind map</a>.</p>
+
+<p><a href="/signup">Try switching views on your own map free →</a> The flip is one click, and it changes what you see every time.</p>
+`,
+  },
+  {
+    slug: 'organize-your-digital-life-with-one-mind-map',
+    title: 'How to Organize Your Entire Digital Life With One Mind Map',
+    description:
+      'Scattered notes, tabs, and to-dos across a dozen apps? Build one master mind map as the home base for your digital life. A practical organization guide.',
+    date: '2026-06-18',
+    dateDisplay: 'June 18, 2026',
+    author: 'The SquishyMind Team',
+    category: 'How-to',
+    readingMinutes: 7,
+    tags: ['organization', 'second brain', 'productivity', 'PARA'],
+    excerpt:
+      'Your digital life is scattered across a dozen apps, and the chaos has a cost you’ve stopped noticing. One master mind map — a home base, not another silo — can pull it back together. Here’s how to build it.',
+    body: `
+<p class="lead">Count the places your important stuff currently lives: notes app, three project tools, browser bookmarks, a chaotic desktop, your own memory doing more work than it should. Each one is a silo, and the cost isn’t just lost files — it’s the low background hum of never quite knowing where anything is or what you’re forgetting. One master mind map can quiet that hum. Not by replacing your apps, but by sitting above them as a single map of the whole territory.</p>
+
+<h2>The principle: a map, not another silo</h2>
+<p>The mistake people make is trying to move <em>everything</em> into one tool. That just creates a thirteenth silo. The goal instead is a single overview map — your personal home base — that shows the structure of your digital life and points to where things actually live. It’s the index, not the warehouse.</p>
+
+<h2>Step 1: Map your areas, not your tasks</h2>
+<p>Start broad. Branch your life into its major areas: Work, Side Project, Home, Health, Learning, Finances — whatever yours are. Resist dropping to task-level detail. This top layer is the skeleton, and getting it right is most of the value. A clean set of areas you recognise instantly is the thing you’ve been missing.</p>
+
+<h2>Step 2: Borrow PARA for the next layer</h2>
+<p>Under each area, the PARA method (Projects, Areas, Resources, Archives) is a battle-tested structure:</p>
+<ul>
+<li><strong>Projects</strong> — things with an end (ship the redesign, plan the trip).</li>
+<li><strong>Areas</strong> — ongoing responsibilities with no end (health, finances).</li>
+<li><strong>Resources</strong> — references you return to (that doc, that link, that login).</li>
+<li><strong>Archives</strong> — done and dormant, kept just in case.</li>
+</ul>
+<p>You don’t have to be rigid about it. The point is a consistent shape so that every part of your life is organised the same way and your brain stops having to re-learn the layout each time.</p>
+
+<h2>Step 3: Link out, don’t copy in</h2>
+<p>For each node, add a note pointing to where the real thing lives — the project tool, the doc URL, the folder. The map tells you <em>what exists and where</em>; the apps hold the contents. This is the discipline that keeps the map from rotting into yet another stale silo.</p>
+
+<blockquote>You don’t need everything in one place. You need one place that knows where everything is. That’s the difference between a silo and a home base.</blockquote>
+
+<h2>Step 4: Make it the first thing you open</h2>
+<p>An overview map only works if you actually look at it. Make it your start-of-day glance: open the map, see the whole territory, notice what needs attention today. Five seconds of orientation beats five minutes of app-hopping trying to remember what you were even doing.</p>
+
+<h2>Keeping it alive</h2>
+<p>Once a week — pair it with your <a href="/blog/weekly-planning-ritual-with-mind-maps">weekly planning ritual</a> — prune it. Move finished projects to Archives, add new ones, fix dead links. A home base needs light, regular upkeep, not a quarterly heroic reorganisation. The Second Brain template gives you this whole structure pre-built.</p>
+
+<p><a href="/signup">Build your home-base map free →</a> Start from the Second Brain template and adapt it to your life.</p>
+`,
+  },
+  {
+    slug: 'the-4-views-of-a-mind-map',
+    title: 'The 4 Views of a Mind Map: When to Use Canvas, Outline, Tree, or Table',
+    description:
+      'Canvas, Outline, Tree, and Table — four ways to see the same mind map. A complete guide to what each view is best at and when to switch between them.',
+    date: '2026-06-11',
+    dateDisplay: 'June 11, 2026',
+    author: 'The SquishyMind Team',
+    category: 'Mind mapping',
+    readingMinutes: 7,
+    tags: ['views', 'canvas', 'outline', 'tree', 'table', 'mind mapping'],
+    excerpt:
+      'The same idea has different natural shapes at different moments. SquishyMind gives you four views of one map — Canvas, Outline, Tree, and Table — and the real skill is knowing which lens fits the moment.',
+    body: `
+<p class="lead">Most mind mapping tools give you one way to look at a map: a canvas. But a single idea rarely has a single natural shape. Brainstorming wants space; revision wants a list; a decision wants a tree; structured data wants rows. SquishyMind shows the same map four ways — Canvas, Outline, Tree, and Table — with zero data loss when you switch. Here’s a complete guide to picking the right lens.</p>
+
+<h2>Canvas View — for thinking in space</h2>
+<p>The default, free-form spatial layout. Nodes live anywhere; branches sprawl; cross-connections show as lines. It engages spatial memory and is forgiving of mess, which makes it the home of early, generative thinking.</p>
+<p><strong>Use it for:</strong> brainstorming, unsettled structure, visual thinking, anything where <em>relationships</em> matter more than order.</p>
+
+<h2>Outline View — for thinking in sequence</h2>
+<p>The same map as a clean, collapsible, indented list. Linear, scannable, document-shaped. Collapse branches to see the big picture; expand to dive in.</p>
+<p><strong>Use it for:</strong> turning a map into writing, sharing as a readable doc, genuinely hierarchical content, tightening a settled structure. (We go deep on the Canvas/Outline pairing in <a href="/blog/outline-view-vs-canvas-view">two brains, one map</a>.)</p>
+
+<h2>Tree View — for hierarchy and decisions</h2>
+<p>A clean left-to-right hierarchical layout. Where Canvas is loose and Outline is vertical, Tree is structured and horizontal — ideal when the parent-child structure <em>is</em> the point.</p>
+<p><strong>Use it for:</strong> decision trees, org charts, technical architecture, anything where you need to trace branches cleanly. (See <a href="/blog/tree-view-untangle-complex-decisions">using Tree View to untangle complex decisions</a>.)</p>
+
+<h2>Table View — for structured data</h2>
+<p>Your map as rows with fast inline editing. When most nodes sit at the same level and share the same attributes, your map is secretly a table — and this view makes entry and comparison effortless.</p>
+<p><strong>Use it for:</strong> lists of items with shared attributes, fast data entry, side-by-side comparison. (More in <a href="/blog/table-view-when-your-brainstorm-is-a-spreadsheet">when your brainstorm is secretly a spreadsheet</a>.)</p>
+
+<blockquote>The four views aren’t four features. They’re one map seen through four lenses — and switching lens is one of the cheapest, most powerful thinking moves available to you.</blockquote>
+
+<h2>The meta-skill: switching</h2>
+<p>The real power isn’t any single view — it’s that they’re the same data, so flipping costs nothing and reveals something each time. A common high-leverage flow:</p>
+<ul>
+<li><strong>Canvas</strong> to brainstorm and cluster.</li>
+<li><strong>Tree</strong> or <strong>Outline</strong> to impose structure once ideas settle.</li>
+<li><strong>Table</strong> to add attributes and compare items.</li>
+<li>Back to <strong>Canvas</strong> whenever you need to rethink the shape.</li>
+</ul>
+<p>A branch that looks fine in one view often looks wrong in another — too deep, too thin, out of order. The friction-free switch turns that mismatch into insight. One map, four perspectives, no copying anything anywhere.</p>
+
+<p><a href="/signup">Try all four views on one map — free →</a> The switcher is one click, and it’ll change how you see your own thinking.</p>
+`,
+  },
   {
     slug: 'brain-dump-to-structure-workflow-overwhelmed-minds',
     title: 'From Brain Dump to Structure: A Mind Mapping Workflow for Overwhelmed Minds',
@@ -498,14 +916,29 @@ export const posts: BlogPost[] = [
   },
 ];
 
-/** Lookup helper for the [slug] route. */
+/** Lookup helper for the [slug] route. Returns the post regardless of
+ *  publish state — callers gate on `isPublished` so a 404 can be returned
+ *  for queued posts. */
 export function getPost(slug: string): BlogPost | undefined {
   return posts.find((p) => p.slug === slug);
 }
 
-/** Distinct categories present in the post set, in first-seen order. */
-export function getCategories(): string[] {
+/** A post is live once its publish date has arrived. Compared at day
+ *  granularity in UTC so a post dated "2026-06-11" appears anywhere on the
+ *  globe on the 11th, not a timezone-dependent slice of it. */
+export function isPublished(post: BlogPost, now: Date = new Date()): boolean {
+  return post.date <= now.toISOString().slice(0, 10);
+}
+
+/** All currently-live posts, newest first (array order already is). Future-
+ *  dated (queued) posts are excluded until their date arrives. */
+export function publishedPosts(now: Date = new Date()): BlogPost[] {
+  return posts.filter((p) => isPublished(p, now));
+}
+
+/** Distinct categories present among published posts, in first-seen order. */
+export function getCategories(now: Date = new Date()): string[] {
   const seen = new Set<string>();
-  for (const p of posts) seen.add(p.category);
+  for (const p of publishedPosts(now)) seen.add(p.category);
   return [...seen];
 }

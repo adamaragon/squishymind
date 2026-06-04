@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { posts } from '@/lib/blog-data';
+import { publishedPosts } from '@/lib/blog-data';
 import { competitors } from '@/lib/compare-data';
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.squishymind.com';
@@ -23,8 +23,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE}/login`, changeFrequency: 'monthly', priority: 0.3, lastModified: new Date('2026-01-01') },
   ];
 
-  // Blog posts — one entry per article, dated by publish date.
-  const blogPages: MetadataRoute.Sitemap = posts.map((p) => ({
+  // Blog posts — one entry per *published* article (queued future-dated
+  // posts are omitted until their publish date arrives).
+  const blogPages: MetadataRoute.Sitemap = publishedPosts().map((p) => ({
     url: `${SITE}/blog/${p.slug}`,
     lastModified: new Date(p.date),
     changeFrequency: 'monthly' as const,
