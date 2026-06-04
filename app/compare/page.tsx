@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { competitors } from '@/lib/compare-data';
 
 export const metadata = {
   title: 'SquishyMind vs Other Mind Mapping Tools — Honest Comparison',
@@ -36,89 +37,7 @@ const FEATURE_MATRIX: CompRow[] = [
   { feature: 'Account deletion', squishy: '2 clicks, no exit interview' },
 ];
 
-type Competitor = {
-  slug: string;
-  name: string;
-  tagline: string;
-  strengths: string[];
-  weaknesses: string[];
-  verdict: string;
-};
-
-const COMPETITORS: Competitor[] = [
-  {
-    slug: 'mindmeister',
-    name: 'MindMeister',
-    tagline: 'The established mind mapping tool',
-    strengths: [
-      'Long track record — in the market since 2007',
-      'Polished presentation mode for sharing maps',
-      'MeisterTask integration for project management',
-    ],
-    weaknesses: [
-      'Free plan capped at 3 maps — forces upgrade fast',
-      'No voice AI or conversational interface',
-      'Dated UI — less expressive than modern tools',
-      'More expensive at scale: $4.99–$8.99/month per user',
-    ],
-    verdict:
-      'If you need presentation-quality output and don\'t mind a relatively old UI, MindMeister is solid. If you want voice AI, an animated canvas, and free access with no hard map cap, SquishyMind is the better call during beta.',
-  },
-  {
-    slug: 'miro',
-    name: 'Miro',
-    tagline: 'The collaborative whiteboard platform',
-    strengths: [
-      'Extremely versatile — not just mind mapping',
-      'Enterprise-grade — large teams, SSO, audit logs',
-      'Huge template library',
-    ],
-    weaknesses: [
-      'Free plan is read-only for guests and limited to 3 editable boards',
-      'No dedicated mind map mode — everything is freeform',
-      'Overkill for individual thinkers or small teams who just need maps',
-      'No voice AI',
-    ],
-    verdict:
-      'Miro is a whiteboard platform that happens to support mind maps. SquishyMind is a mind mapping app that happens to be collaborative. If mind mapping is your core use case — especially with voice AI — SquishyMind is more focused and more fun. If you need a general visual workspace for a large team, Miro is built for that.',
-  },
-  {
-    slug: 'obsidian',
-    name: 'Obsidian',
-    tagline: 'The local-first knowledge base with graph view',
-    strengths: [
-      'Deeply local and private — all files live on your machine',
-      'Hugely extensible plugin ecosystem',
-      'Free for personal use',
-    ],
-    weaknesses: [
-      'Graph view is not a mind mapping tool — it\'s a link graph',
-      'No real-time collaboration built in (Sync is $10/month)',
-      'Steep learning curve — you build your own system from scratch',
-      'No voice AI',
-    ],
-    verdict:
-      'Obsidian and SquishyMind are solving different problems. Obsidian is a local knowledge base for people who want full control of their files. SquishyMind is a visual thinking canvas for people who want to map ideas quickly — especially with voice. If you want Markdown-first, local, extensible: Obsidian. If you want visual, animated, collaborative, and voice-first: SquishyMind.',
-  },
-  {
-    slug: 'coggle',
-    name: 'Coggle',
-    tagline: 'Simple collaborative mind maps',
-    strengths: [
-      'Very clean, simple UI — low learning curve',
-      'Free plan is more generous than MindMeister',
-      'Collaborative in real time',
-    ],
-    weaknesses: [
-      'No voice AI or AI features of any kind',
-      'Limited view modes — canvas only',
-      'No import from Markdown, CSV, OPML',
-      'Minimal template library',
-    ],
-    verdict:
-      'Coggle is a clean, honest mind mapping tool. SquishyMind adds a voice AI assistant, multiple view modes, richer imports, and more personality. If simplicity is your only criterion, Coggle is fine. If you want voice, AI expansion, multiple views, and a mascot who argues with you sometimes, SquishyMind wins.',
-  },
-];
+const COMPETITORS = competitors;
 
 export default function ComparePage() {
   return (
@@ -227,6 +146,12 @@ export default function ComparePage() {
                 Bottom line
               </h3>
               <p className="text-sm leading-relaxed text-[--text-dim]">{c.verdict}</p>
+              <Link
+                href={`/compare/${c.slug}`}
+                className="inline-block mt-4 text-sm text-violet-300 hover:text-white transition-colors"
+              >
+                Read the full SquishyMind vs {c.name} comparison →
+              </Link>
             </div>
             {idx < COMPETITORS.length - 1 && <div className="mt-12 border-t border-white/5" />}
           </section>

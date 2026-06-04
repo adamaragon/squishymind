@@ -186,7 +186,7 @@ const SECTIONS: FeatureSection[] = [
   {
     id: 'templates',
     label: 'Templates',
-    heading: 'Eight starting points for when you're staring at a blank brain',
+    heading: 'Eight starting points for when you\'re staring at a blank brain',
     subheading:
       'Pre-built templates for common thinking frameworks. Pick one, customise it, or let Squishy suggest the right one based on what you\'re working on.',
     features: [

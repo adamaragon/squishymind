@@ -1,5 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { posts } from '@/lib/blog-data';
+import { competitors } from '@/lib/compare-data';
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.squishymind.com';
 
@@ -13,12 +15,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE}/features`, changeFrequency: 'monthly', priority: 0.9, lastModified: new Date('2026-06-04') },
     { url: `${SITE}/use-cases`, changeFrequency: 'monthly', priority: 0.9, lastModified: new Date('2026-06-04') },
     { url: `${SITE}/compare`, changeFrequency: 'monthly', priority: 0.8, lastModified: new Date('2026-06-04') },
+    { url: `${SITE}/blog`, changeFrequency: 'weekly', priority: 0.8, lastModified: new Date() },
     { url: `${SITE}/pricing`, changeFrequency: 'monthly', priority: 0.8, lastModified: new Date() },
     { url: `${SITE}/founder-access`, changeFrequency: 'monthly', priority: 0.7, lastModified: new Date() },
     { url: `${SITE}/changelog`, changeFrequency: 'weekly', priority: 0.6, lastModified: new Date() },
     { url: `${SITE}/signup`, changeFrequency: 'monthly', priority: 0.5, lastModified: new Date('2026-01-01') },
     { url: `${SITE}/login`, changeFrequency: 'monthly', priority: 0.3, lastModified: new Date('2026-01-01') },
   ];
+
+  // Blog posts — one entry per article, dated by publish date.
+  const blogPages: MetadataRoute.Sitemap = posts.map((p) => ({
+    url: `${SITE}/blog/${p.slug}`,
+    lastModified: new Date(p.date),
+    changeFrequency: 'monthly' as const,
+    priority: 0.7,
+  }));
+
+  // Standalone competitor comparison pages.
+  const comparePages: MetadataRoute.Sitemap = competitors.map((c) => ({
+    url: `${SITE}/compare/${c.slug}`,
+    lastModified: new Date('2026-06-04'),
+    changeFrequency: 'monthly' as const,
+    priority: 0.7,
+  }));
 
   // Public mindmaps. Wrapped in try/catch so a Supabase outage during build
   // doesn't break the sitemap entirely — the static pages still ship.
@@ -43,5 +62,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     /* sitemap should never block deploy; degrade gracefully */
   }
 
-  return [...staticPages, ...publicMaps];
+  return [...staticPages, ...blogPages, ...comparePages, ...publicMaps];
 }

@@ -48,6 +48,9 @@ export default function Footer({ minimal = false }: { minimal?: boolean }) {
           <Link href="/compare" className="hover:text-white transition-colors">
             Compare
           </Link>
+          <Link href="/blog" className="hover:text-white transition-colors">
+            Blog
+          </Link>
           <Link href="/pricing" className="hover:text-white transition-colors">
             Pricing
           </Link>

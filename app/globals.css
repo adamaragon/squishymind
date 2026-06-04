@@ -154,3 +154,93 @@ body {
   border-top-color: transparent;
   border-bottom-color: rgba(8, 9, 18, 0.96);
 }
+
+/* ----- Long-form article prose (blog posts) ---------------------------- *
+ * Applied to the article body which is rendered from author-controlled
+ * HTML strings in lib/blog-data.ts. Keeps the dark theme legible at reading
+ * lengths: generous line-height, dimmed body text, white headings, accent
+ * links, and styled lists / blockquotes / code.
+ * ---------------------------------------------------------------------- */
+.prose-squishy {
+  color: var(--text-dim);
+  font-size: 1.0625rem;
+  line-height: 1.75;
+}
+.prose-squishy > * + * { margin-top: 1.25rem; }
+.prose-squishy h2 {
+  color: var(--text);
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.25;
+  margin-top: 2.75rem;
+  margin-bottom: 0.25rem;
+  scroll-margin-top: 2rem;
+}
+.prose-squishy h3 {
+  color: var(--text);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 2rem;
+  margin-bottom: 0.25rem;
+}
+.prose-squishy p { margin: 0; }
+.prose-squishy strong { color: var(--text); font-weight: 600; }
+.prose-squishy a {
+  color: #c4b5fd;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.15s ease;
+}
+.prose-squishy a:hover { color: #fff; }
+.prose-squishy ul,
+.prose-squishy ol {
+  margin: 1.25rem 0;
+  padding-left: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.prose-squishy ul { list-style: none; padding-left: 0.25rem; }
+.prose-squishy ul > li {
+  position: relative;
+  padding-left: 1.4rem;
+}
+.prose-squishy ul > li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.7em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-pink), var(--accent-violet));
+}
+.prose-squishy ol { list-style: decimal; }
+.prose-squishy ol > li::marker { color: var(--accent-violet); font-weight: 600; }
+.prose-squishy blockquote {
+  border-left: 3px solid rgba(236, 72, 153, 0.5);
+  padding: 0.5rem 0 0.5rem 1.25rem;
+  margin: 1.75rem 0;
+  font-style: italic;
+  color: var(--text);
+  background: rgba(236, 72, 153, 0.05);
+  border-radius: 0 8px 8px 0;
+}
+.prose-squishy code {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.875em;
+  background: rgba(255, 255, 255, 0.07);
+  padding: 0.15em 0.4em;
+  border-radius: 5px;
+  color: #e8eaff;
+}
+.prose-squishy hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2.5rem 0;
+}
+.prose-squishy .lead {
+  font-size: 1.2rem;
+  line-height: 1.65;
+  color: var(--text);
+}

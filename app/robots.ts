@@ -18,6 +18,7 @@ export default function robots(): MetadataRoute.Robots {
           '/features',
           '/use-cases',
           '/compare',
+          '/blog',
           '/pricing',
           '/founder-access',
           '/changelog',
