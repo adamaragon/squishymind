@@ -17,6 +17,19 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v4.7',
+    title: 'Frameworks, new themes, and a workshop timer',
+    date: 'June 2026',
+    highlights: [
+      'Four new thinking-framework templates: Fishbone (cause & effect), a 2×2 Priority Matrix, a Now/Next/Later Roadmap, and a Kanban board',
+      'Two new themes — Nebula (cool cyan) and Ember (warm amber) — join Aurora, Sunrise, Forest, and Mono',
+      'A workshop session timer (5/15/25-min) for running timed ideation — find it in the command palette',
+      'Faster map list as your collection grows (a behind-the-scenes database tune-up)',
+    ],
+    squishyNote:
+      'Pick Ember, set a 25-minute timer, and fishbone your way to the truth, darling. I’ll keep time.',
+  },
+  {
     version: 'v4.6',
     title: 'Version history + professional templates',
     date: 'June 2026',
@@ -381,9 +394,9 @@ export const shipped: ShippedEntry[] = [
 
 export const roadmap: RoadmapEntry[] = [
   {
-    title: 'Workshop tools',
+    title: 'Live workshop voting',
     description:
-      'Dot-voting, reactions, and a session timer for running ideation meetings — turn a shared map into a facilitated workshop.',
+      'The session timer shipped — next is real-time dot-voting and emoji reactions on a shared map, so a group can prioritise together live.',
     status: 'next',
   },
   {
@@ -393,9 +406,9 @@ export const roadmap: RoadmapEntry[] = [
     status: 'soon',
   },
   {
-    title: 'More structures',
+    title: 'Structure layouts',
     description:
-      'Fishbone, 2×2 matrix, timeline, and kanban layouts beyond the four current views — meet the frameworks pros already think in.',
+      'Fishbone, matrix, timeline, and kanban exist as templates today. Next: dedicated auto-layouts so each one snaps to its true shape, not a radial map.',
     status: 'considering',
   },
   {
@@ -435,9 +448,9 @@ export const roadmap: RoadmapEntry[] = [
     status: 'considering',
   },
   {
-    title: 'Custom themes',
+    title: 'Custom colour themes',
     description:
-      'Define your own colour palette beyond the four built-ins. Bring your brand to your brain, or just pick the colours your eyes actually like.',
+      'Six preset themes ship today (Aurora, Sunrise, Forest, Mono, Nebula, Ember). Next: pick your own accent colours and save a personal palette.',
     status: 'considering',
   },
 ];
