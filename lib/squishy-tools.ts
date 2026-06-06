@@ -164,7 +164,7 @@ export async function executeSquishyTool(
 
     case 'switch_theme': {
       const theme = asString(params.theme)?.toLowerCase();
-      const valid = ['aurora', 'sunrise', 'forest', 'mono'] as const;
+      const valid = ['aurora', 'sunrise', 'forest', 'mono', 'nebula', 'ember'] as const;
       if (!theme || !(valid as readonly string[]).includes(theme)) {
         return {
           success: false,

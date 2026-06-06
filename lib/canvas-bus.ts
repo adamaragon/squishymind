@@ -30,7 +30,7 @@ export type CanvasCommand =
   | { type: 'fit_to_screen' }
   | { type: 'open_detail_view'; node_id: string }
   | { type: 'close_detail_view' }
-  | { type: 'switch_theme'; theme: 'aurora' | 'sunrise' | 'forest' | 'mono' }
+  | { type: 'switch_theme'; theme: 'aurora' | 'sunrise' | 'forest' | 'mono' | 'nebula' | 'ember' }
   | { type: 'list_templates' }
   | { type: 'apply_template'; template_id: string }
   | { type: 'switch_view'; mode: 'canvas' | 'tree' | 'outline' | 'table' }

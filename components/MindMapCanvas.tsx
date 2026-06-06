@@ -47,7 +47,7 @@ export type MindMapCanvasProps = {
   onDataChange?: (data: MindMapData) => void;
 };
 
-type Theme = 'aurora' | 'sunrise' | 'forest' | 'mono';
+type Theme = 'aurora' | 'sunrise' | 'forest' | 'mono' | 'nebula' | 'ember';
 
 type InternalState = {
   nodes: Record<string, MindMapNode>;
@@ -4490,6 +4490,18 @@ export default function MindMapCanvas({
           style={{ background: 'linear-gradient(135deg, #18181b, #71717a)' }}
           title="Mono"
         />
+        <div
+          className="theme-dot"
+          data-theme="nebula"
+          style={{ background: 'linear-gradient(135deg, #38bdf8, #818cf8)' }}
+          title="Nebula"
+        />
+        <div
+          className="theme-dot"
+          data-theme="ember"
+          style={{ background: 'linear-gradient(135deg, #fb923c, #f43f5e)' }}
+          title="Ember"
+        />
       </div>
 
       {infoVisible ? (
@@ -4637,6 +4649,50 @@ export default function MindMapCanvas({
           --ui-border: rgba(0, 0, 0, 0.08);
           --ui-text: #18181b;
           --ui-text-dim: rgba(24, 24, 27, 0.55);
+        }
+        .smm-root[data-theme='nebula'] {
+          --bg-1: #070a18;
+          --bg-2: #0c1330;
+          --grid: rgba(56, 189, 248, 0.07);
+          --grid-strong: rgba(56, 189, 248, 0.14);
+          --node-bg: #0f1a3a;
+          --node-bg-2: #14224a;
+          --node-border: rgba(255, 255, 255, 0.08);
+          --node-text: #e6f0ff;
+          --node-shadow: rgba(0, 0, 0, 0.5);
+          --accent-1: #38bdf8;
+          --accent-2: #22d3ee;
+          --accent-3: #818cf8;
+          --accent-4: #2dd4bf;
+          --accent-5: #60a5fa;
+          --edge: rgba(56, 189, 248, 0.55);
+          --selection: #38bdf8;
+          --ui-bg: rgba(12, 19, 48, 0.8);
+          --ui-border: rgba(255, 255, 255, 0.08);
+          --ui-text: rgba(230, 240, 255, 0.92);
+          --ui-text-dim: rgba(230, 240, 255, 0.55);
+        }
+        .smm-root[data-theme='ember'] {
+          --bg-1: #140a08;
+          --bg-2: #241010;
+          --grid: rgba(251, 146, 60, 0.07);
+          --grid-strong: rgba(251, 146, 60, 0.14);
+          --node-bg: #2a1512;
+          --node-bg-2: #371a16;
+          --node-border: rgba(255, 255, 255, 0.08);
+          --node-text: #fff0e8;
+          --node-shadow: rgba(0, 0, 0, 0.5);
+          --accent-1: #fb923c;
+          --accent-2: #f59e0b;
+          --accent-3: #f43f5e;
+          --accent-4: #fbbf24;
+          --accent-5: #fb7185;
+          --edge: rgba(251, 146, 60, 0.5);
+          --selection: #fb923c;
+          --ui-bg: rgba(36, 16, 16, 0.82);
+          --ui-border: rgba(255, 255, 255, 0.08);
+          --ui-text: rgba(255, 240, 232, 0.92);
+          --ui-text-dim: rgba(255, 240, 232, 0.55);
         }
 
         .smm-root :global(*) {
