@@ -17,6 +17,21 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v4.5',
+    title: 'Command palette, a smarter Squishy, and presentation mode',
+    date: 'June 2026',
+    highlights: [
+      'Press ⌘K (Ctrl+K) anywhere in the editor for a command palette — switch views, export, change theme, and more without hunting for buttons',
+      'Squishy can now read your whole map: ask her to summarize it, find what you\'re missing, or expand it into an action plan',
+      'Presentation mode walks your map branch-by-branch full screen — and Squishy can narrate it out loud',
+      'Focus mode (press S) dims everything but the branch you\'re working on',
+      'Tick a node off as done (press X) — it gets a ✓ and a little confetti, because finishing things should feel good',
+      'Nodes and panels got a design refresh — cleaner glass, softer glow, same wobble',
+    ],
+    squishyNote:
+      'I read the whole thing while you weren\'t looking. You\'re missing three things. Press ⌘K and I\'ll tell you.',
+  },
+  {
     version: 'v4.4',
     title: 'Export to PNG and PDF · prettier blog',
     date: 'June 2026',
@@ -353,10 +368,28 @@ export const shipped: ShippedEntry[] = [
 
 export const roadmap: RoadmapEntry[] = [
   {
+    title: 'Version history',
+    description:
+      'Browse and restore previous states of a map. Snapshots on every big change, plus manual "save a version" — so you can always wind back.',
+    status: 'next',
+  },
+  {
     title: 'Squishy gets smarter at teaching',
     description:
-      'Workflow and prompt revision so Squishy uses her new canvas powers at the right tutoring moments — building example maps with you in real time.',
-    status: 'next',
+      'Squishy already summarizes maps and finds gaps. Next: she does it by voice too, building example branches with you in real time.',
+    status: 'soon',
+  },
+  {
+    title: 'Workshop tools',
+    description:
+      'Dot-voting, reactions, and a session timer for running ideation meetings — turn a shared map into a facilitated workshop.',
+    status: 'soon',
+  },
+  {
+    title: 'More structures',
+    description:
+      'Fishbone, 2×2 matrix, timeline, and kanban layouts beyond the four current views — meet the frameworks pros already think in.',
+    status: 'considering',
   },
   {
     title: 'Public gallery',

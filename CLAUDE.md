@@ -148,6 +148,27 @@ Pre-baked ElevenLabs clips live under `public/sfx/`:
 Regenerate via `npm run sfx:delete` / `npm run sfx:brain`. All clips are
 committed so cloners don't need ElevenLabs credentials.
 
+## Wave 1/2 features (June 2026)
+
+- **Command palette** — `components/CommandPalette.tsx`, mounted in `EditorShell`.
+  ⌘K/Ctrl+K or the ⌘K top-bar button. Dispatches `lib/canvas-bus` commands.
+  New bus commands added: `toggle_done`, `toggle_focus_mode`, `export_map`,
+  `open_import`, `ai_assist`, `present`. When you add a palette action, add the
+  bus command to `canvas-bus.ts` AND handle it in the canvas command handler
+  (or the EditorShell-level always-mounted handler for cross-view actions like
+  `present`/`switch_view`).
+- **Focus mode** (`S`) — `focusModeRef` + `.focus-mode`/`.in-focus` classes,
+  dims non-branch nodes. **Task done** (`X`) — `done?` on `MindMapNode` (jsonb,
+  no migration), `.node.done` style + confetti via `burstAt()` (particle pool).
+- **Smarter Squishy** — `POST /api/mindmaps/[id]/assist` (summarize / gaps /
+  plan), modeled on `/expand`. Canvas builds the outline (`buildOutline()`),
+  applies gaps/plan as a labelled child branch. Prompts in `lib/prompts.ts`.
+- **Presentation mode** — `components/PresentationMode.tsx`, EditorShell-level
+  (works from any view), reads `lastDataRef`. Optional narration via `/api/tts`.
+- **Version history** — migration `0009_map_versions.sql` is written but **NOT
+  applied / NOT wired** yet (needs DB migration + a verifiable UI pass). Apply
+  the migration, then wire save/list/restore.
+
 ## What's shipped (since v1)
 v2.0 server-synced editing · v2.4 voice agent · v2.5 voice canvas control ·
 v2.6 changelog · v2.7 beta launch · v2.8 page-aware Squishy · v2.9 templates +
