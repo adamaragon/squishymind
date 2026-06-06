@@ -112,6 +112,373 @@ function makeTemplate(rootLabel: string, branches: TemplateBranch[]): MindMapDat
 }
 
 export const templates: Template[] = [
+  // ---- Deep professional templates (showcase: real work, mapped) ----
+  {
+    id: 'marketing-campaign',
+    name: 'Marketing Campaign',
+    description:
+      'A complete, run-it-tomorrow campaign plan — objective and KPIs, audience, message, every channel with real tactics, a content calendar, budget split, and a measurement loop. The kind of map you’d actually present to a client.',
+    icon: '🚀',
+    data: makeTemplate('Q3 Campaign: “Squish Your Week”', [
+      {
+        label: '🎯 Objective & KPIs',
+        note: 'One sentence the whole team can repeat. Tie every tactic back to this.',
+        children: [
+          { label: 'Primary goal', note: 'Drive 2,000 free signups in 8 weeks.' },
+          { label: 'North-star KPI', note: 'Signups from campaign UTM, not vanity reach.' },
+          { label: 'Secondary KPIs', children: ['Email CTR ≥ 3%', 'Landing CVR ≥ 8%', 'CAC ≤ $9'] },
+          { label: 'Guardrails', note: 'What we won’t do to hit the number.', children: ['No dark patterns', 'No discounting Founder pricing'] },
+        ],
+      },
+      {
+        label: '👥 Audience',
+        children: [
+          { label: 'Primary persona', note: 'ADHD pro, 25–40, drowning in tabs & to-do apps.', children: ['Pain: overwhelm', 'Trigger: a chaotic Monday', 'Watering holes: Reddit, TikTok, newsletters'] },
+          { label: 'Secondary persona', note: 'Team lead running messy brainstorms.', children: ['Pain: scattered ideation', 'Buys for the team'] },
+          { label: 'Exclusions', note: 'Who we deliberately ignore this quarter.', children: ['Enterprise procurement', 'Students (next campaign)'] },
+        ],
+      },
+      {
+        label: '💬 Message & hook',
+        children: [
+          { label: 'Single-minded message', note: '“Your brain, but squishier” — think out loud, get organised.' },
+          { label: 'Proof points', children: ['Voice AI that builds the map', 'Free during beta', '40% off Founder pricing forever'] },
+          { label: 'Hook variations', note: 'Test 3 angles.', children: ['The 11pm brain-dump', 'Lists vs maps', 'Talk, don’t type'] },
+        ],
+      },
+      {
+        label: '📡 Channels & tactics',
+        children: [
+          { label: 'Organic social', note: 'Owned, daily, cheap.', children: [{ label: 'TikTok', note: '3×/wk: screen-recorded voice-mapping demos.' }, { label: 'X / LinkedIn', note: 'Build-in-public + repurpose the blog.' }] },
+          { label: 'Content / SEO', note: 'Compounding.', children: ['Publish weekly (already queued)', 'Push “mind mapping for ADHD” cluster', 'Repurpose posts → threads'] },
+          { label: 'Paid', note: 'Only after organic CVR is proven.', children: [{ label: 'Reddit ads', note: 'r/ADHD, r/productivity — value-first.' }, { label: 'Retargeting', note: 'Visited /pricing, didn’t sign up.' }] },
+          { label: 'Email', children: ['Welcome sequence', 'Founder-pricing deadline nudge', 'Re-engage dormant signups'] },
+          { label: 'Partnerships', note: 'Borrow audiences.', children: ['ADHD creators', 'Productivity newsletters'] },
+        ],
+      },
+      {
+        label: '🗓 Content calendar',
+        children: [
+          { label: 'Weeks 1–2: Awareness', note: 'Hooks + blog launch.' },
+          { label: 'Weeks 3–5: Consideration', note: 'Demos, comparisons, testimonials.' },
+          { label: 'Weeks 6–8: Conversion', note: 'Founder-pricing urgency.' },
+        ],
+      },
+      {
+        label: '💰 Budget',
+        children: [
+          { label: 'Paid media', note: '$4k — held until organic proof.' },
+          { label: 'Creator partnerships', note: '$2.5k.' },
+          { label: 'Tools & production', note: '$1k.' },
+          { label: 'Contingency', note: '15% reserve.' },
+        ],
+      },
+      {
+        label: '📈 Measure & iterate',
+        children: [
+          { label: 'Weekly dashboard', note: 'Signups, CVR, CAC, channel split.' },
+          { label: 'Kill / scale rule', note: 'Scale what beats $9 CAC; cut what doesn’t within 10 days.' },
+          { label: 'Retro', note: 'Wins to repeat, lessons, next-campaign hypotheses.' },
+        ],
+      },
+    ]),
+  },
+  {
+    id: 'seo-project',
+    name: 'SEO Project',
+    description:
+      'A full SEO engagement mapped end to end — technical audit, keyword research and clustering, on-page, content production, authority building, and reporting. Mirrors how an agency actually runs a project.',
+    icon: '🔍',
+    data: makeTemplate('SEO Project', [
+      {
+        label: '🔎 Audit & baseline',
+        children: [
+          { label: 'Technical crawl', note: 'Screaming Frog / Sitebulb: status codes, redirects, depth.', children: ['Indexability', 'Broken links', 'Duplicate content', 'Canonicals'] },
+          { label: 'Core Web Vitals', note: 'LCP / INP / CLS by template.', children: ['Mobile first', 'Field + lab data'] },
+          { label: 'Baseline metrics', children: ['Current rankings', 'Organic traffic', 'Indexed pages'] },
+          { label: 'Analytics health', note: 'GA4 + Search Console wired, events firing.' },
+        ],
+      },
+      {
+        label: '🧩 Keyword research',
+        children: [
+          { label: 'Seed list', note: 'From product, blog, competitors.' },
+          { label: 'Clusters', note: 'Group by intent; one pillar per cluster.', children: [{ label: 'Mind mapping (info)', note: 'How-to, what-is, benefits.' }, { label: 'ADHD productivity (info)', note: 'High-empathy, high-intent.' }, { label: 'Alternatives (commercial)', note: 'vs MindMeister / Miro / Obsidian.' }] },
+          { label: 'Prioritise', note: 'Volume × intent × difficulty × fit.', children: ['Quick wins', 'Pillar bets'] },
+        ],
+      },
+      {
+        label: '📄 On-page',
+        children: [
+          { label: 'Title & meta', note: 'Keyword-forward, 150–160 chars, unique.' },
+          { label: 'Headings & structure', note: 'One H1, logical H2/H3, scannable.' },
+          { label: 'Internal linking', note: 'Pillar ↔ cluster, descriptive anchors.' },
+          { label: 'Schema', note: 'Article, FAQ, Breadcrumb, Product/Offer.' },
+        ],
+      },
+      {
+        label: '⚙️ Technical fixes',
+        children: [
+          { label: 'Sitemap & robots', note: 'Auto-generated, submitted to GSC.' },
+          { label: 'Render & speed', note: 'SSR/ISR, image CDN, lazy-load.' },
+          { label: 'Mobile & a11y', note: 'A11y wins double as SEO + UX wins.' },
+        ],
+      },
+      {
+        label: '✍️ Content production',
+        children: [
+          { label: 'Briefs', note: 'Target keyword, intent, outline, internal links.' },
+          { label: 'Calendar', note: 'Weekly cadence; backdate + queue.' },
+          { label: 'Refresh old content', note: 'Update, consolidate, re-promote.' },
+        ],
+      },
+      {
+        label: '🔗 Authority',
+        children: [
+          { label: 'Digital PR', note: 'Data studies; the “mind mapping for ADHD” angle.' },
+          { label: 'Guest & partnerships', note: 'Relevant, not spammy.' },
+          { label: 'Unlinked mentions', note: 'Reclaim → links.' },
+        ],
+      },
+      {
+        label: '📊 Reporting',
+        children: [
+          { label: 'Monthly report', note: 'Rankings, traffic, conversions, what shipped.' },
+          { label: 'Dashboards', note: 'Live, stakeholder-readable.' },
+          { label: 'Next-sprint plan', note: 'Always end with the next 30 days.' },
+        ],
+      },
+    ]),
+  },
+  {
+    id: 'website-build',
+    name: 'Website Build',
+    description:
+      'A web project from kickoff to post-launch — discovery, information architecture, design, content, development, QA, launch, and the things everyone forgets afterward. A real delivery plan you can hand a team.',
+    icon: '🌐',
+    data: makeTemplate('Website Build', [
+      {
+        label: '🧭 Discovery',
+        children: [
+          { label: 'Goals', note: 'What does the site need to *do*? (leads, signups, credibility)' },
+          { label: 'Audience & jobs', note: 'Who, and what they’re trying to accomplish.' },
+          { label: 'Success metrics', children: ['Conversion rate', 'Bounce / engagement', 'Page speed'] },
+          { label: 'Constraints', children: ['Budget', 'Timeline', 'Brand / legal', 'Tech stack'] },
+        ],
+      },
+      {
+        label: '🗂 IA & sitemap',
+        children: [
+          { label: 'Page inventory', note: 'Every page + its purpose + primary CTA.' },
+          { label: 'Navigation', note: 'Primary, footer, utility.' },
+          { label: 'User flows', note: 'Map the 2–3 critical paths to conversion.' },
+          { label: 'URL structure', note: 'Clean, logical, SEO-friendly.' },
+        ],
+      },
+      {
+        label: '🎨 Design',
+        children: [
+          { label: 'Wireframes', note: 'Low-fi; structure before pixels.' },
+          { label: 'Design system', children: ['Colour & type', 'Components', 'Spacing & grid'] },
+          { label: 'Hi-fi mockups', note: 'Key templates: home, landing, detail.' },
+          { label: 'Responsive', note: 'Mobile-first; test the real breakpoints.' },
+          { label: 'Accessibility', note: 'Contrast, focus states, semantics — bake in, don’t bolt on.' },
+        ],
+      },
+      {
+        label: '📝 Content',
+        children: [
+          { label: 'Copy', note: 'Voice, headlines, CTAs — write to the job-to-be-done.' },
+          { label: 'Media', note: 'Images, video, icons; optimise before upload.' },
+          { label: 'SEO metadata', note: 'Titles, descriptions, OG cards, schema.' },
+        ],
+      },
+      {
+        label: '💻 Development',
+        children: [
+          { label: 'Setup', children: ['Repo & CI', 'Framework', 'Hosting'] },
+          { label: 'Build', children: ['Components', 'Pages', 'CMS / data', 'Forms & integrations'] },
+          { label: 'Performance', note: 'Budget the bundle, lazy-load, cache.' },
+        ],
+      },
+      {
+        label: '✅ QA',
+        children: [
+          { label: 'Cross-browser & device', note: 'The matrix that matters to *your* users.' },
+          { label: 'Functional', note: 'Forms, links, flows, error states.' },
+          { label: 'Lighthouse', note: 'Perf / A11y / Best-practices / SEO — aim for 100s.' },
+          { label: 'Content proof', note: 'Typos, broken images, placeholder text.' },
+        ],
+      },
+      {
+        label: '🚀 Launch',
+        children: [
+          { label: 'Pre-flight', children: ['Analytics live', 'Redirects mapped', 'Backups', '404 handling'] },
+          { label: 'Go-live', note: 'DNS, SSL, deploy, smoke test.' },
+          { label: 'Announce', note: 'Email, social, internal.' },
+        ],
+      },
+      {
+        label: '🔧 Post-launch',
+        children: [
+          { label: 'Monitor', note: 'Errors, speed, uptime, funnels.' },
+          { label: 'Submit sitemap', note: 'GSC + Bing.' },
+          { label: 'Iterate', note: 'First-week data → quick wins.' },
+          { label: 'Handoff', note: 'Docs, training, who owns what.' },
+        ],
+      },
+    ]),
+  },
+  {
+    id: 'product-launch',
+    name: 'Product Launch',
+    description:
+      'A go-to-market launch mapped across pre-launch, launch day, and the follow-through — positioning, an asset checklist, the channel plan, and the metrics that tell you if it worked.',
+    icon: '📣',
+    data: makeTemplate('Product Launch', [
+      {
+        label: '🧠 Positioning',
+        children: [
+          { label: 'Who it’s for', note: 'The one audience that will care most on day one.' },
+          { label: 'Category', note: 'What does the buyer compare it to?' },
+          { label: 'Differentiator', note: 'The thing only you can say.' },
+          { label: 'One-liner', note: 'The sentence you’ll repeat everywhere.' },
+        ],
+      },
+      {
+        label: '⏳ Pre-launch',
+        children: [
+          { label: 'Waitlist / teaser', note: 'Build demand before the door opens.' },
+          { label: 'Beta & testimonials', note: 'Quotes and proof you can use on day one.' },
+          { label: 'Press & creators', note: 'Brief them under embargo.' },
+          { label: 'Asset production', note: 'See the checklist branch.' },
+        ],
+      },
+      {
+        label: '🎬 Launch day',
+        children: [
+          { label: 'Sequencing', note: 'Hour-by-hour: who posts what, when.' },
+          { label: 'Owned channels', children: ['Site / banner', 'Email blast', 'In-app'] },
+          { label: 'Earned & social', children: ['Product Hunt', 'X / LinkedIn', 'Communities'] },
+          { label: 'War room', note: 'Who’s monitoring + responding live.' },
+        ],
+      },
+      {
+        label: '📦 Asset checklist',
+        children: ['Landing page', 'Demo video', 'Screenshots / GIFs', 'Email copy', 'Social copy + visuals', 'FAQ', 'Press kit'],
+      },
+      {
+        label: '🔁 Post-launch',
+        children: [
+          { label: 'Nurture', note: 'Convert the surge into activated users.' },
+          { label: 'Collect feedback', note: 'What landed, what confused.' },
+          { label: 'Sustain', note: 'Evergreen content + retargeting.' },
+        ],
+      },
+      {
+        label: '📈 Metrics',
+        children: [
+          { label: 'Launch-day', children: ['Signups', 'Traffic sources', 'Conversion'] },
+          { label: '30-day', children: ['Activation', 'Retention', 'CAC'] },
+          { label: 'Learnings', note: 'Document for the next launch.' },
+        ],
+      },
+    ]),
+  },
+  {
+    id: 'content-strategy',
+    name: 'Content Strategy',
+    description:
+      'A content engine on one canvas — goals, pillars, personas, formats, a production calendar, distribution, repurposing, and measurement. Built to show how content compounds, not just a list of post ideas.',
+    icon: '✍️',
+    data: makeTemplate('Content Strategy', [
+      {
+        label: '🎯 Goals',
+        children: [
+          { label: 'Business goal', note: 'e.g. organic signups, not “traffic”.' },
+          { label: 'Content KPIs', children: ['Organic sessions', 'Email subs', 'Assisted conversions'] },
+          { label: 'Brand role', note: 'What we want to be known for.' },
+        ],
+      },
+      {
+        label: '🏛 Pillars',
+        note: '3–5 themes you can own. Everything ladders up to one.',
+        children: [
+          { label: 'Mind mapping', children: ['How-to', 'Benefits', 'Techniques'] },
+          { label: 'ADHD & focus', children: ['Workflows', 'Tool fit', 'Empathy pieces'] },
+          { label: 'Productivity', children: ['Comparisons', 'Reviews', 'Frameworks'] },
+        ],
+      },
+      {
+        label: '👤 Personas',
+        children: [
+          { label: 'The overwhelmed pro', note: 'Searches at 11pm, needs relief.' },
+          { label: 'The team lead', note: 'Shares with a team; wants ROI.' },
+        ],
+      },
+      {
+        label: '🧱 Formats',
+        children: ['Long-form guides', 'Comparisons', 'Short social', 'Email', 'Video / demo'],
+      },
+      {
+        label: '🗓 Calendar',
+        children: [
+          { label: 'Cadence', note: 'Weekly long-form + daily social.' },
+          { label: 'Backlog', note: 'Brief → draft → edit → publish.' },
+          { label: 'Seasonal', note: 'New-year resolutions, back-to-school, etc.' },
+        ],
+      },
+      {
+        label: '📣 Distribution',
+        note: 'Spend as long promoting as creating.',
+        children: ['Owned (email, social)', 'Earned (PR, communities)', 'Paid (boost winners)', 'SEO (compounding)'],
+      },
+      {
+        label: '♻️ Repurposing',
+        children: [
+          { label: '1 → many', note: 'Guide → thread → carousel → email → video script.' },
+          { label: 'Refresh', note: 'Update top posts twice a year.' },
+        ],
+      },
+      {
+        label: '📊 Measure',
+        children: ['Per-piece performance', 'Pillar-level trends', 'What to double down on'],
+      },
+    ]),
+  },
+  {
+    id: 'creative-brief',
+    name: 'Creative Brief',
+    description:
+      'The classic agency creative brief, mapped — background, the single objective, audience insight, the one message, deliverables, mandatories, tone, timeline, budget, and how success gets judged. Fill it in and it’s ready to brief a team.',
+    icon: '📋',
+    data: makeTemplate('Creative Brief', [
+      { label: '📖 Background', note: 'Why are we doing this now? The context in 2–3 lines.', children: ['Business situation', 'What prompted the ask'] },
+      { label: '🎯 Objective', note: 'The ONE thing this work must achieve. Specific and measurable.' },
+      {
+        label: '👥 Audience',
+        children: [
+          { label: 'Who', note: 'Demographics + mindset.' },
+          { label: 'Insight', note: 'The human truth we’re tapping into.' },
+          { label: 'Behaviour: now → desired', note: 'From what they do now to what we want.' },
+        ],
+      },
+      { label: '💬 Single message', note: 'If they remember one thing, this is it. One sentence.' },
+      {
+        label: '📦 Deliverables',
+        note: 'Exact assets, sizes, and quantities — no ambiguity.',
+        children: ['Format(s)', 'Channels', 'Specs & sizes', 'Quantity'],
+      },
+      {
+        label: '⚖️ Mandatories',
+        children: ['Logo / brand rules', 'Legal / disclaimers', 'Must-include claims', 'Things to avoid'],
+      },
+      { label: '🎨 Tone & feel', note: 'Adjectives + references. Show, don’t just tell.', children: ['Voice', 'Visual references', 'Mood'] },
+      { label: '🗓 Timeline', children: ['Kickoff', 'First drafts', 'Reviews', 'Final delivery'] },
+      { label: '💰 Budget', note: 'Production + media, with a contingency line.' },
+      { label: '✅ Success', note: 'How we’ll judge it — the metric and the gut-check.' },
+    ]),
+  },
   {
     id: 'project-planning',
     name: 'Project Planning',
