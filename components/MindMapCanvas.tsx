@@ -3305,6 +3305,73 @@ export default function MindMapCanvas({
       a.click();
       URL.revokeObjectURL(url);
     }
+
+    // Snapshot the whole map: fit it to the viewport, let the camera settle,
+    // then rasterise the stage (grid + world, minus toolbar/particles) at 2x.
+    let exporting = false;
+    function exportBaseName() {
+      const t = (titleRef.current || 'mindmap')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 60);
+      return `squishymind-${t || 'map'}`;
+    }
+    async function captureStagePng(): Promise<string> {
+      const { toPng } = await import('html-to-image');
+      const stageEl = stageRef.current!;
+      const rootEl = rootRef.current!;
+      const bg =
+        getComputedStyle(rootEl).getPropertyValue('--bg-1').trim() || '#0a0b16';
+      fitToScreen();
+      // Wait out the camera animation (~600ms) plus a paint frame.
+      await new Promise((r) => setTimeout(r, 680));
+      return toPng(stageEl, {
+        pixelRatio: 2,
+        backgroundColor: bg,
+        // Skip the particle canvas so exports are deterministic.
+        filter: (n) =>
+          !(n instanceof HTMLElement && n.classList?.contains('smm-particles')),
+      });
+    }
+    async function onExportPng() {
+      if (readonlyRef.current || exporting) return;
+      exporting = true;
+      try {
+        const dataUrl = await captureStagePng();
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = exportBaseName() + '.png';
+        a.click();
+      } catch (err) {
+        alert('PNG export failed: ' + (err as Error).message);
+      } finally {
+        exporting = false;
+      }
+    }
+    async function onExportPdf() {
+      if (readonlyRef.current || exporting) return;
+      exporting = true;
+      try {
+        const dataUrl = await captureStagePng();
+        const img = new Image();
+        img.src = dataUrl;
+        await img.decode();
+        const { jsPDF } = await import('jspdf');
+        const landscape = img.width >= img.height;
+        const pdf = new jsPDF({
+          orientation: landscape ? 'landscape' : 'portrait',
+          unit: 'px',
+          format: [img.width, img.height],
+        });
+        pdf.addImage(dataUrl, 'PNG', 0, 0, img.width, img.height);
+        pdf.save(exportBaseName() + '.pdf');
+      } catch (err) {
+        alert('PDF export failed: ' + (err as Error).message);
+      } finally {
+        exporting = false;
+      }
+    }
     function onImportClick() {
       if (readonlyRef.current) return;
       fileInputRef.current?.click();
@@ -3363,6 +3430,12 @@ export default function MindMapCanvas({
     const btnExport = root.querySelector(
       '[data-tb="export"]',
     ) as HTMLButtonElement | null;
+    const btnExportPng = root.querySelector(
+      '[data-tb="export-png"]',
+    ) as HTMLButtonElement | null;
+    const btnExportPdf = root.querySelector(
+      '[data-tb="export-pdf"]',
+    ) as HTMLButtonElement | null;
     const btnImport = root.querySelector(
       '[data-tb="import"]',
     ) as HTMLButtonElement | null;
@@ -3377,6 +3450,8 @@ export default function MindMapCanvas({
     btnFit?.addEventListener('click', fitToScreen);
     btnCenter?.addEventListener('click', centerOnRoot);
     btnExport?.addEventListener('click', onExport);
+    btnExportPng?.addEventListener('click', onExportPng);
+    btnExportPdf?.addEventListener('click', onExportPdf);
     btnImport?.addEventListener('click', onImportClick);
     btnClear?.addEventListener('click', onClear);
     btnMute?.addEventListener('click', () => setMuted(!muted));
@@ -4056,6 +4131,8 @@ export default function MindMapCanvas({
       btnFit?.removeEventListener('click', fitToScreen);
       btnCenter?.removeEventListener('click', centerOnRoot);
       btnExport?.removeEventListener('click', onExport);
+      btnExportPng?.removeEventListener('click', onExportPng);
+      btnExportPdf?.removeEventListener('click', onExportPdf);
       btnImport?.removeEventListener('click', onImportClick);
       btnClear?.removeEventListener('click', onClear);
       fileInputRef.current?.removeEventListener('change', onFileChange);
@@ -4132,8 +4209,14 @@ export default function MindMapCanvas({
         {!readonly && (
           <>
             <span className="tb-sep" />
-            <button className="tb-btn icon" data-tb="export" title="Export JSON">
-              Export
+            <button className="tb-btn icon" data-tb="export" title="Export as JSON (re-importable)">
+              JSON
+            </button>
+            <button className="tb-btn icon" data-tb="export-png" title="Export as PNG image">
+              PNG
+            </button>
+            <button className="tb-btn icon" data-tb="export-pdf" title="Export as PDF">
+              PDF
             </button>
             <button className="tb-btn icon" data-tb="import" title="Import JSON">
               Import

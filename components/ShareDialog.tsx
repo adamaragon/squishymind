@@ -17,7 +17,7 @@ type Props = {
 const VISIBILITY_OPTIONS: { value: Visibility; label: string; help: string }[] = [
   { value: 'private', label: 'Private', help: 'Only people you give the random link to. Slug URL won’t open this map.' },
   { value: 'unlisted', label: 'Unlisted', help: 'Anyone with the link or slug can view (read-only). Not in any public list.' },
-  { value: 'public', label: 'Public', help: 'Anyone can view. Will appear in the public gallery (gallery coming soon).' },
+  { value: 'public', label: 'Public', help: 'Anyone with the link or slug can view (read-only), and you’re happy for it to be featured if we launch a community gallery.' },
 ];
 
 export default function ShareDialog({

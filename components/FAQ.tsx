@@ -49,7 +49,7 @@ const faqs = [
   },
   {
     q: 'Can I export my data if I leave?',
-    a: 'Always. JSON export from any map today; PNG and PDF are coming. Your brain is yours. We just want to host it for you.',
+    a: 'Always. JSON, PNG, and PDF export from any map today — and the JSON re-imports cleanly. Your brain is yours. We just want to host it for you.',
   },
   {
     q: 'How do I cancel?',

@@ -923,6 +923,14 @@ export function getPost(slug: string): BlogPost | undefined {
   return posts.find((p) => p.slug === slug);
 }
 
+/** Hero / social-card image for a post. One generated image per slug lives
+ *  at /blog/<slug>.jpg (see scripts/gen-blog-images.mjs) and serves as both
+ *  the in-page hero and the OpenGraph card. Returns a site-root-relative
+ *  path; prefix with the origin for absolute OG URLs. */
+export function postImage(slug: string): string {
+  return `/blog/${slug}.jpg`;
+}
+
 /** A post is live once its publish date has arrived. Compared at day
  *  granularity in UTC so a post dated "2026-06-11" appears anywhere on the
  *  globe on the 11th, not a timezone-dependent slice of it. */

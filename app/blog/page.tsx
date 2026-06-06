@@ -2,12 +2,18 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ShareButtons from '@/components/ShareButtons';
-import { publishedPosts } from '@/lib/blog-data';
+import { publishedPosts, postImage } from '@/lib/blog-data';
 
 export const metadata = {
   title: 'Blog — Mind Mapping, Focus & Thinking Tools | SquishyMind',
   description:
     'Guides on mind mapping, ADHD-friendly focus, studying, team collaboration, and the SquishyMind voice AI. Think clearer, map faster — free during beta.',
+  alternates: {
+    canonical: 'https://www.squishymind.com/blog',
+    types: {
+      'application/rss+xml': 'https://www.squishymind.com/blog/feed.xml',
+    },
+  },
 };
 
 const SITE = 'https://www.squishymind.com';
@@ -48,6 +54,7 @@ export default function BlogIndexPage() {
         description: p.description,
         datePublished: p.date,
         url: `${SITE}/blog/${p.slug}`,
+        image: [`${SITE}${postImage(p.slug)}`],
         author: { '@type': 'Organization', name: p.author },
         keywords: p.tags.join(', '),
       })),
@@ -80,8 +87,17 @@ export default function BlogIndexPage() {
         <section className="max-w-5xl mx-auto pb-12">
           <Link
             href={`/blog/${featured.slug}`}
-            className="block glass rounded-3xl p-8 md:p-10 transition-all hover:border-white/20 hover:scale-[1.005] group"
+            className="grid md:grid-cols-2 gap-6 md:gap-8 items-center glass rounded-3xl p-6 md:p-8 transition-all hover:border-white/20 hover:scale-[1.005] group"
           >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={postImage(featured.slug)}
+              alt=""
+              width={1200}
+              height={800}
+              className="w-full rounded-2xl border border-white/10 aspect-[3/2] object-cover order-first md:order-last"
+            />
+            <div>
             <div className="flex items-center gap-3 mb-4 flex-wrap">
               <span
                 className={`inline-block text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full border ${
@@ -101,6 +117,7 @@ export default function BlogIndexPage() {
             <span className="inline-block mt-5 text-sm text-violet-300 group-hover:text-white transition-colors">
               Read the article →
             </span>
+            </div>
           </Link>
         </section>
 
@@ -110,8 +127,17 @@ export default function BlogIndexPage() {
             <Link
               key={p.slug}
               href={`/blog/${p.slug}`}
-              className="glass rounded-2xl p-6 flex flex-col transition-all hover:border-white/20 hover:scale-[1.01] group"
+              className="glass rounded-2xl overflow-hidden flex flex-col transition-all hover:border-white/20 hover:scale-[1.01] group"
             >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={postImage(p.slug)}
+                alt=""
+                width={1200}
+                height={800}
+                className="w-full aspect-[3/2] object-cover border-b border-white/10"
+              />
+              <div className="p-6 flex flex-col flex-1">
               <div className="flex items-center gap-2 mb-3 flex-wrap">
                 <span
                   className={`inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
@@ -128,6 +154,7 @@ export default function BlogIndexPage() {
                 {p.title}
               </h3>
               <p className="text-sm text-[--text-dim] leading-relaxed flex-1">{p.excerpt}</p>
+              </div>
             </Link>
           ))}
         </section>

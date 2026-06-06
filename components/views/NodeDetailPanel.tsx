@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import type {
   Attachment,
   FlowDirection,
@@ -37,6 +38,7 @@ export default function NodeDetailPanel({
 }: Props) {
   const [label, setLabel] = useState(node.label);
   const [note, setNote] = useState(node.note || '');
+  const [notePreview, setNotePreview] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingAttach, setUploadingAttach] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -227,23 +229,39 @@ export default function NodeDetailPanel({
                 <span className="nd-section-icon" aria-hidden>≡</span>
                 Note
               </h3>
-              <span className="nd-section-help">
-                {readonly ? 'Read-only' : 'Markdown not yet — plain text'}
-              </span>
+              {readonly ? (
+                <span className="nd-section-help">Read-only · Markdown</span>
+              ) : note.trim() ? (
+                <button
+                  type="button"
+                  className="nd-link-btn"
+                  onClick={() => setNotePreview((p) => !p)}
+                  title="Toggle Markdown preview"
+                >
+                  {notePreview ? 'Edit' : 'Preview'}
+                </button>
+              ) : (
+                <span className="nd-section-help">Markdown supported</span>
+              )}
             </header>
-            <textarea
-              value={note}
-              onChange={onNoteChange}
-              placeholder={
-                readonly
-                  ? 'No note for this node.'
-                  : 'Add a note — context, links, anything that won\'t fit on the card.'
-              }
-              readOnly={readonly}
-              rows={6}
-              className="nd-note"
-              aria-label="Node note"
-            />
+            {(readonly || notePreview) ? (
+              note.trim() ? (
+                <div className="nd-note nd-note-md" aria-label="Node note (rendered)">
+                  <ReactMarkdown>{note}</ReactMarkdown>
+                </div>
+              ) : (
+                <p className="nd-note nd-note-empty">No note for this node.</p>
+              )
+            ) : (
+              <textarea
+                value={note}
+                onChange={onNoteChange}
+                placeholder={'Add a note — context, links, anything that won\'t fit on the card. Markdown supported.'}
+                rows={6}
+                className="nd-note"
+                aria-label="Node note"
+              />
+            )}
           </section>
 
           {/* Image */}
@@ -666,6 +684,39 @@ export default function NodeDetailPanel({
           resize: vertical;
           transition: border-color 0.15s;
         }
+        .nd-note-md {
+          resize: none;
+          overflow-wrap: anywhere;
+        }
+        .nd-note-md > :first-child { margin-top: 0; }
+        .nd-note-md > :last-child { margin-bottom: 0; }
+        .nd-note-md p { margin: 0 0 0.6em; }
+        .nd-note-md h1,
+        .nd-note-md h2,
+        .nd-note-md h3 { font-size: 13px; font-weight: 700; margin: 0.8em 0 0.3em; }
+        .nd-note-md ul,
+        .nd-note-md ol { margin: 0 0 0.6em; padding-left: 1.2em; }
+        .nd-note-md li { margin: 0.15em 0; }
+        .nd-note-md a { color: var(--accent-1, #8b5cf6); text-decoration: underline; }
+        .nd-note-md code {
+          background: rgba(255, 255, 255, 0.08);
+          padding: 0.1em 0.35em;
+          border-radius: 4px;
+          font-size: 0.9em;
+        }
+        .nd-note-md pre {
+          background: rgba(255, 255, 255, 0.06);
+          padding: 8px 10px;
+          border-radius: 8px;
+          overflow-x: auto;
+        }
+        .nd-note-md blockquote {
+          margin: 0 0 0.6em;
+          padding-left: 0.8em;
+          border-left: 2px solid var(--border);
+          color: var(--text-dim, rgba(232,234,255,0.6));
+        }
+        .nd-note-empty { color: var(--text-dim, rgba(232,234,255,0.6)); font-style: italic; }
         .nd-note:focus {
           border-color: var(--nd-accent);
         }

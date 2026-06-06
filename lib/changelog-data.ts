@@ -17,6 +17,19 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v4.4',
+    title: 'Export to PNG and PDF · prettier blog',
+    date: 'June 2026',
+    highlights: [
+      'The Export button grew up — your map now saves as a crisp PNG image or a print-ready PDF, not just JSON',
+      'It fits the whole map to frame and snapshots it at 2× so the picture is sharp wherever it lands',
+      'JSON export stays exactly as it was, and still re-imports cleanly — nothing taken away',
+      'The blog got illustrated: every post now has its own hero image and a proper social card when you share it',
+    ],
+    squishyNote:
+      'Now you can take me places, darling. Slide decks. Emails. The fridge, if you must.',
+  },
+  {
     version: 'v4.3',
     title: 'Flow controls live on the lines now',
     date: 'May 2026',
@@ -344,12 +357,6 @@ export const roadmap: RoadmapEntry[] = [
     description:
       'Workflow and prompt revision so Squishy uses her new canvas powers at the right tutoring moments — building example maps with you in real time.',
     status: 'next',
-  },
-  {
-    title: 'PNG and PDF export',
-    description:
-      'JSON export already works. Next: clean PNG of the whole canvas and a printable PDF, so you can drop a map into a slide or send it to someone who won’t sign up.',
-    status: 'soon',
   },
   {
     title: 'Public gallery',

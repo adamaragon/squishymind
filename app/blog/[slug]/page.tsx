@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ShareButtons from '@/components/ShareButtons';
-import { posts, getPost, isPublished, publishedPosts } from '@/lib/blog-data';
+import { posts, getPost, isPublished, publishedPosts, postImage } from '@/lib/blog-data';
 
 const SITE = 'https://www.squishymind.com';
 
@@ -23,6 +23,7 @@ export async function generateMetadata({
   if (!post || !isPublished(post)) return { title: 'Not found — SquishyMind' };
 
   const url = `${SITE}/blog/${post.slug}`;
+  const image = `${SITE}${postImage(post.slug)}`;
   return {
     title: `${post.title} | SquishyMind`,
     description: post.description,
@@ -35,11 +36,13 @@ export async function generateMetadata({
       publishedTime: post.date,
       authors: [post.author],
       tags: post.tags,
+      images: [{ url: image, width: 1200, height: 800, alt: post.title }],
     },
     twitter: {
       card: 'summary_large_image',
       title: post.title,
       description: post.description,
+      images: [image],
     },
   };
 }
@@ -81,6 +84,7 @@ export default async function BlogPostPage({
       },
       mainEntityOfPage: { '@type': 'WebPage', '@id': url },
       url,
+      image: [`${SITE}${postImage(post.slug)}`],
       keywords: post.tags.join(', '),
       articleSection: post.category,
     },
@@ -132,6 +136,16 @@ export default async function BlogPostPage({
             </div>
           </header>
 
+          {/* Hero image */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={postImage(post.slug)}
+            alt=""
+            width={1200}
+            height={800}
+            className="w-full rounded-2xl border border-white/10 mb-10 aspect-[3/2] object-cover"
+          />
+
           {/* Body */}
           <div
             className="prose-squishy"
@@ -177,8 +191,17 @@ export default async function BlogPostPage({
                 <Link
                   key={p.slug}
                   href={`/blog/${p.slug}`}
-                  className="glass rounded-2xl p-5 transition-all hover:border-white/20 hover:scale-[1.01] group"
+                  className="glass rounded-2xl overflow-hidden transition-all hover:border-white/20 hover:scale-[1.01] group"
                 >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={postImage(p.slug)}
+                    alt=""
+                    width={1200}
+                    height={800}
+                    className="w-full aspect-[3/2] object-cover border-b border-white/10"
+                  />
+                  <div className="p-5">
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-violet-300">
                     {p.category}
                   </span>
@@ -188,6 +211,7 @@ export default async function BlogPostPage({
                   <p className="text-xs text-[--text-dim] leading-relaxed">
                     {p.readingMinutes} min read
                   </p>
+                  </div>
                 </Link>
               ))}
             </div>
