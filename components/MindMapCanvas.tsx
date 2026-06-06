@@ -4538,91 +4538,83 @@ export default function MindMapCanvas({
           background:
             linear-gradient(
               180deg,
-              color-mix(
-                  in srgb,
-                  var(--accent-c1, var(--accent-1)) 32%,
-                  var(--node-bg)
-                )
-                0%,
-              var(--node-bg-2) 70%
+              color-mix(in srgb, var(--accent-c1, var(--accent-1)) 15%, var(--node-bg)) 0%,
+              var(--node-bg-2) 82%
             );
           color: var(--node-text);
-          padding: 12px 18px;
-          border-radius: 14px;
+          padding: 11px 17px;
+          border-radius: 13px;
           border: 1px solid
-            color-mix(
-              in srgb,
-              var(--accent-c1, var(--accent-1)) 40%,
-              var(--node-border)
-            );
+            color-mix(in srgb, var(--accent-c1, var(--accent-1)) 48%, transparent);
           box-shadow:
-            0 1px 0 rgba(255, 255, 255, 0.06) inset,
-            0 0 0 1px rgba(255, 255, 255, 0.02) inset,
-            0 12px 28px var(--node-shadow),
-            0 2px 6px var(--node-shadow),
-            0 0 18px
-              color-mix(
-                in srgb,
-                var(--accent-c1, var(--accent-1)) 22%,
-                transparent
-              );
+            inset 0 1px 0 rgba(255, 255, 255, 0.1),
+            inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+            0 10px 24px -8px var(--node-shadow),
+            0 2px 5px -2px rgba(0, 0, 0, 0.45);
+          -webkit-backdrop-filter: blur(3px);
+          backdrop-filter: blur(3px);
           cursor: pointer;
           transition:
-            transform 0.18s cubic-bezier(0.2, 0.7, 0.3, 1.4),
-            box-shadow 0.2s ease,
-            border-color 0.2s ease;
+            transform 0.2s cubic-bezier(0.34, 1.56, 0.45, 1),
+            box-shadow 0.22s ease,
+            border-color 0.22s ease;
           font-size: 14px;
           font-weight: 500;
+          letter-spacing: -0.01em;
           line-height: 1.35;
           max-width: 220px;
-          min-width: 80px;
+          min-width: 78px;
           text-align: center;
           white-space: pre-wrap;
           word-wrap: break-word;
-          animation: smm-breathe 4.5s ease-in-out infinite;
+          animation: smm-breathe 6s ease-in-out infinite;
         }
+        /* Soft morphing accent aura — the "wobble". Subtle at rest, blooms on
+           hover/selection. Lives behind the node so it never blurs the text. */
         .smm-root :global(.node::before) {
           content: '';
           position: absolute;
-          inset: -2px;
-          border-radius: 16px;
+          inset: -3px;
+          border-radius: 18px;
           background: linear-gradient(
             135deg,
             var(--accent-c1, var(--accent-1)),
             var(--accent-c2, var(--accent-2))
           );
-          opacity: 0;
+          opacity: 0.16;
           z-index: -1;
-          filter: blur(14px);
-          transition: opacity 0.25s ease;
-          animation: smm-blobMorph 8s ease-in-out infinite;
+          filter: blur(16px);
+          transition: opacity 0.28s ease;
+          animation: smm-blobMorph 9s ease-in-out infinite;
         }
         .smm-root :global(.node:hover) {
-          transform: translate(-50%, -50%) scale(1.07) rotate(-0.5deg);
+          transform: translate(-50%, -50%) scale(1.05) rotate(-0.6deg);
           box-shadow:
-            0 1px 0 rgba(255, 255, 255, 0.06) inset,
-            0 0 0 1px rgba(255, 255, 255, 0.04) inset,
-            0 18px 40px var(--node-shadow),
-            0 4px 10px var(--node-shadow),
-            0 0 0 4px rgba(167, 139, 250, 0.06);
-          border-color: rgba(255, 255, 255, 0.16);
+            inset 0 1px 0 rgba(255, 255, 255, 0.12),
+            0 18px 38px -10px var(--node-shadow),
+            0 4px 10px -3px rgba(0, 0, 0, 0.5),
+            0 0 0 3px color-mix(in srgb, var(--accent-c1, var(--accent-1)) 16%, transparent);
+          border-color: color-mix(in srgb, var(--accent-c1, var(--accent-1)) 70%, transparent);
         }
         .smm-root :global(.node:hover::before) {
-          opacity: 0.55;
+          opacity: 0.5;
         }
         .smm-root :global(.node:active:not(.dragging)) {
-          transform: translate(-50%, -50%) scale(0.94);
+          transform: translate(-50%, -50%) scale(0.95);
           transition: transform 0.08s ease-out;
         }
         .smm-root :global(.node.selected) {
-          border-color: var(--selection);
+          border-color: color-mix(in srgb, var(--selection) 80%, transparent);
           box-shadow:
-            0 1px 0 rgba(255, 255, 255, 0.06) inset,
-            0 0 0 1px rgba(255, 255, 255, 0.04) inset,
-            0 18px 40px var(--node-shadow),
-            0 0 0 3px color-mix(in srgb, var(--selection) 35%, transparent),
-            0 0 24px color-mix(in srgb, var(--selection) 25%, transparent);
-          animation: smm-pulse 2.4s ease-in-out infinite;
+            inset 0 1px 0 rgba(255, 255, 255, 0.12),
+            0 16px 36px -10px var(--node-shadow),
+            0 0 0 2px var(--selection),
+            0 0 0 6px color-mix(in srgb, var(--selection) 22%, transparent),
+            0 0 22px -2px color-mix(in srgb, var(--selection) 30%, transparent);
+          animation: smm-pulse 2.8s ease-in-out infinite;
+        }
+        .smm-root :global(.node.selected::before) {
+          opacity: 0.4;
         }
         .smm-root :global(.node.drop-target) {
           outline: 2px dashed var(--selection);
@@ -4633,17 +4625,19 @@ export default function MindMapCanvas({
           0%,
           100% {
             box-shadow:
-              0 1px 0 rgba(255, 255, 255, 0.06) inset,
-              0 18px 40px var(--node-shadow),
-              0 0 0 3px color-mix(in srgb, var(--selection) 30%, transparent),
-              0 0 24px color-mix(in srgb, var(--selection) 20%, transparent);
+              inset 0 1px 0 rgba(255, 255, 255, 0.12),
+              0 16px 36px -10px var(--node-shadow),
+              0 0 0 2px var(--selection),
+              0 0 0 5px color-mix(in srgb, var(--selection) 20%, transparent),
+              0 0 18px -2px color-mix(in srgb, var(--selection) 25%, transparent);
           }
           50% {
             box-shadow:
-              0 1px 0 rgba(255, 255, 255, 0.06) inset,
-              0 18px 40px var(--node-shadow),
-              0 0 0 5px color-mix(in srgb, var(--selection) 40%, transparent),
-              0 0 36px color-mix(in srgb, var(--selection) 35%, transparent);
+              inset 0 1px 0 rgba(255, 255, 255, 0.12),
+              0 16px 36px -10px var(--node-shadow),
+              0 0 0 2px var(--selection),
+              0 0 0 7px color-mix(in srgb, var(--selection) 28%, transparent),
+              0 0 30px -2px color-mix(in srgb, var(--selection) 38%, transparent);
           }
         }
         .smm-root :global(.node.dragging) {
@@ -5020,6 +5014,11 @@ export default function MindMapCanvas({
            marker arrowheads at the endpoints still communicate direction. */
         @media (prefers-reduced-motion: reduce) {
           .smm-root :global(.flow-arrow) { display: none; }
+          .smm-root :global(.node),
+          .smm-root :global(.node::before),
+          .smm-root :global(.node.selected) {
+            animation: none !important;
+          }
         }
         @keyframes smm-flow {
           to {
@@ -5043,7 +5042,7 @@ export default function MindMapCanvas({
             filter: brightness(1) saturate(1);
           }
           50% {
-            filter: brightness(1.08) saturate(1.1);
+            filter: brightness(1.035) saturate(1.04);
           }
         }
         @keyframes smm-blobMorph {
@@ -6005,11 +6004,14 @@ export default function MindMapCanvas({
           position: absolute;
           background: var(--ui-bg);
           border: 1px solid var(--ui-border);
-          border-radius: 14px;
-          backdrop-filter: blur(14px);
-          -webkit-backdrop-filter: blur(14px);
+          border-radius: 16px;
+          backdrop-filter: blur(18px) saturate(1.2);
+          -webkit-backdrop-filter: blur(18px) saturate(1.2);
           color: var(--ui-text);
-          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.06),
+            0 24px 60px -12px rgba(0, 0, 0, 0.5),
+            0 4px 14px -4px rgba(0, 0, 0, 0.4);
           z-index: 50;
         }
         .smm-toolbar {
@@ -6036,25 +6038,32 @@ export default function MindMapCanvas({
           color: transparent;
         }
         .tb-btn {
-          background: transparent;
+          background: rgba(255, 255, 255, 0.025);
           border: 1px solid var(--ui-border);
-          border-radius: 9px;
+          border-radius: 10px;
           color: var(--ui-text);
           padding: 7px 11px;
           font-size: 12px;
           font-weight: 500;
           cursor: pointer;
-          transition: all 0.15s ease;
+          transition:
+            transform 0.16s cubic-bezier(0.34, 1.45, 0.5, 1),
+            background 0.16s ease,
+            border-color 0.16s ease;
           display: flex;
           align-items: center;
           gap: 6px;
         }
         .tb-btn:hover {
-          background: color-mix(in srgb, var(--selection) 12%, transparent);
-          border-color: color-mix(in srgb, var(--selection) 35%, transparent);
+          background: color-mix(in srgb, var(--selection) 14%, transparent);
+          border-color: color-mix(in srgb, var(--selection) 38%, transparent);
+          transform: translateY(-1px);
+        }
+        .tb-btn:active {
+          transform: translateY(0) scale(0.95);
         }
         .tb-btn.icon {
-          padding: 7px 9px;
+          padding: 7px 10px;
         }
         .tb-sep {
           width: 1px;

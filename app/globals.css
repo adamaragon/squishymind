@@ -244,3 +244,12 @@ body {
   line-height: 1.65;
   color: var(--text);
 }
+.prose-squishy figure {
+  margin: 2rem 0;
+}
+.prose-squishy figcaption {
+  text-align: center;
+  font-size: 0.85rem;
+  color: rgba(232, 234, 255, 0.6);
+  margin-top: 0.75rem;
+}

@@ -419,6 +419,156 @@ export const posts: BlogPost[] = [
     body: `
 <p class="lead">Most mind mapping tools give you one way to look at a map: a canvas. But a single idea rarely has a single natural shape. Brainstorming wants space; revision wants a list; a decision wants a tree; structured data wants rows. SquishyMind shows the same map four ways — Canvas, Outline, Tree, and Table — with zero data loss when you switch. Here’s a complete guide to picking the right lens.</p>
 
+<figure>
+<svg viewBox="0 0 680 320" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>The four SquishyMind view modes: Canvas, Outline, Tree, and Table</title>
+  <defs>
+    <filter id="glow-v" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-c" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-p" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-a" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Panel 1: Canvas (violet) -->
+  <rect x="10" y="10" width="155" height="300" rx="12" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+  <!-- label -->
+  <text x="87" y="36" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#e8eaff" letter-spacing="0.5">Canvas</text>
+  <!-- central node -->
+  <circle cx="87" cy="140" r="16" fill="#8b5cf6" fill-opacity="0.25" stroke="#8b5cf6" stroke-width="1.5" filter="url(#glow-v)"/>
+  <circle cx="87" cy="140" r="6" fill="#8b5cf6"/>
+  <!-- satellite nodes -->
+  <circle cx="42" cy="100" r="9" fill="#8b5cf6" fill-opacity="0.2" stroke="#8b5cf6" stroke-width="1.2"/>
+  <circle cx="42" cy="100" r="4" fill="#8b5cf6" fill-opacity="0.8"/>
+  <circle cx="135" cy="95" r="7" fill="#8b5cf6" fill-opacity="0.2" stroke="#8b5cf6" stroke-width="1.2"/>
+  <circle cx="135" cy="95" r="3.5" fill="#8b5cf6" fill-opacity="0.8"/>
+  <circle cx="130" cy="185" r="10" fill="#8b5cf6" fill-opacity="0.2" stroke="#8b5cf6" stroke-width="1.2"/>
+  <circle cx="130" cy="185" r="4.5" fill="#8b5cf6" fill-opacity="0.8"/>
+  <circle cx="44" cy="190" r="7" fill="#8b5cf6" fill-opacity="0.2" stroke="#8b5cf6" stroke-width="1.2"/>
+  <circle cx="44" cy="190" r="3.5" fill="#8b5cf6" fill-opacity="0.8"/>
+  <circle cx="87" cy="230" r="8" fill="#8b5cf6" fill-opacity="0.2" stroke="#8b5cf6" stroke-width="1.2"/>
+  <circle cx="87" cy="230" r="3.5" fill="#8b5cf6" fill-opacity="0.8"/>
+  <!-- curved connectors -->
+  <path d="M75 127 Q55 112 50 108" stroke="#8b5cf6" stroke-width="1" fill="none" stroke-opacity="0.6"/>
+  <path d="M100 128 Q120 108 128 100" stroke="#8b5cf6" stroke-width="1" fill="none" stroke-opacity="0.6"/>
+  <path d="M100 152 Q118 170 122 179" stroke="#8b5cf6" stroke-width="1" fill="none" stroke-opacity="0.6"/>
+  <path d="M73 152 Q57 173 50 185" stroke="#8b5cf6" stroke-width="1" fill="none" stroke-opacity="0.6"/>
+  <path d="M87 156 Q87 195 87 222" stroke="#8b5cf6" stroke-width="1" fill="none" stroke-opacity="0.6"/>
+  <!-- cross-link -->
+  <path d="M52 107 Q92 70 128 92" stroke="#8b5cf6" stroke-width="0.8" fill="none" stroke-opacity="0.3" stroke-dasharray="3 3"/>
+  <text x="87" y="285" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="rgba(232,234,255,0.5)">Free-form spatial</text>
+
+  <!-- Panel 2: Outline (cyan) -->
+  <rect x="175" y="10" width="155" height="300" rx="12" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+  <text x="252" y="36" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#e8eaff" letter-spacing="0.5">Outline</text>
+  <!-- indent lines level 1 -->
+  <rect x="198" y="60" width="112" height="8" rx="4" fill="#06b6d4" fill-opacity="0.9"/>
+  <!-- level 2 -->
+  <rect x="215" y="84" width="88" height="7" rx="3.5" fill="#06b6d4" fill-opacity="0.6"/>
+  <rect x="215" y="100" width="72" height="7" rx="3.5" fill="#06b6d4" fill-opacity="0.6"/>
+  <rect x="215" y="116" width="94" height="7" rx="3.5" fill="#06b6d4" fill-opacity="0.6"/>
+  <!-- level 3 under last l2 -->
+  <rect x="230" y="136" width="60" height="6" rx="3" fill="#06b6d4" fill-opacity="0.4"/>
+  <rect x="230" y="150" width="50" height="6" rx="3" fill="#06b6d4" fill-opacity="0.4"/>
+  <!-- level 1 again -->
+  <rect x="198" y="174" width="98" height="8" rx="4" fill="#06b6d4" fill-opacity="0.9"/>
+  <rect x="215" y="196" width="76" height="7" rx="3.5" fill="#06b6d4" fill-opacity="0.6"/>
+  <rect x="215" y="212" width="88" height="7" rx="3.5" fill="#06b6d4" fill-opacity="0.6"/>
+  <!-- indent guides -->
+  <line x1="210" y1="80" x2="210" y2="162" stroke="#06b6d4" stroke-width="1" stroke-opacity="0.25"/>
+  <line x1="226" y1="132" x2="226" y2="162" stroke="#06b6d4" stroke-width="1" stroke-opacity="0.2"/>
+  <line x1="210" y1="192" x2="210" y2="224" stroke="#06b6d4" stroke-width="1" stroke-opacity="0.25"/>
+  <text x="252" y="285" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="rgba(232,234,255,0.5)">Collapsible list</text>
+
+  <!-- Panel 3: Tree (pink) -->
+  <rect x="340" y="10" width="155" height="300" rx="12" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+  <text x="417" y="36" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#e8eaff" letter-spacing="0.5">Tree</text>
+  <!-- root -->
+  <rect x="353" y="120" width="36" height="24" rx="6" fill="#ec4899" fill-opacity="0.25" stroke="#ec4899" stroke-width="1.5" filter="url(#glow-p)"/>
+  <rect x="361" y="129" width="20" height="6" rx="3" fill="#ec4899" fill-opacity="0.8"/>
+  <!-- level 2 nodes -->
+  <rect x="403" y="88" width="36" height="22" rx="6" fill="#ec4899" fill-opacity="0.18" stroke="#ec4899" stroke-width="1.2"/>
+  <rect x="411" y="97" width="20" height="6" rx="3" fill="#ec4899" fill-opacity="0.7"/>
+  <rect x="403" y="132" width="36" height="22" rx="6" fill="#ec4899" fill-opacity="0.18" stroke="#ec4899" stroke-width="1.2"/>
+  <rect x="411" y="141" width="20" height="6" rx="3" fill="#ec4899" fill-opacity="0.7"/>
+  <rect x="403" y="176" width="36" height="22" rx="6" fill="#ec4899" fill-opacity="0.18" stroke="#ec4899" stroke-width="1.2"/>
+  <rect x="411" y="185" width="20" height="6" rx="3" fill="#ec4899" fill-opacity="0.7"/>
+  <!-- level 3 nodes (off first l2) -->
+  <rect x="453" y="76" width="30" height="18" rx="5" fill="#ec4899" fill-opacity="0.12" stroke="#ec4899" stroke-width="1"/>
+  <rect x="460" y="83" width="16" height="5" rx="2.5" fill="#ec4899" fill-opacity="0.6"/>
+  <rect x="453" y="100" width="30" height="18" rx="5" fill="#ec4899" fill-opacity="0.12" stroke="#ec4899" stroke-width="1"/>
+  <rect x="460" y="107" width="16" height="5" rx="2.5" fill="#ec4899" fill-opacity="0.6"/>
+  <!-- connectors root -> l2 -->
+  <path d="M389 132 Q400 132 403 99" stroke="#ec4899" stroke-width="1" fill="none" stroke-opacity="0.5"/>
+  <line x1="389" y1="132" x2="403" y2="143" stroke="#ec4899" stroke-width="1" stroke-opacity="0.5"/>
+  <path d="M389 132 Q400 132 403 187" stroke="#ec4899" stroke-width="1" fill="none" stroke-opacity="0.5"/>
+  <!-- connectors l2 -> l3 -->
+  <line x1="439" y1="99" x2="453" y2="85" stroke="#ec4899" stroke-width="0.8" stroke-opacity="0.4"/>
+  <line x1="439" y1="99" x2="453" y2="109" stroke="#ec4899" stroke-width="0.8" stroke-opacity="0.4"/>
+  <text x="417" y="285" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="rgba(232,234,255,0.5)">Left-to-right hierarchy</text>
+
+  <!-- Panel 4: Table (amber) -->
+  <rect x="515" y="10" width="155" height="300" rx="12" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+  <text x="592" y="36" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#e8eaff" letter-spacing="0.5">Table</text>
+  <!-- header row -->
+  <rect x="532" y="56" width="116" height="20" rx="4" fill="#f59e0b" fill-opacity="0.22" stroke="#f59e0b" stroke-width="1"/>
+  <line x1="572" y1="56" x2="572" y2="76" stroke="#f59e0b" stroke-width="1" stroke-opacity="0.4"/>
+  <line x1="614" y1="56" x2="614" y2="76" stroke="#f59e0b" stroke-width="1" stroke-opacity="0.4"/>
+  <rect x="535" y="62" width="30" height="6" rx="3" fill="#f59e0b" fill-opacity="0.7"/>
+  <rect x="576" y="62" width="30" height="6" rx="3" fill="#f59e0b" fill-opacity="0.7"/>
+  <rect x="618" y="62" width="24" height="6" rx="3" fill="#f59e0b" fill-opacity="0.7"/>
+  <!-- data rows -->
+  <rect x="532" y="82" width="116" height="18" rx="3" fill="rgba(245,158,11,0.06)" stroke="rgba(245,158,11,0.15)" stroke-width="0.5"/>
+  <line x1="572" y1="82" x2="572" y2="100" stroke="#f59e0b" stroke-width="0.5" stroke-opacity="0.25"/>
+  <line x1="614" y1="82" x2="614" y2="100" stroke="#f59e0b" stroke-width="0.5" stroke-opacity="0.25"/>
+  <rect x="535" y="88" width="28" height="5" rx="2.5" fill="#f59e0b" fill-opacity="0.4"/>
+  <rect x="576" y="88" width="22" height="5" rx="2.5" fill="#f59e0b" fill-opacity="0.4"/>
+  <rect x="618" y="88" width="18" height="5" rx="2.5" fill="#f59e0b" fill-opacity="0.4"/>
+
+  <rect x="532" y="104" width="116" height="18" rx="3" fill="rgba(245,158,11,0.06)" stroke="rgba(245,158,11,0.15)" stroke-width="0.5"/>
+  <line x1="572" y1="104" x2="572" y2="122" stroke="#f59e0b" stroke-width="0.5" stroke-opacity="0.25"/>
+  <line x1="614" y1="104" x2="614" y2="122" stroke="#f59e0b" stroke-width="0.5" stroke-opacity="0.25"/>
+  <rect x="535" y="110" width="22" height="5" rx="2.5" fill="#f59e0b" fill-opacity="0.4"/>
+  <rect x="576" y="110" width="30" height="5" rx="2.5" fill="#f59e0b" fill-opacity="0.4"/>
+  <rect x="618" y="110" width="20" height="5" rx="2.5" fill="#f59e0b" fill-opacity="0.4"/>
+
+  <rect x="532" y="126" width="116" height="18" rx="3" fill="rgba(245,158,11,0.06)" stroke="rgba(245,158,11,0.15)" stroke-width="0.5"/>
+  <line x1="572" y1="126" x2="572" y2="144" stroke="#f59e0b" stroke-width="0.5" stroke-opacity="0.25"/>
+  <line x1="614" y1="126" x2="614" y2="144" stroke="#f59e0b" stroke-width="0.5" stroke-opacity="0.25"/>
+  <rect x="535" y="132" width="32" height="5" rx="2.5" fill="#f59e0b" fill-opacity="0.4"/>
+  <rect x="576" y="132" width="18" height="5" rx="2.5" fill="#f59e0b" fill-opacity="0.4"/>
+  <rect x="618" y="132" width="26" height="5" rx="2.5" fill="#f59e0b" fill-opacity="0.4"/>
+
+  <rect x="532" y="148" width="116" height="18" rx="3" fill="rgba(245,158,11,0.06)" stroke="rgba(245,158,11,0.15)" stroke-width="0.5"/>
+  <line x1="572" y1="148" x2="572" y2="166" stroke="#f59e0b" stroke-width="0.5" stroke-opacity="0.25"/>
+  <line x1="614" y1="148" x2="614" y2="166" stroke="#f59e0b" stroke-width="0.5" stroke-opacity="0.25"/>
+  <rect x="535" y="154" width="26" height="5" rx="2.5" fill="#f59e0b" fill-opacity="0.4"/>
+  <rect x="576" y="154" width="24" height="5" rx="2.5" fill="#f59e0b" fill-opacity="0.4"/>
+  <rect x="618" y="154" width="22" height="5" rx="2.5" fill="#f59e0b" fill-opacity="0.4"/>
+
+  <rect x="532" y="170" width="116" height="18" rx="3" fill="rgba(245,158,11,0.06)" stroke="rgba(245,158,11,0.15)" stroke-width="0.5"/>
+  <line x1="572" y1="170" x2="572" y2="188" stroke="#f59e0b" stroke-width="0.5" stroke-opacity="0.25"/>
+  <line x1="614" y1="170" x2="614" y2="188" stroke="#f59e0b" stroke-width="0.5" stroke-opacity="0.25"/>
+  <rect x="535" y="176" width="20" height="5" rx="2.5" fill="#f59e0b" fill-opacity="0.4"/>
+  <rect x="576" y="176" width="28" height="5" rx="2.5" fill="#f59e0b" fill-opacity="0.4"/>
+  <rect x="618" y="176" width="16" height="5" rx="2.5" fill="#f59e0b" fill-opacity="0.4"/>
+
+  <text x="592" y="285" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="rgba(232,234,255,0.5)">Rows and columns</text>
+</svg>
+<figcaption>The same map, four ways — switch with one click.</figcaption>
+</figure>
+
 <h2>Canvas View — for thinking in space</h2>
 <p>The default, free-form spatial layout. Nodes live anywhere; branches sprawl; cross-connections show as lines. It engages spatial memory and is forgiving of mess, which makes it the home of early, generative thinking.</p>
 <p><strong>Use it for:</strong> brainstorming, unsettled structure, visual thinking, anything where <em>relationships</em> matter more than order.</p>

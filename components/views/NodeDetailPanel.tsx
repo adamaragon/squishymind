@@ -457,9 +457,9 @@ export default function NodeDetailPanel({
         .nd-backdrop {
           position: absolute;
           inset: 0;
-          background: rgba(0, 0, 0, 0.45);
-          backdrop-filter: blur(2px);
-          -webkit-backdrop-filter: blur(2px);
+          background: rgba(4, 5, 12, 0.5);
+          backdrop-filter: blur(4px);
+          -webkit-backdrop-filter: blur(4px);
           z-index: 50;
           animation: nd-fade 0.18s ease;
         }

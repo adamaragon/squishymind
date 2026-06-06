@@ -146,6 +146,15 @@ export default function UseCasesPage() {
             className="max-w-5xl mx-auto pb-20 scroll-mt-8"
           >
             <div className="glass rounded-2xl p-8 md:p-10">
+              {/* Hero image */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`/usecases/${uc.id}.jpg`}
+                alt=""
+                width={1200}
+                height={800}
+                className="rounded-2xl border border-white/10 aspect-[3/2] object-cover w-full mb-8"
+              />
               <span className="inline-block text-xs font-semibold uppercase tracking-widest text-violet-400 mb-3">
                 {uc.audience}
               </span>
