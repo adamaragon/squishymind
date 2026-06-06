@@ -92,8 +92,9 @@ Required keys:
 ## Pricing positioning
 - **Free** (post-beta): 5 maps / 100 nodes / 20 voice min/month
 - **Founder Free** (beta signups, permanent): 8 / 150 / 40
-- **Squishy Premium**: $3.99/mo · $29.99/yr · unlimited + AI + collab + imports
-- **Founder Premium**: $1.99/mo · $14.99/yr — beta signups only, forever
+- **Squishy Premium**: $4.99/mo · $39.99/yr · unlimited + AI + collab + imports
+- **Founder Premium**: $2.99/mo · $24.99/yr — beta signups only, forever
+  (40% off Premium — say "40% off", never "half off")
 
 Beta is currently free with the founder offer active. Phase 2 billing
 (Lemon Squeezy) is deliberately deferred until ~500 signups + 6 weeks of
