@@ -479,6 +479,62 @@ export const templates: Template[] = [
       { label: '✅ Success', note: 'How we’ll judge it — the metric and the gut-check.' },
     ]),
   },
+  // ---- Thinking frameworks (structures pros already use) ----
+  {
+    id: 'fishbone',
+    name: 'Fishbone (Cause & Effect)',
+    description:
+      'The Ishikawa root-cause framework — a problem at the centre and the six classic cause categories (the 6 Ms) branching off, each pre-seeded with prompts. Map why something’s going wrong before you fix the wrong thing.',
+    icon: '🐟',
+    data: makeTemplate('Problem / Effect', [
+      { label: 'People', note: 'Skills, training, staffing, communication.', children: ['Skill gaps', 'Unclear ownership', 'Hand-off errors'] },
+      { label: 'Process', note: 'Steps, workflow, policies.', children: ['Missing steps', 'Bottlenecks', 'No feedback loop'] },
+      { label: 'Tools / Tech', note: 'Equipment, software, systems.', children: ['Wrong tool', 'Bugs / downtime', 'Manual where it should be automated'] },
+      { label: 'Materials / Inputs', note: 'Data, assets, supplies.', children: ['Bad data', 'Late inputs', 'Inconsistent quality'] },
+      { label: 'Environment', note: 'Context, market, culture.', children: ['Shifting priorities', 'External pressure', 'Remote friction'] },
+      { label: 'Management', note: 'Decisions, incentives, measurement.', children: ['Wrong metric', 'Slow decisions', 'Misaligned incentives'] },
+    ]),
+  },
+  {
+    id: 'priority-matrix',
+    name: '2×2 Priority Matrix',
+    description:
+      'The impact-vs-effort grid that cuts a long list down to what matters. Four quadrants — quick wins, big bets, fill-ins, and time sinks — so you can place every idea and act on the top-left first.',
+    icon: '🔲',
+    data: makeTemplate('Prioritise: Impact × Effort', [
+      { label: '⚡ Quick wins', note: 'High impact · low effort — DO THESE FIRST.', children: ['Item A', 'Item B'] },
+      { label: '🏔 Big bets', note: 'High impact · high effort — plan & resource.', children: ['Item C', 'Item D'] },
+      { label: '🧹 Fill-ins', note: 'Low impact · low effort — do when idle.', children: ['Item E'] },
+      { label: '🕳 Time sinks', note: 'Low impact · high effort — avoid / drop.', children: ['Item F'] },
+    ]),
+  },
+  {
+    id: 'roadmap-timeline',
+    name: 'Timeline / Roadmap',
+    description:
+      'A Now / Next / Later roadmap — commit to the present, sketch the near term, and park the future without losing it. Each horizon holds its initiatives so stakeholders see direction without false precision.',
+    icon: '🛣',
+    data: makeTemplate('Roadmap', [
+      { label: '▶️ Now', note: 'In flight this cycle. Committed.', children: [{ label: 'Initiative 1', note: 'Owner + due date.' }, { label: 'Initiative 2' }] },
+      { label: '⏭ Next', note: 'Up soon — shaped but not started.', children: ['Initiative 3', 'Initiative 4'] },
+      { label: '🔮 Later', note: 'Direction, not commitment. Revisit each cycle.', children: ['Idea 5', 'Idea 6'] },
+      { label: '🧊 Parked', note: 'Good ideas, wrong time. Kept on purpose.', children: ['Someday'] },
+    ]),
+  },
+  {
+    id: 'kanban',
+    name: 'Kanban Board',
+    description:
+      'A flow board mapped — Backlog → To do → In progress → Review → Done. Pair it with task nodes (press X to tick a card off) to run a lightweight personal or team workflow right on the canvas.',
+    icon: '📋',
+    data: makeTemplate('Kanban', [
+      { label: '📥 Backlog', note: 'Everything not yet committed.', children: ['Card 1', 'Card 2', 'Card 3'] },
+      { label: '📌 To do', note: 'Pulled in for this cycle.', children: ['Card 4', 'Card 5'] },
+      { label: '🔨 In progress', note: 'WIP limit: keep this short.', children: ['Card 6'] },
+      { label: '🔍 Review', note: 'Done-ish, awaiting check.', children: ['Card 7'] },
+      { label: '✅ Done', note: 'Shipped. Tick cards off with X.', children: ['Card 8'] },
+    ]),
+  },
   {
     id: 'project-planning',
     name: 'Project Planning',

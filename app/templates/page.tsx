@@ -22,6 +22,10 @@ const PRO_IDS = [
   'product-launch',
   'content-strategy',
   'creative-brief',
+  'fishbone',
+  'priority-matrix',
+  'roadmap-timeline',
+  'kanban',
 ];
 
 type OutlineNode = { label: string; note: string; children: OutlineNode[] };
