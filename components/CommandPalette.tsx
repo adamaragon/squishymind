@@ -46,6 +46,7 @@ export default function CommandPalette({ canEdit = true }: { canEdit?: boolean }
       { id: 'view-tree', label: 'Switch to Tree view', group: 'View', keywords: 'hierarchy', run: () => send({ type: 'switch_view', mode: 'tree' }) },
       { id: 'view-table', label: 'Switch to Table view', group: 'View', keywords: 'rows columns grid', run: () => send({ type: 'switch_view', mode: 'table' }) },
       // Map actions
+      { id: 'present', label: 'Present (full screen)', group: 'Map', keywords: 'presentation slideshow demo walkthrough narrate', run: () => send({ type: 'present' }) },
       { id: 'focus', label: 'Toggle Focus mode', hint: 'S', group: 'Map', keywords: 'spotlight dim branch concentrate', run: () => send({ type: 'toggle_focus_mode' }) },
       { id: 'done', label: 'Toggle done on selected node', hint: 'X', group: 'Map', keywords: 'task complete check off finish', editOnly: true, run: () => send({ type: 'toggle_done' }) },
       { id: 'fit', label: 'Fit map to screen', hint: 'F', group: 'Map', keywords: 'zoom center', run: () => send({ type: 'fit_to_screen' }) },

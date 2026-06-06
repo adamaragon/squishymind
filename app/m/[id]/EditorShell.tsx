@@ -10,6 +10,7 @@ import MembersPanel from '@/components/MembersPanel';
 import MindMapCanvas from '@/components/MindMapCanvas';
 import ViewSwitcher from '@/components/ViewSwitcher';
 import CommandPalette from '@/components/CommandPalette';
+import PresentationMode from '@/components/PresentationMode';
 import { loadViewMode, saveViewMode } from '@/lib/squishy';
 import { track } from '@/lib/track';
 import { registerCanvasHandler } from '@/lib/canvas-bus';
@@ -115,6 +116,12 @@ export default function EditorShell({
   handleViewChangeRef.current = handleViewChange;
   useEffect(() => {
     return registerCanvasHandler((cmd) => {
+      // Presentation works from any view, so it's handled here (always mounted)
+      // rather than in the canvas (only mounted in canvas view).
+      if (cmd.type === 'present') {
+        setPresentOpen(true);
+        return { success: true };
+      }
       if (cmd.type !== 'switch_view') return undefined;
       const valid: ViewMode[] = ['canvas', 'tree', 'outline', 'table'];
       if (!valid.includes(cmd.mode)) {
@@ -127,6 +134,8 @@ export default function EditorShell({
       return { success: true, data: { mode: cmd.mode } };
     });
   }, []);
+
+  const [presentOpen, setPresentOpen] = useState(false);
 
   const titleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const slugTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -233,6 +242,12 @@ export default function EditorShell({
   return (
     <div className="flex flex-col" style={{ height: '100dvh' }}>
       <CommandPalette canEdit={canEdit} />
+      <PresentationMode
+        open={presentOpen}
+        data={lastDataRef.current}
+        title={title}
+        onClose={() => setPresentOpen(false)}
+      />
       {/* slim top bar */}
       <div className="flex items-center gap-3 px-4 py-2 border-b border-white/10 bg-[--ui-bg] backdrop-blur shrink-0 flex-wrap">
         <Link href="/dashboard" className="text-[--text-dim] hover:text-white transition-colors text-sm shrink-0">
