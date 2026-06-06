@@ -165,9 +165,17 @@ committed so cloners don't need ElevenLabs credentials.
   applies gaps/plan as a labelled child branch. Prompts in `lib/prompts.ts`.
 - **Presentation mode** — `components/PresentationMode.tsx`, EditorShell-level
   (works from any view), reads `lastDataRef`. Optional narration via `/api/tts`.
-- **Version history** — migration `0009_map_versions.sql` is written but **NOT
-  applied / NOT wired** yet (needs DB migration + a verifiable UI pass). Apply
-  the migration, then wire save/list/restore.
+- **Version history** — `0009_map_versions.sql` is **applied to prod** and the
+  feature is **wired**: `GET/POST /api/mindmaps/[id]/versions` + `.../[vid]/restore`,
+  `components/VersionHistory.tsx` (owner-only side panel), 🕑 History top-bar
+  button, `open_versions` bus command, palette "Version history…" (owner-only),
+  voice tool `version_history`. Restore snapshots current state first, then
+  reloads. Owner-scoped via RLS.
+- **Migrations are applied via the Supabase Management API** when a DB password
+  isn't to hand: `POST https://api.supabase.com/v1/projects/<ref>/database/query`
+  with a `sbp_` personal access token (project ref `stienplsxwmdrjhgvgmb`).
+  `supabase db push` needs the DB password; the Management API query endpoint
+  does not.
 
 ## What's shipped (since v1)
 v2.0 server-synced editing · v2.4 voice agent · v2.5 voice canvas control ·

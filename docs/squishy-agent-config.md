@@ -476,6 +476,18 @@ Marks a node done (or not done). Defaults to the selected node.
 }
 ```
 
+### `version_history`
+Opens the version-history panel (owner-only) where the user can save a
+snapshot or restore an earlier one.
+
+```json
+{
+  "name": "version_history",
+  "description": "Open the version-history panel so the user can save a snapshot or restore a previous version of the map.",
+  "parameters": { "type": "object", "properties": {} }
+}
+```
+
 ---
 
 ## Test utterances

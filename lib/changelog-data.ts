@@ -17,6 +17,19 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v4.6',
+    title: 'Version history + professional templates',
+    date: 'June 2026',
+    highlights: [
+      'Version history — hit “Save a version” (or 🕑 History) to snapshot your map, and restore any earlier state with one click',
+      'Restoring is safe: it snapshots your current map first, so you can always wind back the wind-back',
+      'Six deep professional templates — full marketing campaign, SEO project, website build, product launch, content strategy, and creative brief, each mapped the way a pro actually works',
+      'New public Templates page so you can browse them before you sign up',
+    ],
+    squishyNote:
+      'I keep little snapshots now, darling. Break the map all you like — I remember who you were.',
+  },
+  {
     version: 'v4.5',
     title: 'Command palette, a smarter Squishy, and presentation mode',
     date: 'June 2026',
@@ -368,21 +381,15 @@ export const shipped: ShippedEntry[] = [
 
 export const roadmap: RoadmapEntry[] = [
   {
-    title: 'Version history',
+    title: 'Workshop tools',
     description:
-      'Browse and restore previous states of a map. Snapshots on every big change, plus manual "save a version" — so you can always wind back.',
+      'Dot-voting, reactions, and a session timer for running ideation meetings — turn a shared map into a facilitated workshop.',
     status: 'next',
   },
   {
     title: 'Squishy gets smarter at teaching',
     description:
       'Squishy already summarizes maps and finds gaps. Next: she does it by voice too, building example branches with you in real time.',
-    status: 'soon',
-  },
-  {
-    title: 'Workshop tools',
-    description:
-      'Dot-voting, reactions, and a session timer for running ideation meetings — turn a shared map into a facilitated workshop.',
     status: 'soon',
   },
   {
