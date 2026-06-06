@@ -62,6 +62,9 @@ export default function Footer({ minimal = false }: { minimal?: boolean }) {
           <Link href="/features" className="hover:text-white transition-colors">
             Features
           </Link>
+          <Link href="/templates" className="hover:text-white transition-colors">
+            Templates
+          </Link>
           <Link href="/use-cases" className="hover:text-white transition-colors">
             Use cases
           </Link>

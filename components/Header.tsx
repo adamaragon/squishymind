@@ -7,6 +7,7 @@ import { NavShareButton } from '@/components/ShareButtons';
 // still carries the full set there.
 const NAV_LINKS: { href: string; label: string }[] = [
   { href: '/features', label: 'Features' },
+  { href: '/templates', label: 'Templates' },
   { href: '/use-cases', label: 'Use cases' },
   { href: '/compare', label: 'Compare' },
   { href: '/blog', label: 'Blog' },

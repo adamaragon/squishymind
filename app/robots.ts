@@ -16,6 +16,7 @@ export default function robots(): MetadataRoute.Robots {
         allow: [
           '/',
           '/features',
+          '/templates',
           '/use-cases',
           '/compare',
           '/blog',
