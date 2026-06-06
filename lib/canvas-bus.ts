@@ -42,7 +42,10 @@ export type CanvasCommand =
   /** Export the current map. 'doc' produces a Markdown document. */
   | { type: 'export_map'; format: 'json' | 'png' | 'pdf' | 'doc' }
   /** Open the JSON import file picker. */
-  | { type: 'open_import' };
+  | { type: 'open_import' }
+  /** "Smarter Squishy": run an AI pass over the whole map. 'summarize' returns
+   *  text; 'gaps' and 'plan' add a labelled branch of suggestions. */
+  | { type: 'ai_assist'; action: 'summarize' | 'gaps' | 'plan' };
 
 export type CanvasResult =
   | { success: true; data?: unknown }

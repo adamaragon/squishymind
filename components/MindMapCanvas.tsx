@@ -3426,6 +3426,26 @@ export default function MindMapCanvas({
       }
     }
 
+    // Plain indented outline of the whole map — fed to the AI assist endpoint.
+    function buildOutline(): string {
+      const lines: string[] = [];
+      const rootId = state.rootId;
+      if (!rootId || !state.nodes[rootId]) return '';
+      lines.push(titleRef.current || state.nodes[rootId].label || 'Mind map');
+      const walk = (id: string, depth: number) => {
+        for (const cid of state.childIndex[id] || []) {
+          const n = state.nodes[cid];
+          if (!n) continue;
+          const done = n.done ? '[done] ' : '';
+          const note = n.note && n.note.trim() ? ` — ${n.note.replace(/\n+/g, ' ').trim()}` : '';
+          lines.push(`${'  '.repeat(depth + 1)}- ${done}${n.label}${note}`);
+          if (depth < 6) walk(cid, depth + 1);
+        }
+      };
+      walk(rootId, 0);
+      return lines.join('\n');
+    }
+
     // Build a Markdown document from the map's outline and download it.
     function exportDoc() {
       const lines: string[] = [];
@@ -4209,6 +4229,69 @@ export default function MindMapCanvas({
         if (readonlyRef.current) return { success: false, error: 'Read-only map.' };
         onImportClick();
         return { success: true };
+      }
+
+      if (cmd.type === 'ai_assist') {
+        if (!state.rootId || !state.nodes[state.rootId]) {
+          return { success: false, error: 'Map is empty.' };
+        }
+        const outline = buildOutline();
+        let res: Response;
+        try {
+          res = await fetch(`/api/mindmaps/${mindmapId}/assist`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: cmd.action,
+              outline,
+              focusLabel: state.selectedId ? state.nodes[state.selectedId]?.label : undefined,
+            }),
+          });
+        } catch {
+          return { success: false, error: 'Network error reaching Squishy.' };
+        }
+        if (!res.ok) {
+          return { success: false, error: `Squishy is unavailable (${res.status}).` };
+        }
+        const data = (await res.json()) as { summary?: string; children?: Array<{ label: string; note: string }> };
+
+        if (cmd.action === 'summarize') {
+          return { success: true, data: { summary: data.summary || '' } };
+        }
+
+        // gaps / plan → add a labelled branch under the selected node (or root)
+        if (readonlyRef.current) {
+          return { success: false, error: 'Read-only map — can’t add nodes.' };
+        }
+        const children = data.children || [];
+        if (children.length === 0) return { success: false, error: 'No suggestions came back.' };
+        const targetId = state.selectedId && state.nodes[state.selectedId] ? state.selectedId : state.rootId!;
+        const containerLabel = cmd.action === 'gaps' ? '🔍 Missing?' : '✅ Plan';
+        const container = addChild(targetId, containerLabel);
+        if (!container) return { success: false, error: 'Could not add suggestions.' };
+        const createdIds = [container.id];
+        for (const c of children) {
+          const n = addChild(container.id, c.label);
+          if (!n) continue;
+          if (c.note) n.note = c.note;
+          createdIds.push(n.id);
+          flashEdge(container.id, n.id);
+        }
+        layoutChildren(targetId);
+        layoutChildren(container.id);
+        state.selectedId = container.id;
+        scheduleSave();
+        renderAll();
+        setTimeout(fitToScreen, 60);
+        playSfx('pop');
+        pushHistory({
+          description: cmd.action === 'gaps' ? 'Added gap analysis' : 'Added AI plan',
+          undo: () => {
+            deleteNodeById(container.id);
+            renderAll();
+          },
+        });
+        return { success: true, data: { added: children.length, container: containerLabel } };
       }
 
       // Decline commands this handler doesn't know — another handler (e.g.
