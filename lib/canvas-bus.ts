@@ -50,7 +50,9 @@ export type CanvasCommand =
    *  it works from any view). */
   | { type: 'present' }
   /** Open the version-history panel (EditorShell level, owner-only). */
-  | { type: 'open_versions' };
+  | { type: 'open_versions' }
+  /** Toggle the workshop session timer (EditorShell level, client-only). */
+  | { type: 'toggle_timer' };
 
 export type CanvasResult =
   | { success: true; data?: unknown }

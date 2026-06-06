@@ -59,6 +59,7 @@ export default function CommandPalette({
       { id: 'focus', label: 'Toggle Focus mode', hint: 'S', group: 'Map', keywords: 'spotlight dim branch concentrate', run: () => send({ type: 'toggle_focus_mode' }) },
       { id: 'done', label: 'Toggle done on selected node', hint: 'X', group: 'Map', keywords: 'task complete check off finish', editOnly: true, run: () => send({ type: 'toggle_done' }) },
       { id: 'fit', label: 'Fit map to screen', hint: 'F', group: 'Map', keywords: 'zoom center', run: () => send({ type: 'fit_to_screen' }) },
+      { id: 'timer', label: 'Session timer (workshop)', group: 'Map', keywords: 'pomodoro countdown clock timebox meeting', run: () => send({ type: 'toggle_timer' }) },
       // Export / import
       { id: 'exp-json', label: 'Export as JSON', group: 'Export', keywords: 'download backup', run: () => send({ type: 'export_map', format: 'json' }) },
       { id: 'exp-png', label: 'Export as PNG image', group: 'Export', keywords: 'download picture', run: () => send({ type: 'export_map', format: 'png' }) },

@@ -29,6 +29,7 @@ export const CANVAS_TOOLS = [
   'find_gaps',
   'make_plan',
   'version_history',
+  'session_timer',
 ] as const;
 
 type ToolParams = Record<string, unknown>;
@@ -227,6 +228,10 @@ export async function executeSquishyTool(
 
     case 'version_history':
       command = { type: 'open_versions' };
+      break;
+
+    case 'session_timer':
+      command = { type: 'toggle_timer' };
       break;
 
     default:
