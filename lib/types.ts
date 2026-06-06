@@ -41,6 +41,9 @@ export type MindMapNode = {
   flowDirection?: FlowDirection;
   /** Non-structural connections from this node to others in the map. */
   links?: NodeLink[];
+  /** Task completion. Undefined/false == not a checked-off task. When true the
+   *  node renders as completed (✓, struck through, dimmed). */
+  done?: boolean;
 };
 
 export type MindMapData = {

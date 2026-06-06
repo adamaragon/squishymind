@@ -112,6 +112,7 @@ export default function MindMapCanvas({
     theme: 'aurora',
   });
   const nextIdRef = useRef<number>(1);
+  const focusModeRef = useRef<boolean>(false);
   const titleRef = useRef<string>(initialTitle);
   const readonlyRef = useRef<boolean>(readonly);
   const onDataChangeRef = useRef<typeof onDataChange>(onDataChange);
@@ -1948,11 +1949,38 @@ export default function MindMapCanvas({
     }
 
     // ---- Render: nodes ----
+    // Set of node ids that stay lit in Focus mode: the selected node, its
+    // ancestors (path to root) and all its descendants. Empty when focus mode
+    // is off or nothing is selected.
+    function computeFocusSet(): Set<string> {
+      const set = new Set<string>();
+      if (!focusModeRef.current || !state.selectedId) return set;
+      // selected + ancestors
+      let cur: string | null = state.selectedId;
+      while (cur) {
+        set.add(cur);
+        cur = state.nodes[cur]?.parentId ?? null;
+      }
+      // descendants of selected
+      const stack = [state.selectedId];
+      while (stack.length) {
+        const id = stack.pop()!;
+        set.add(id);
+        for (const c of state.childIndex[id] || []) stack.push(c);
+      }
+      return set;
+    }
+
     function renderNodes() {
       nodesLayer.innerHTML = '';
+      const focusSet = computeFocusSet();
+      const focusOn = focusModeRef.current && focusSet.size > 0;
+      if (root) root.classList.toggle('focus-mode', focusOn);
       Object.values(state.nodes).forEach((n) => {
         const el = document.createElement('div');
         el.className = 'node entering';
+        if (n.done) el.classList.add('done');
+        if (focusOn && focusSet.has(n.id)) el.classList.add('in-focus');
         el.dataset.id = n.id;
         el.dataset.depth = String(Math.min(n.depth, 5));
         el.style.left = n.x + 'px';
@@ -2992,6 +3020,11 @@ export default function MindMapCanvas({
       } else if (e.key === 'F2') {
         if (readonlyRef.current) return;
         if (state.selectedId) beginEdit(state.selectedId);
+      } else if (e.key.toLowerCase() === 's') {
+        toggleFocusMode();
+      } else if (e.key.toLowerCase() === 'x') {
+        if (readonlyRef.current) return;
+        if (state.selectedId) toggleDone(state.selectedId);
       }
     }
 
@@ -3116,6 +3149,26 @@ export default function MindMapCanvas({
           t: 0,
           life: 800 + i * 120,
           born: performance.now() + i * 60,
+        });
+      }
+    }
+
+    // Celebration burst: glowing particles radiating outward from (x, y) in
+    // world coords. Used when a task node is checked off. Reuses the existing
+    // particle pool so there's no extra animation loop.
+    function burstAt(x: number, y: number, count = 18) {
+      const now = performance.now();
+      for (let i = 0; i < count; i++) {
+        const ang = (Math.PI * 2 * i) / count + Math.random() * 0.5;
+        const dist = 60 + Math.random() * 90;
+        particles.push({
+          fromX: x,
+          fromY: y,
+          toX: x + Math.cos(ang) * dist,
+          toY: y + Math.sin(ang) * dist,
+          t: 0,
+          life: 520 + Math.random() * 360,
+          born: now + Math.random() * 80,
         });
       }
     }
@@ -3372,6 +3425,71 @@ export default function MindMapCanvas({
         exporting = false;
       }
     }
+
+    // Build a Markdown document from the map's outline and download it.
+    function exportDoc() {
+      const lines: string[] = [];
+      const rootId = state.rootId;
+      if (rootId && state.nodes[rootId]) {
+        lines.push(`# ${titleRef.current || state.nodes[rootId].label || 'Mind map'}`);
+        lines.push('');
+        const walk = (id: string, depth: number) => {
+          const kids = state.childIndex[id] || [];
+          for (const cid of kids) {
+            const n = state.nodes[cid];
+            if (!n) continue;
+            const check = n.done ? '[x] ' : '';
+            lines.push(`${'  '.repeat(depth)}- ${check}${n.label}`);
+            if (n.note && n.note.trim()) {
+              lines.push(`${'  '.repeat(depth + 1)}- _${n.note.replace(/\n+/g, ' ').trim()}_`);
+            }
+            walk(cid, depth + 1);
+          }
+        };
+        walk(rootId, 0);
+      }
+      const md = lines.join('\n') + '\n';
+      const blob = new Blob([md], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = exportBaseName() + '.md';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // Toggle a node's task-done state, with a celebration burst on completion.
+    function toggleDone(id: string | null) {
+      if (readonlyRef.current) return;
+      const nid = id || state.selectedId;
+      if (!nid) return;
+      const n = state.nodes[nid];
+      if (!n) return;
+      const wasDone = !!n.done;
+      n.done = !wasDone;
+      scheduleSave();
+      renderAll();
+      if (n.done) {
+        burstAt(n.x, n.y);
+        playSfx('pop');
+      }
+      pushHistory({
+        description: n.done ? `Completed "${n.label}"` : `Reopened "${n.label}"`,
+        undo: () => {
+          const nn = state.nodes[nid];
+          if (nn) {
+            nn.done = wasDone;
+            renderAll();
+          }
+        },
+      });
+    }
+
+    function toggleFocusMode() {
+      focusModeRef.current = !focusModeRef.current;
+      renderAll();
+    }
+
     function onImportClick() {
       if (readonlyRef.current) return;
       fileInputRef.current?.click();
@@ -4064,6 +4182,35 @@ export default function MindMapCanvas({
         };
       }
 
+      if (cmd.type === 'toggle_done') {
+        if (readonlyRef.current) return { success: false, error: 'Read-only map.' };
+        const nid = cmd.node_id || state.selectedId;
+        if (!nid || !state.nodes[nid]) {
+          return { success: false, error: 'No node selected.' };
+        }
+        toggleDone(nid);
+        return { success: true, data: { node_id: nid, done: !!state.nodes[nid]?.done } };
+      }
+
+      if (cmd.type === 'toggle_focus_mode') {
+        toggleFocusMode();
+        return { success: true, data: { focus_mode: focusModeRef.current } };
+      }
+
+      if (cmd.type === 'export_map') {
+        if (cmd.format === 'png') void onExportPng();
+        else if (cmd.format === 'pdf') void onExportPdf();
+        else if (cmd.format === 'doc') exportDoc();
+        else onExport();
+        return { success: true, data: { format: cmd.format } };
+      }
+
+      if (cmd.type === 'open_import') {
+        if (readonlyRef.current) return { success: false, error: 'Read-only map.' };
+        onImportClick();
+        return { success: true };
+      }
+
       // Decline commands this handler doesn't know — another handler (e.g.
       // the EditorShell-level switch_view bridge) may pick them up.
       return undefined;
@@ -4647,6 +4794,54 @@ export default function MindMapCanvas({
         }
         .smm-root :global(.node.editing) {
           cursor: text;
+        }
+
+        /* ---- Task: completed node ---- */
+        .smm-root :global(.node.done) {
+          opacity: 0.62;
+          text-decoration: line-through;
+          text-decoration-color: color-mix(in srgb, var(--node-text) 55%, transparent);
+          text-decoration-thickness: 1.5px;
+        }
+        .smm-root :global(.node.done::after) {
+          content: '✓';
+          position: absolute;
+          top: -8px;
+          right: -8px;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, var(--accent-5, #10b981), #34d399);
+          color: #04140d;
+          font-size: 11px;
+          font-weight: 800;
+          line-height: 18px;
+          text-align: center;
+          text-decoration: none;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4), 0 0 10px rgba(16, 185, 129, 0.5);
+        }
+        .smm-root :global(.node.done::before) {
+          opacity: 0 !important;
+        }
+
+        /* ---- Focus (Spotlight) mode: dim everything but the active branch ---- */
+        .smm-root.focus-mode :global(.smm-edges) {
+          opacity: 0.18;
+          transition: opacity 0.3s ease;
+        }
+        .smm-root.focus-mode :global(.node) {
+          opacity: 0.22;
+          filter: saturate(0.6);
+          transition:
+            opacity 0.3s ease,
+            filter 0.3s ease;
+        }
+        .smm-root.focus-mode :global(.node.in-focus) {
+          opacity: 1;
+          filter: none;
+        }
+        .smm-root.focus-mode :global(.node.in-focus.done) {
+          opacity: 0.62;
         }
         .smm-root :global(.node.entering) {
           animation: smm-nodeEnter 0.4s cubic-bezier(0.2, 0.7, 0.3, 1.4) both;
