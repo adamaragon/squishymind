@@ -11,6 +11,7 @@ import MindMapCanvas from '@/components/MindMapCanvas';
 import ViewSwitcher from '@/components/ViewSwitcher';
 import CommandPalette from '@/components/CommandPalette';
 import PresentationMode from '@/components/PresentationMode';
+import VersionHistory from '@/components/VersionHistory';
 import { loadViewMode, saveViewMode } from '@/lib/squishy';
 import { track } from '@/lib/track';
 import { registerCanvasHandler } from '@/lib/canvas-bus';
@@ -122,6 +123,11 @@ export default function EditorShell({
         setPresentOpen(true);
         return { success: true };
       }
+      if (cmd.type === 'open_versions') {
+        if (!isOwner) return { success: false, error: 'Version history is owner-only.' };
+        setVersionsOpen(true);
+        return { success: true };
+      }
       if (cmd.type !== 'switch_view') return undefined;
       const valid: ViewMode[] = ['canvas', 'tree', 'outline', 'table'];
       if (!valid.includes(cmd.mode)) {
@@ -136,6 +142,7 @@ export default function EditorShell({
   }, []);
 
   const [presentOpen, setPresentOpen] = useState(false);
+  const [versionsOpen, setVersionsOpen] = useState(false);
 
   const titleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const slugTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -241,13 +248,20 @@ export default function EditorShell({
 
   return (
     <div className="flex flex-col" style={{ height: '100dvh' }}>
-      <CommandPalette canEdit={canEdit} />
+      <CommandPalette canEdit={canEdit} canVersion={isOwner} />
       <PresentationMode
         open={presentOpen}
         data={lastDataRef.current}
         title={title}
         onClose={() => setPresentOpen(false)}
       />
+      {isOwner && (
+        <VersionHistory
+          open={versionsOpen}
+          onClose={() => setVersionsOpen(false)}
+          mindmapId={id}
+        />
+      )}
       {/* slim top bar */}
       <div className="flex items-center gap-3 px-4 py-2 border-b border-white/10 bg-[--ui-bg] backdrop-blur shrink-0 flex-wrap">
         <Link href="/dashboard" className="text-[--text-dim] hover:text-white transition-colors text-sm shrink-0">
@@ -323,6 +337,17 @@ export default function EditorShell({
         >
           <span>⌘K</span>
         </button>
+
+        {/* version history — owner only */}
+        {isOwner && (
+          <button
+            onClick={() => setVersionsOpen(true)}
+            className="shrink-0 hidden sm:flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 text-[--text-dim] hover:text-white transition-colors"
+            title="Version history"
+          >
+            <span>🕑 History</span>
+          </button>
+        )}
 
         {/* members button — collaboration is a future premium feature; free during beta */}
         <button

@@ -21,7 +21,13 @@ type Result =
   | { kind: 'done'; text: string }
   | { kind: 'error'; text: string };
 
-export default function CommandPalette({ canEdit = true }: { canEdit?: boolean }) {
+export default function CommandPalette({
+  canEdit = true,
+  canVersion = false,
+}: {
+  canEdit?: boolean;
+  canVersion?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
@@ -47,6 +53,9 @@ export default function CommandPalette({ canEdit = true }: { canEdit?: boolean }
       { id: 'view-table', label: 'Switch to Table view', group: 'View', keywords: 'rows columns grid', run: () => send({ type: 'switch_view', mode: 'table' }) },
       // Map actions
       { id: 'present', label: 'Present (full screen)', group: 'Map', keywords: 'presentation slideshow demo walkthrough narrate', run: () => send({ type: 'present' }) },
+      ...(canVersion
+        ? [{ id: 'versions', label: 'Version history…', group: 'Map' as const, keywords: 'snapshot restore undo backup history save version', run: () => send({ type: 'open_versions' }) }]
+        : []),
       { id: 'focus', label: 'Toggle Focus mode', hint: 'S', group: 'Map', keywords: 'spotlight dim branch concentrate', run: () => send({ type: 'toggle_focus_mode' }) },
       { id: 'done', label: 'Toggle done on selected node', hint: 'X', group: 'Map', keywords: 'task complete check off finish', editOnly: true, run: () => send({ type: 'toggle_done' }) },
       { id: 'fit', label: 'Fit map to screen', hint: 'F', group: 'Map', keywords: 'zoom center', run: () => send({ type: 'fit_to_screen' }) },
@@ -62,7 +71,7 @@ export default function CommandPalette({ canEdit = true }: { canEdit?: boolean }
       { id: 'th-forest', label: 'Theme: Forest', group: 'Theme', run: () => send({ type: 'switch_theme', theme: 'forest' }) },
       { id: 'th-mono', label: 'Theme: Mono', group: 'Theme', run: () => send({ type: 'switch_theme', theme: 'mono' }) },
     ],
-    [send],
+    [send, canVersion],
   );
 
   const results = useMemo(() => {

@@ -28,6 +28,7 @@ export const CANVAS_TOOLS = [
   'summarize_map',
   'find_gaps',
   'make_plan',
+  'version_history',
 ] as const;
 
 type ToolParams = Record<string, unknown>;
@@ -222,6 +223,10 @@ export async function executeSquishyTool(
 
     case 'make_plan':
       command = { type: 'ai_assist', action: 'plan' };
+      break;
+
+    case 'version_history':
+      command = { type: 'open_versions' };
       break;
 
     default:

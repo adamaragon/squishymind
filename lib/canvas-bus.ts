@@ -48,7 +48,9 @@ export type CanvasCommand =
   | { type: 'ai_assist'; action: 'summarize' | 'gaps' | 'plan' }
   /** Enter full-screen Presentation mode (handled at the EditorShell level so
    *  it works from any view). */
-  | { type: 'present' };
+  | { type: 'present' }
+  /** Open the version-history panel (EditorShell level, owner-only). */
+  | { type: 'open_versions' };
 
 export type CanvasResult =
   | { success: true; data?: unknown }
