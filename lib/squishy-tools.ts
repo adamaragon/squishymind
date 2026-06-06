@@ -20,6 +20,14 @@ export const CANVAS_TOOLS = [
   'list_templates',
   'apply_template',
   'switch_view',
+  // Wave 1/2 — voice can now drive these too (register matching tools on the
+  // ElevenLabs dashboard; see docs/squishy-agent-config.md).
+  'toggle_done',
+  'toggle_focus_mode',
+  'present',
+  'summarize_map',
+  'find_gaps',
+  'make_plan',
 ] as const;
 
 type ToolParams = Record<string, unknown>;
@@ -191,6 +199,30 @@ export async function executeSquishyTool(
       command = { type: 'switch_view', mode: mode as (typeof valid)[number] };
       break;
     }
+
+    case 'toggle_done':
+      command = { type: 'toggle_done', node_id: asString(params.node_id) };
+      break;
+
+    case 'toggle_focus_mode':
+      command = { type: 'toggle_focus_mode' };
+      break;
+
+    case 'present':
+      command = { type: 'present' };
+      break;
+
+    case 'summarize_map':
+      command = { type: 'ai_assist', action: 'summarize' };
+      break;
+
+    case 'find_gaps':
+      command = { type: 'ai_assist', action: 'gaps' };
+      break;
+
+    case 'make_plan':
+      command = { type: 'ai_assist', action: 'plan' };
+      break;
 
     default:
       return { success: false, error: `Unknown tool: ${toolName}` };

@@ -403,6 +403,79 @@ Replaces the current map with a starter template. Destructive — confirm first.
 }
 ```
 
+### `summarize_map`
+Squishy reads the whole map and returns an executive summary (in the result),
+which you then speak aloud in your own voice. Read-only.
+
+```json
+{
+  "name": "summarize_map",
+  "description": "Summarize the entire mind map. Returns a short summary in the result's data.summary — read it back to the user in one or two sentences.",
+  "parameters": { "type": "object", "properties": {} }
+}
+```
+
+### `find_gaps`
+Adds a "🔍 Missing?" branch of things the map overlooks (under the selected
+node, or the root).
+
+```json
+{
+  "name": "find_gaps",
+  "description": "Analyse the map for what's missing and add the suggestions as a new branch. Confirm with the user first, then narrate how many gaps you added.",
+  "parameters": { "type": "object", "properties": {} }
+}
+```
+
+### `make_plan`
+Adds a "✅ Plan" branch of ordered action steps based on the map.
+
+```json
+{
+  "name": "make_plan",
+  "description": "Turn the map into an ordered action plan, added as a new branch. Confirm first, then narrate that the plan is ready.",
+  "parameters": { "type": "object", "properties": {} }
+}
+```
+
+### `present`
+Enters full-screen presentation mode (walks the map branch-by-branch).
+
+```json
+{
+  "name": "present",
+  "description": "Start full-screen presentation mode. Use when the user asks to present, demo, or walk through their map.",
+  "parameters": { "type": "object", "properties": {} }
+}
+```
+
+### `toggle_focus_mode`
+Toggles Focus (Spotlight) mode — dims everything but the active branch.
+
+```json
+{
+  "name": "toggle_focus_mode",
+  "description": "Toggle Focus mode, which dims everything except the selected node's branch so the user can concentrate.",
+  "parameters": { "type": "object", "properties": {} }
+}
+```
+
+### `toggle_done`
+Marks a node done (or not done). Defaults to the selected node.
+
+```json
+{
+  "name": "toggle_done",
+  "description": "Toggle a node's done/checked-off state. Defaults to the selected node; pass node_id to target a specific one (resolve via list_nodes).",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "node_id": { "type": "string", "description": "Optional. ID of the node to toggle. Omit to use the selected node." }
+    }
+  }
+}
+```
+
 ---
 
 ## Test utterances
@@ -419,7 +492,10 @@ Quick smoke tests after updating the dashboard:
 | "Can you delete Tokyo for me?" | Asks for confirmation first. After yes, calls `list_nodes` then `delete_node`. |
 | "Set Tokyo to flow back to Paris." | Politely says flow direction is currently a click-only feature ("tap the chip on the line itself") and doesn't fake a tool call. |
 | "Sign me up for founder access." | Calls `navigate(path: "/signup")` if logged out; otherwise mentions they're already eligible. |
-| "How much is Premium?" | Honest, no "free forever" — $3.99/mo post-launch, $1.99/mo founder rate during beta. |
+| "How much is Premium?" | Honest, no "free forever" — $4.99/mo post-launch, $2.99/mo founder rate during beta. |
+| "Summarize my map." | Calls `summarize_map`, then reads the returned summary back in one or two sentences. |
+| "What am I missing?" | Confirms, calls `find_gaps`, narrates how many gaps it added. |
+| "Present this to me." | Calls `present` and lets the full-screen walkthrough take over. |
 
 ---
 
