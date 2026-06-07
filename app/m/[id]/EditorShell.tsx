@@ -13,6 +13,7 @@ import CommandPalette from '@/components/CommandPalette';
 import PresentationMode from '@/components/PresentationMode';
 import VersionHistory from '@/components/VersionHistory';
 import SessionTimer from '@/components/SessionTimer';
+import Reactions from '@/components/Reactions';
 import { loadViewMode, saveViewMode } from '@/lib/squishy';
 import { track } from '@/lib/track';
 import { registerCanvasHandler } from '@/lib/canvas-bus';
@@ -133,6 +134,10 @@ export default function EditorShell({
         setTimerOpen((t) => !t);
         return { success: true };
       }
+      if (cmd.type === 'toggle_reactions') {
+        setReactionsOpen((r) => !r);
+        return { success: true };
+      }
       if (cmd.type !== 'switch_view') return undefined;
       const valid: ViewMode[] = ['canvas', 'tree', 'outline', 'table'];
       if (!valid.includes(cmd.mode)) {
@@ -149,6 +154,7 @@ export default function EditorShell({
   const [presentOpen, setPresentOpen] = useState(false);
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [timerOpen, setTimerOpen] = useState(false);
+  const [reactionsOpen, setReactionsOpen] = useState(false);
 
   const titleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const slugTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -269,6 +275,7 @@ export default function EditorShell({
         />
       )}
       <SessionTimer open={timerOpen} onClose={() => setTimerOpen(false)} />
+      <Reactions open={reactionsOpen} onClose={() => setReactionsOpen(false)} mindmapId={id} />
       {/* slim top bar */}
       <div className="flex items-center gap-3 px-4 py-2 border-b border-white/10 bg-[--ui-bg] backdrop-blur shrink-0 flex-wrap">
         <Link href="/dashboard" className="text-[--text-dim] hover:text-white transition-colors text-sm shrink-0">

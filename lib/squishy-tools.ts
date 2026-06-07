@@ -30,6 +30,7 @@ export const CANVAS_TOOLS = [
   'make_plan',
   'version_history',
   'session_timer',
+  'reactions',
 ] as const;
 
 type ToolParams = Record<string, unknown>;
@@ -232,6 +233,10 @@ export async function executeSquishyTool(
 
     case 'session_timer':
       command = { type: 'toggle_timer' };
+      break;
+
+    case 'reactions':
+      command = { type: 'toggle_reactions' };
       break;
 
     default:

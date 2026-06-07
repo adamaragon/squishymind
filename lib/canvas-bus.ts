@@ -52,7 +52,9 @@ export type CanvasCommand =
   /** Open the version-history panel (EditorShell level, owner-only). */
   | { type: 'open_versions' }
   /** Toggle the workshop session timer (EditorShell level, client-only). */
-  | { type: 'toggle_timer' };
+  | { type: 'toggle_timer' }
+  /** Toggle the live reactions bar (EditorShell level, realtime broadcast). */
+  | { type: 'toggle_reactions' };
 
 export type CanvasResult =
   | { success: true; data?: unknown }
