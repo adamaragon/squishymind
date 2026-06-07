@@ -17,6 +17,18 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v4.8',
+    title: 'Live reactions + your own colours',
+    date: 'June 2026',
+    highlights: [
+      'Live reactions — open the reactions bar in a shared map and fire emoji that float up the screen for everyone, in real time',
+      'Custom colours — pick a primary accent and SquishyMind fans it into a harmonious palette for your whole map',
+      'Your palette sticks across sessions, and resets to any built-in theme in one click',
+    ],
+    squishyNote:
+      'Throw a 🎉 when someone nails it, darling. And yes, you can finally make me match your brand.',
+  },
+  {
     version: 'v4.7',
     title: 'Frameworks, new themes, and a workshop timer',
     date: 'June 2026',
@@ -394,9 +406,9 @@ export const shipped: ShippedEntry[] = [
 
 export const roadmap: RoadmapEntry[] = [
   {
-    title: 'Live workshop voting',
+    title: 'Dot-voting on nodes',
     description:
-      'The session timer shipped — next is real-time dot-voting and emoji reactions on a shared map, so a group can prioritise together live.',
+      'Live reactions and the session timer shipped. Next: persistent dot-voting that tallies on each node, so a group can prioritise a map together and the result sticks.',
     status: 'next',
   },
   {
@@ -448,9 +460,9 @@ export const roadmap: RoadmapEntry[] = [
     status: 'considering',
   },
   {
-    title: 'Custom colour themes',
+    title: 'Named palettes & sync',
     description:
-      'Six preset themes ship today (Aurora, Sunrise, Forest, Mono, Nebula, Ember). Next: pick your own accent colours and save a personal palette.',
+      'Custom colours ship today (pick an accent, get a palette). Next: name and save multiple palettes, and sync them across devices instead of just this browser.',
     status: 'considering',
   },
 ];
