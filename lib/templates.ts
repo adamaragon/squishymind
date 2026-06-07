@@ -111,6 +111,126 @@ function makeTemplate(rootLabel: string, branches: TemplateBranch[]): MindMapDat
   return { nodes, childIndex, rootId };
 }
 
+// ---------------------------------------------------------------------------
+// Explicit-coordinate layouts for the "structure" templates. These bake real
+// x/y into the data so fishbone / matrix / lanes render in their true shape
+// instead of the default radial spread. The canvas preserves template
+// coordinates (TemplatePicker inserts data verbatim; apply_template copies it),
+// so no runtime layout engine is needed.
+// ---------------------------------------------------------------------------
+
+type Placed = {
+  label: string;
+  note?: string;
+  x: number;
+  y: number;
+  colorIdx: number;
+  children?: Placed[];
+};
+
+function makePositioned(rootLabel: string, rootNote: string, branches: Placed[]): MindMapData {
+  const nodes: Record<string, MindMapNode> = {};
+  const childIndex: Record<string, string[]> = {};
+  let counter = 1;
+  const nextId = () => `n${counter++}`;
+  const now = Date.now();
+
+  const rootId = nextId();
+  nodes[rootId] = {
+    id: rootId, label: rootLabel, x: 0, y: 0, parentId: null,
+    depth: 0, colorIdx: 0, note: rootNote, createdAt: now,
+  };
+  childIndex[rootId] = [];
+
+  const add = (parentId: string, depth: number, p: Placed) => {
+    const id = nextId();
+    nodes[id] = {
+      id, label: p.label, x: p.x, y: p.y, parentId,
+      depth, colorIdx: p.colorIdx, note: p.note ?? '', createdAt: now,
+    };
+    childIndex[parentId].push(id);
+    childIndex[id] = [];
+    (p.children ?? []).forEach((ch) => add(id, depth + 1, ch));
+  };
+  branches.forEach((b) => add(rootId, 1, b));
+  return { nodes, childIndex, rootId };
+}
+
+type LaneCard = string | { label: string; note?: string };
+
+// Vertical lanes (kanban / Now-Next-Later): root top-centre, lanes in a row,
+// cards stacked under each lane.
+function makeLanes(
+  rootLabel: string,
+  rootNote: string,
+  lanes: { label: string; note?: string; cards: LaneCard[] }[],
+): MindMapData {
+  const LANE_GAP = 300;
+  const CARD_GAP = 76;
+  const LANE_Y = 130;
+  const CARD_Y0 = 220;
+  const startX = -((lanes.length - 1) * LANE_GAP) / 2;
+  const branches: Placed[] = lanes.map((lane, i) => {
+    const x = startX + i * LANE_GAP;
+    const colorIdx = i % 5;
+    const cards: Placed[] = lane.cards.map((card, j) => {
+      const c = typeof card === 'string' ? { label: card } : card;
+      return { label: c.label, note: c.note, x, y: CARD_Y0 + j * CARD_GAP, colorIdx };
+    });
+    return { label: lane.label, note: lane.note, x, y: LANE_Y, colorIdx, children: cards };
+  });
+  return makePositioned(rootLabel, rootNote, branches);
+}
+
+// Four quadrants around the centre (2x2 matrix). quads order: TL, TR, BL, BR.
+function makeQuadrants(
+  rootLabel: string,
+  rootNote: string,
+  quads: { label: string; note?: string; items: LaneCard[] }[],
+): MindMapData {
+  const HX = 360;
+  const HY = 210;
+  const corners: [number, number][] = [[-HX, -HY], [HX, -HY], [-HX, HY], [HX, HY]];
+  const branches: Placed[] = quads.slice(0, 4).map((q, i) => {
+    const [hx, hy] = corners[i];
+    const up = hy < 0;
+    const items: Placed[] = q.items.map((card, j) => {
+      const c = typeof card === 'string' ? { label: card } : card;
+      const iy = hy + (up ? -(86 + j * 66) : 86 + j * 66);
+      return { label: c.label, note: c.note, x: hx, y: iy, colorIdx: i % 5 };
+    });
+    return { label: q.label, note: q.note, x: hx, y: hy, colorIdx: i % 5, children: items };
+  });
+  return makePositioned(rootLabel, rootNote, branches);
+}
+
+// Fishbone: effect at the root (right), cause categories fan off as ribs above
+// and below an implied spine, with their causes extending further outward.
+function makeFishbone(
+  effectLabel: string,
+  effectNote: string,
+  cats: { label: string; note?: string; causes: LaneCard[] }[],
+): MindMapData {
+  const COL_X = [-180, -460, -740];
+  const TOP_Y = -170;
+  const BOT_Y = 170;
+  let ti = 0;
+  let bi = 0;
+  const branches: Placed[] = cats.map((cat, i) => {
+    const top = i % 2 === 0;
+    const x = top ? COL_X[ti] : COL_X[bi];
+    const y = top ? TOP_Y : BOT_Y;
+    if (top) ti++; else bi++;
+    const causes: Placed[] = cat.causes.map((c, j) => {
+      const cc = typeof c === 'string' ? { label: c } : c;
+      const cy = y + (top ? -(74 + j * 70) : 74 + j * 70);
+      return { label: cc.label, note: cc.note, x: x - 70, y: cy, colorIdx: i % 5 };
+    });
+    return { label: cat.label, note: cat.note, x, y, colorIdx: i % 5, children: causes };
+  });
+  return makePositioned(effectLabel, effectNote, branches);
+}
+
 export const templates: Template[] = [
   // ---- Deep professional templates (showcase: real work, mapped) ----
   {
@@ -486,13 +606,13 @@ export const templates: Template[] = [
     description:
       'The Ishikawa root-cause framework — a problem at the centre and the six classic cause categories (the 6 Ms) branching off, each pre-seeded with prompts. Map why something’s going wrong before you fix the wrong thing.',
     icon: '🐟',
-    data: makeTemplate('Problem / Effect', [
-      { label: 'People', note: 'Skills, training, staffing, communication.', children: ['Skill gaps', 'Unclear ownership', 'Hand-off errors'] },
-      { label: 'Process', note: 'Steps, workflow, policies.', children: ['Missing steps', 'Bottlenecks', 'No feedback loop'] },
-      { label: 'Tools / Tech', note: 'Equipment, software, systems.', children: ['Wrong tool', 'Bugs / downtime', 'Manual where it should be automated'] },
-      { label: 'Materials / Inputs', note: 'Data, assets, supplies.', children: ['Bad data', 'Late inputs', 'Inconsistent quality'] },
-      { label: 'Environment', note: 'Context, market, culture.', children: ['Shifting priorities', 'External pressure', 'Remote friction'] },
-      { label: 'Management', note: 'Decisions, incentives, measurement.', children: ['Wrong metric', 'Slow decisions', 'Misaligned incentives'] },
+    data: makeFishbone('Problem / Effect', 'The effect you’re diagnosing. Causes fan off as ribs.', [
+      { label: 'People', note: 'Skills, training, staffing, communication.', causes: ['Skill gaps', 'Unclear ownership', 'Hand-off errors'] },
+      { label: 'Process', note: 'Steps, workflow, policies.', causes: ['Missing steps', 'Bottlenecks', 'No feedback loop'] },
+      { label: 'Tools / Tech', note: 'Equipment, software, systems.', causes: ['Wrong tool', 'Bugs / downtime', 'Too manual'] },
+      { label: 'Materials', note: 'Data, assets, supplies.', causes: ['Bad data', 'Late inputs', 'Inconsistent quality'] },
+      { label: 'Environment', note: 'Context, market, culture.', causes: ['Shifting priorities', 'External pressure', 'Remote friction'] },
+      { label: 'Management', note: 'Decisions, incentives, measurement.', causes: ['Wrong metric', 'Slow decisions', 'Bad incentives'] },
     ]),
   },
   {
@@ -501,11 +621,11 @@ export const templates: Template[] = [
     description:
       'The impact-vs-effort grid that cuts a long list down to what matters. Four quadrants — quick wins, big bets, fill-ins, and time sinks — so you can place every idea and act on the top-left first.',
     icon: '🔲',
-    data: makeTemplate('Prioritise: Impact × Effort', [
-      { label: '⚡ Quick wins', note: 'High impact · low effort — DO THESE FIRST.', children: ['Item A', 'Item B'] },
-      { label: '🏔 Big bets', note: 'High impact · high effort — plan & resource.', children: ['Item C', 'Item D'] },
-      { label: '🧹 Fill-ins', note: 'Low impact · low effort — do when idle.', children: ['Item E'] },
-      { label: '🕳 Time sinks', note: 'Low impact · high effort — avoid / drop.', children: ['Item F'] },
+    data: makeQuadrants('Impact × Effort', 'Place each idea in a quadrant. Act on the top-left first.', [
+      { label: '⚡ Quick wins', note: 'High impact · low effort — DO THESE FIRST.', items: ['Item A', 'Item B'] },
+      { label: '🏔 Big bets', note: 'High impact · high effort — plan & resource.', items: ['Item C', 'Item D'] },
+      { label: '🧹 Fill-ins', note: 'Low impact · low effort — do when idle.', items: ['Item E'] },
+      { label: '🕳 Time sinks', note: 'Low impact · high effort — avoid / drop.', items: ['Item F'] },
     ]),
   },
   {
@@ -514,11 +634,11 @@ export const templates: Template[] = [
     description:
       'A Now / Next / Later roadmap — commit to the present, sketch the near term, and park the future without losing it. Each horizon holds its initiatives so stakeholders see direction without false precision.',
     icon: '🛣',
-    data: makeTemplate('Roadmap', [
-      { label: '▶️ Now', note: 'In flight this cycle. Committed.', children: [{ label: 'Initiative 1', note: 'Owner + due date.' }, { label: 'Initiative 2' }] },
-      { label: '⏭ Next', note: 'Up soon — shaped but not started.', children: ['Initiative 3', 'Initiative 4'] },
-      { label: '🔮 Later', note: 'Direction, not commitment. Revisit each cycle.', children: ['Idea 5', 'Idea 6'] },
-      { label: '🧊 Parked', note: 'Good ideas, wrong time. Kept on purpose.', children: ['Someday'] },
+    data: makeLanes('Roadmap', 'Horizons left to right. Commitment decreases as you go.', [
+      { label: '▶️ Now', note: 'In flight this cycle. Committed.', cards: [{ label: 'Initiative 1', note: 'Owner + due date.' }, 'Initiative 2'] },
+      { label: '⏭ Next', note: 'Up soon — shaped but not started.', cards: ['Initiative 3', 'Initiative 4'] },
+      { label: '🔮 Later', note: 'Direction, not commitment. Revisit each cycle.', cards: ['Idea 5', 'Idea 6'] },
+      { label: '🧊 Parked', note: 'Good ideas, wrong time. Kept on purpose.', cards: ['Someday'] },
     ]),
   },
   {
@@ -527,12 +647,12 @@ export const templates: Template[] = [
     description:
       'A flow board mapped — Backlog → To do → In progress → Review → Done. Pair it with task nodes (press X to tick a card off) to run a lightweight personal or team workflow right on the canvas.',
     icon: '📋',
-    data: makeTemplate('Kanban', [
-      { label: '📥 Backlog', note: 'Everything not yet committed.', children: ['Card 1', 'Card 2', 'Card 3'] },
-      { label: '📌 To do', note: 'Pulled in for this cycle.', children: ['Card 4', 'Card 5'] },
-      { label: '🔨 In progress', note: 'WIP limit: keep this short.', children: ['Card 6'] },
-      { label: '🔍 Review', note: 'Done-ish, awaiting check.', children: ['Card 7'] },
-      { label: '✅ Done', note: 'Shipped. Tick cards off with X.', children: ['Card 8'] },
+    data: makeLanes('Kanban', 'Pull cards left to right. Tick Done cards off with X.', [
+      { label: '📥 Backlog', note: 'Everything not yet committed.', cards: ['Card 1', 'Card 2', 'Card 3'] },
+      { label: '📌 To do', note: 'Pulled in for this cycle.', cards: ['Card 4', 'Card 5'] },
+      { label: '🔨 In progress', note: 'WIP limit: keep this short.', cards: ['Card 6'] },
+      { label: '🔍 Review', note: 'Done-ish, awaiting check.', cards: ['Card 7'] },
+      { label: '✅ Done', note: 'Shipped. Tick cards off with X.', cards: ['Card 8'] },
     ]),
   },
   {
