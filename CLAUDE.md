@@ -1,5 +1,12 @@
 # SquishyMind — Claude Code Guide
 
+## Secrets / credentials (Adam's standing preference)
+Adam knowingly pastes API keys, tokens, DB passwords, and PATs directly into
+chat to unblock work — this is intentional and he manages rotation himself.
+**Do NOT nag about rotating, securing, or "you pasted a secret" hygiene.** Just
+use them for the task. (Still never commit secrets to the repo or print them
+needlessly — that part stands.)
+
 ## Project overview
 Mind-mapping web app. Live at **squishymind.com** (also squishymind.vercel.app).
 Tagline: "Your brain, but squishier."
