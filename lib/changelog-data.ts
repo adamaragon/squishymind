@@ -17,6 +17,17 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v4.9',
+    title: 'Frameworks that snap to shape',
+    date: 'June 2026',
+    highlights: [
+      'The framework templates now open in their real layout — Fishbone fans its cause ribs around the effect, the 2×2 Matrix lands in quadrants, and Kanban / Roadmap open as proper lanes',
+      'No fiddling required: pick the template and it’s already shaped the way the framework is meant to look',
+    ],
+    squishyNote:
+      'Fishbone actually looks like a fish now, darling. Took me long enough.',
+  },
+  {
     version: 'v4.8',
     title: 'Live reactions + your own colours',
     date: 'June 2026',
@@ -418,9 +429,9 @@ export const roadmap: RoadmapEntry[] = [
     status: 'soon',
   },
   {
-    title: 'Structure layouts',
+    title: 'Live layout modes',
     description:
-      'Fishbone, matrix, timeline, and kanban exist as templates today. Next: dedicated auto-layouts so each one snaps to its true shape, not a radial map.',
+      'Framework templates now open in their true shape. Next: live auto-arrange you can re-apply any time (tidy a messy map into a tree, radial, or grid on demand).',
     status: 'considering',
   },
   {
