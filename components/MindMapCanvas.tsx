@@ -3613,6 +3613,31 @@ export default function MindMapCanvas({
     });
     applyThemeAttr('aurora');
 
+    // Custom accent palette (set via the colour picker). Overrides the preset
+    // theme's --accent-* / --selection inline on the root. Persisted globally.
+    const CUSTOM_KEY = 'smm:customAccents';
+    function applyCustomAccents(accents: string[]) {
+      const r = rootRef.current;
+      if (!r || accents.length < 5) return;
+      for (let i = 0; i < 5; i++) r.style.setProperty(`--accent-${i + 1}`, accents[i]);
+      r.style.setProperty('--selection', accents[0]);
+    }
+    function clearCustomAccents() {
+      const r = rootRef.current;
+      if (!r) return;
+      for (let i = 0; i < 5; i++) r.style.removeProperty(`--accent-${i + 1}`);
+      r.style.removeProperty('--selection');
+    }
+    try {
+      const saved = localStorage.getItem(CUSTOM_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) applyCustomAccents(parsed);
+      }
+    } catch {
+      /* ignore */
+    }
+
     // ---- Wire global listeners ----
     stage.addEventListener('mousedown', onStageMouseDown);
     stage.addEventListener('wheel', onStageWheel, { passive: false });
@@ -4138,6 +4163,28 @@ export default function MindMapCanvas({
       if (cmd.type === 'switch_theme') {
         applyThemeAttr(cmd.theme);
         return { success: true, data: { theme: cmd.theme } };
+      }
+
+      if (cmd.type === 'apply_custom_theme') {
+        const accents = Array.isArray(cmd.accents) ? cmd.accents.slice(0, 5) : [];
+        if (accents.length < 5) return { success: false, error: 'Need 5 accent colours.' };
+        applyCustomAccents(accents);
+        try {
+          localStorage.setItem('smm:customAccents', JSON.stringify(accents));
+        } catch {
+          /* ignore */
+        }
+        return { success: true, data: { accents } };
+      }
+
+      if (cmd.type === 'clear_custom_theme') {
+        clearCustomAccents();
+        try {
+          localStorage.removeItem('smm:customAccents');
+        } catch {
+          /* ignore */
+        }
+        return { success: true };
       }
 
       if (cmd.type === 'list_templates') {

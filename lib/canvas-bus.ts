@@ -54,7 +54,14 @@ export type CanvasCommand =
   /** Toggle the workshop session timer (EditorShell level, client-only). */
   | { type: 'toggle_timer' }
   /** Toggle the live reactions bar (EditorShell level, realtime broadcast). */
-  | { type: 'toggle_reactions' };
+  | { type: 'toggle_reactions' }
+  /** Apply a custom accent palette (5 hex colours) to the canvas, overriding
+   *  the preset theme's accents. Persisted in localStorage. */
+  | { type: 'apply_custom_theme'; accents: string[] }
+  /** Clear the custom palette and fall back to the active preset theme. */
+  | { type: 'clear_custom_theme' }
+  /** Open the custom-colour picker panel (EditorShell level). */
+  | { type: 'open_theme_picker' };
 
 export type CanvasResult =
   | { success: true; data?: unknown }

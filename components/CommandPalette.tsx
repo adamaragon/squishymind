@@ -72,6 +72,9 @@ export default function CommandPalette({
       { id: 'th-sunrise', label: 'Theme: Sunrise (light)', group: 'Theme', run: () => send({ type: 'switch_theme', theme: 'sunrise' }) },
       { id: 'th-forest', label: 'Theme: Forest', group: 'Theme', run: () => send({ type: 'switch_theme', theme: 'forest' }) },
       { id: 'th-mono', label: 'Theme: Mono', group: 'Theme', run: () => send({ type: 'switch_theme', theme: 'mono' }) },
+      { id: 'th-nebula', label: 'Theme: Nebula (cool)', group: 'Theme', run: () => send({ type: 'switch_theme', theme: 'nebula' }) },
+      { id: 'th-ember', label: 'Theme: Ember (warm)', group: 'Theme', run: () => send({ type: 'switch_theme', theme: 'ember' }) },
+      { id: 'th-custom', label: 'Custom colours…', group: 'Theme', keywords: 'palette accent pick colour color brand', run: () => send({ type: 'open_theme_picker' }) },
     ],
     [send, canVersion],
   );
