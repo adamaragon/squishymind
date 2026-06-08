@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { MindMapData, MindMapNode, ViewMode } from '@/lib/types';
 import NodeDetailPanel from './NodeDetailPanel';
 import { stripIncomingLinks } from '@/lib/canvas/layout';
@@ -12,7 +12,7 @@ type Props = {
   readonly?: boolean;
   onSwitchView?: (mode: ViewMode) => void;
   /** Called with the updated MindMapData when the detail panel mutates a
-   *  node (label / note / image / attachments). Parent debounces save. */
+   *  node (label / note / image / attachments / done). Parent debounces save. */
   onDataChange?: (data: MindMapData) => void;
 };
 
@@ -26,22 +26,32 @@ const ACCENT_PALETTE = [
   '#f59e0b', // amber
 ];
 
-function walkPaths(d: MindMapData): string[][] {
-  const paths: string[][] = [];
-  if (!d.rootId) return paths;
-  function walk(id: string, path: string[]) {
-    const node = d.nodes[id];
-    if (!node) return;
-    const next = [...path, id];
-    const children = d.childIndex[id] || [];
-    if (children.length === 0) {
-      paths.push(next);
-      return;
-    }
-    for (const c of children) walk(c, next);
+// Indentation step (px) for the hierarchical Name column.
+const INDENT_PX = 22;
+
+// localStorage key for the chosen table mode. Per-user, not per-map. The 'smm:'
+// prefix matches the rest of the app's local keys (e.g. smm:customAccents).
+const TABLE_MODE_KEY = 'smm:tableMode';
+type TableMode = 'tree' | 'flat';
+
+function loadTableMode(): TableMode {
+  if (typeof window === 'undefined') return 'tree';
+  try {
+    const v = window.localStorage.getItem(TABLE_MODE_KEY);
+    if (v === 'tree' || v === 'flat') return v;
+  } catch {
+    /* private mode, disabled storage, etc. */
   }
-  walk(d.rootId, []);
-  return paths;
+  return 'tree';
+}
+
+function saveTableMode(mode: TableMode): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(TABLE_MODE_KEY, mode);
+  } catch {
+    /* ignore */
+  }
 }
 
 // Remove a node + its subtree from a MindMapData. Returns a new data object;
@@ -79,6 +89,69 @@ function removeNodeFromData(d: MindMapData, id: string): MindMapData | null {
   return { nodes, childIndex, rootId: d.rootId };
 }
 
+// One flattened row, shared shape between both modes. `depth` drives the
+// hierarchical indent; `path` (breadcrumb labels) drives the flat Path column.
+type Row = {
+  id: string;
+  depth: number;
+  hasChildren: boolean;
+  childCount: number;
+  /** Ancestor + self labels, e.g. ['Root','Branch','Leaf']. */
+  path: string[];
+};
+
+// Depth-first walk producing one Row per node, in tree order, skipping the
+// subtrees of any node in `collapsed`. Root included (depth 0).
+function buildHierRows(d: MindMapData, collapsed: Set<string>): Row[] {
+  const rows: Row[] = [];
+  if (!d.rootId) return rows;
+  const walk = (id: string, depth: number, labels: string[]) => {
+    const node = d.nodes[id];
+    if (!node) return;
+    const kids = d.childIndex[id] || [];
+    const path = [...labels, node.label || 'Untitled'];
+    rows.push({
+      id,
+      depth,
+      hasChildren: kids.length > 0,
+      childCount: kids.length,
+      path,
+    });
+    if (collapsed.has(id)) return;
+    for (const k of kids) walk(k, depth + 1, path);
+  };
+  walk(d.rootId, 0, []);
+  return rows;
+}
+
+// Every node as its own row (no nesting), each carrying its full breadcrumb
+// path. Order follows the same DFS so the default (unsorted) flat view still
+// reads top-to-bottom like the tree.
+function buildFlatRows(d: MindMapData): Row[] {
+  const rows: Row[] = [];
+  if (!d.rootId) return rows;
+  const walk = (id: string, depth: number, labels: string[]) => {
+    const node = d.nodes[id];
+    if (!node) return;
+    const kids = d.childIndex[id] || [];
+    const path = [...labels, node.label || 'Untitled'];
+    rows.push({
+      id,
+      depth,
+      hasChildren: kids.length > 0,
+      childCount: kids.length,
+      path,
+    });
+    for (const k of kids) walk(k, depth + 1, path);
+  };
+  walk(d.rootId, 0, []);
+  return rows;
+}
+
+// Sortable columns in the flat view.
+type SortKey = 'label' | 'path' | 'note' | 'done' | 'children';
+type SortDir = 'asc' | 'desc';
+
 export default function TableView({
   // mindmapId + initialTitle are part of the shared view-component
   // interface so callers can pass identical props to all four views.
@@ -91,30 +164,36 @@ export default function TableView({
   onSwitchView,
   onDataChange,
 }: Props) {
-  const [selectedRow, setSelectedRow] = useState<number | null>(null);
-  const [density, setDensity] = useState<'comfy' | 'compact'>('comfy');
+  const [mode, setMode] = useState<TableMode>('tree');
   const [detailNodeId, setDetailNodeId] = useState<string | null>(null);
-  // Roving tabindex: only ONE cell in the grid is tab-stoppable at a time
-  // (the one in `focusedCell`); the rest get tabIndex=-1. Arrow keys move
-  // focus, so Tab leaves the grid entirely rather than walking every cell.
-  // Standard a11y pattern for grids — see WAI-ARIA Authoring Practices §3.5.
-  const [focusedCell, setFocusedCell] = useState<{ row: number; col: number }>(
-    { row: 0, col: 0 },
-  );
-  // Map of "rowIdx-colIdx" → cell element, populated via ref callbacks so we
-  // can programmatically focus the next cell after arrow-key navigation.
-  const cellRefs = useRef<Map<string, HTMLTableCellElement>>(new Map());
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  // Flat-mode controls.
+  const [sortKey, setSortKey] = useState<SortKey>('path');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [filter, setFilter] = useState('');
+
   // Local data state so detail-panel edits feel immediate. Resyncs when the
-  // parent reseeds with new initialData (view switch).
+  // parent reseeds with new initialData (view switch / realtime sync).
   const [data, setData] = useState<MindMapData>(initialData);
-  // Keep state aligned when the parent supplies fresh data (e.g. after a
-  // realtime sync). Cheap deep-equal via JSON to avoid spurious updates.
+  // Keep state aligned when the parent supplies fresh data. Cheap deep-equal
+  // via JSON to avoid spurious updates.
   useMemo(() => {
     if (JSON.stringify(initialData) !== JSON.stringify(data)) {
       setData(initialData);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialData]);
+
+  // Read persisted mode once on mount (guarded for SSR).
+  useEffect(() => {
+    setMode(loadTableMode());
+  }, []);
+
+  function changeMode(next: TableMode) {
+    setMode(next);
+    saveTableMode(next);
+  }
 
   function applyNodeUpdate(next: MindMapNode) {
     const updated: MindMapData = {
@@ -129,88 +208,122 @@ export default function TableView({
     const updated = removeNodeFromData(data, id);
     if (!updated) return;
     setData(updated);
+    if (detailNodeId === id) setDetailNodeId(null);
     onDataChange?.(updated);
   }
 
-  function openNodeDetail(id: string, rowIdx: number) {
-    setSelectedRow(rowIdx);
-    setDetailNodeId(id);
+  // Toggle a node's `done` flag through the same immutable-update path as
+  // every other mutation. No-op when readonly.
+  function toggleDone(id: string) {
+    if (readonly) return;
+    const node = data.nodes[id];
+    if (!node) return;
+    applyNodeUpdate({ ...node, done: !node.done });
   }
 
-  // Move the roving focus by (dRow, dCol). Clamps to the actual cell grid;
-  // for shorter rows, snaps the column to the row's own max depth so users
-  // don't navigate into empty trailing cells.
-  function moveFocus(
-    dRow: number,
-    dCol: number,
-    paths: string[][],
-  ) {
-    setFocusedCell((cur) => {
-      if (paths.length === 0) return cur;
-      const nextRow = Math.max(0, Math.min(paths.length - 1, cur.row + dRow));
-      const path = paths[nextRow];
-      if (!path) return cur;
-      const maxCol = path.length - 1;
-      const nextCol = Math.max(0, Math.min(maxCol, cur.col + dCol));
-      return { row: nextRow, col: nextCol };
+  function toggleCollapse(id: string) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
     });
   }
 
-  // After focusedCell changes, programmatically move DOM focus to the new
-  // cell. Skipped on initial mount so the table doesn't grab focus on load.
-  const isFirstFocus = useRef(true);
-  useEffect(() => {
-    if (isFirstFocus.current) {
-      isFirstFocus.current = false;
-      return;
+  function expandAll() {
+    setCollapsed(new Set());
+  }
+
+  function collapseAll() {
+    // Collapse every node that has children except the root, so the root row
+    // (and its top-level children) stay visible.
+    const next = new Set<string>();
+    for (const [pid, kids] of Object.entries(data.childIndex)) {
+      if (kids.length > 0 && pid !== data.rootId) next.add(pid);
     }
-    const key = `${focusedCell.row}-${focusedCell.col}`;
-    cellRefs.current.get(key)?.focus();
-  }, [focusedCell]);
+    setCollapsed(next);
+  }
 
-  const paths = useMemo(() => walkPaths(data), [data]);
-  // Every path starts with the root, which is identical across rows and
-  // makes the first column an empty echo. Drop it from the view; the root
-  // is surfaced once in the toolbar instead. If the root itself has no
-  // children, paths is [[rootId]] → visiblePaths becomes [[]] which we
-  // filter out so the table is empty rather than full of blank rows.
-  const visiblePaths = useMemo(
-    () => paths.map((p) => p.slice(1)).filter((p) => p.length > 0),
-    [paths],
-  );
-  const maxDepth = useMemo(
-    () => visiblePaths.reduce((acc, p) => Math.max(acc, p.length), 0),
-    [visiblePaths],
-  );
-
-  // Clamp focused cell back into bounds when rows / depth shrink under it
-  // (e.g. user deletes a leaf, or the parent re-seeds with a thinner tree).
-  useEffect(() => {
-    setFocusedCell((cur) => {
-      if (visiblePaths.length === 0) return { row: 0, col: 0 };
-      const row = Math.min(cur.row, visiblePaths.length - 1);
-      const col = Math.min(cur.col, visiblePaths[row].length - 1);
-      if (row === cur.row && col === cur.col) return cur;
-      return { row, col };
+  function onSort(key: SortKey) {
+    setSortDir((prevDir) => {
+      // Same column → flip direction; new column → start ascending.
+      if (key === sortKey) return prevDir === 'asc' ? 'desc' : 'asc';
+      return 'asc';
     });
-  }, [visiblePaths]);
+    setSortKey(key);
+  }
+
   const rootLabel = data.rootId
     ? (data.nodes[data.rootId]?.label || 'Untitled mind map')
     : null;
 
+  // Hierarchical rows (respects collapse).
+  const hierRows = useMemo(
+    () => buildHierRows(data, collapsed),
+    [data, collapsed],
+  );
+
+  // Flat rows: build, filter, then sort. Filtering matches label / note /
+  // breadcrumb path, case-insensitive.
+  const flatRowsBase = useMemo(() => buildFlatRows(data), [data]);
+  const flatRows = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    let rows = flatRowsBase;
+    if (q) {
+      rows = rows.filter((r) => {
+        const node = data.nodes[r.id];
+        const label = (node?.label || '').toLowerCase();
+        const note = (node?.note || '').toLowerCase();
+        const path = r.path.join(' › ').toLowerCase();
+        return label.includes(q) || note.includes(q) || path.includes(q);
+      });
+    }
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const sorted = rows.slice().sort((a, b) => {
+      const na = data.nodes[a.id];
+      const nb = data.nodes[b.id];
+      let cmp = 0;
+      switch (sortKey) {
+        case 'label':
+          cmp = (na?.label || '').localeCompare(nb?.label || '');
+          break;
+        case 'path':
+          cmp = a.path.join(' › ').localeCompare(b.path.join(' › '));
+          break;
+        case 'note':
+          cmp = (na?.note || '').localeCompare(nb?.note || '');
+          break;
+        case 'done':
+          cmp = Number(!!na?.done) - Number(!!nb?.done);
+          break;
+        case 'children':
+          cmp = a.childCount - b.childCount;
+          break;
+      }
+      return cmp * dir;
+    });
+    return sorted;
+  }, [flatRowsBase, data, filter, sortKey, sortDir]);
+
   // Stats for the header strip.
   const stats = useMemo(() => {
-    const totalNodes = Object.keys(data.nodes).length;
-    const leaves = paths.length;
-    const noted = Object.values(data.nodes).filter((n) => n.note && n.note.trim()).length;
-    const branches = totalNodes - leaves;
-    return { totalNodes, leaves, branches, noted };
-  }, [data, paths]);
+    const all = Object.values(data.nodes);
+    const totalNodes = all.length;
+    const noted = all.filter((n) => n.note && n.note.trim()).length;
+    const done = all.filter((n) => n.done).length;
+    let maxDepth = 0;
+    for (const n of all) maxDepth = Math.max(maxDepth, n.depth ?? 0);
+    return { totalNodes, noted, done, levels: maxDepth + 1 };
+  }, [data]);
 
   const detailNode = detailNodeId ? data.nodes[detailNodeId] : null;
+  const isEmpty = !data.rootId || Object.keys(data.nodes).length === 0;
+  const visibleCount = mode === 'tree' ? hierRows.length : flatRows.length;
 
+  // Column count for the flat header's sort arrows / a11y. Tag · Name · Path ·
+  // Note · Image · Done · Children.
   return (
-    <div className={`table-view h-full flex flex-col relative ${density}`}>
+    <div className="table-view h-full flex flex-col relative">
       {/* ---- Toolbar / stat strip ---- */}
       <div className="tv-toolbar shrink-0">
         <div className="tv-toolbar-left">
@@ -218,7 +331,7 @@ export default function TableView({
             <span className="tv-title-icon" aria-hidden>▦</span>
             <h2>Table</h2>
             {rootLabel && (
-              <span className="tv-root-crumb" title="All rows are paths under this root">
+              <span className="tv-root-crumb" title="Root of this mind map">
                 <span className="tv-root-icon" aria-hidden>🧠</span>
                 <span className="tv-root-name">{rootLabel}</span>
               </span>
@@ -232,17 +345,7 @@ export default function TableView({
             </span>
             <span className="tv-stat-sep" aria-hidden>·</span>
             <span className="tv-stat">
-              <span className="tv-stat-num">{stats.branches}</span>
-              <span className="tv-stat-lbl">branches</span>
-            </span>
-            <span className="tv-stat-sep" aria-hidden>·</span>
-            <span className="tv-stat">
-              <span className="tv-stat-num">{stats.leaves}</span>
-              <span className="tv-stat-lbl">leaves</span>
-            </span>
-            <span className="tv-stat-sep" aria-hidden>·</span>
-            <span className="tv-stat">
-              <span className="tv-stat-num">{maxDepth}</span>
+              <span className="tv-stat-num">{stats.levels}</span>
               <span className="tv-stat-lbl">levels</span>
             </span>
             <span className="tv-stat-sep" aria-hidden>·</span>
@@ -250,29 +353,83 @@ export default function TableView({
               <span className="tv-stat-num">{stats.noted}</span>
               <span className="tv-stat-lbl">w/ notes</span>
             </span>
+            <span className="tv-stat-sep" aria-hidden>·</span>
+            <span className="tv-stat">
+              <span className="tv-stat-num">{stats.done}</span>
+              <span className="tv-stat-lbl">done</span>
+            </span>
           </div>
         </div>
         <div className="tv-toolbar-right">
-          <div className="tv-density" role="group" aria-label="Row density">
+          {/* Mode toggle — the headline control. */}
+          <div className="tv-modeseg" role="group" aria-label="Table layout">
             <button
               type="button"
-              className={`tv-density-btn ${density === 'comfy' ? 'is-active' : ''}`}
-              onClick={() => setDensity('comfy')}
-              title="Comfortable rows"
-              aria-pressed={density === 'comfy'}
+              className={`tv-mode-btn ${mode === 'tree' ? 'is-active' : ''}`}
+              onClick={() => changeMode('tree')}
+              aria-pressed={mode === 'tree'}
+              title="Hierarchy — rows mirror the tree with indentation"
             >
-              Comfy
+              <span aria-hidden>⊟</span> Hierarchy
             </button>
             <button
               type="button"
-              className={`tv-density-btn ${density === 'compact' ? 'is-active' : ''}`}
-              onClick={() => setDensity('compact')}
-              title="Compact rows"
-              aria-pressed={density === 'compact'}
+              className={`tv-mode-btn ${mode === 'flat' ? 'is-active' : ''}`}
+              onClick={() => changeMode('flat')}
+              aria-pressed={mode === 'flat'}
+              title="Spreadsheet — every node a flat, sortable row"
             >
-              Compact
+              <span aria-hidden>▤</span> Spreadsheet
             </button>
           </div>
+
+          {mode === 'tree' && !isEmpty && (
+            <div className="tv-treetools" role="group" aria-label="Expand controls">
+              <button
+                type="button"
+                className="tv-tool-btn"
+                onClick={expandAll}
+                title="Expand all rows"
+              >
+                <span aria-hidden>▾</span> Expand
+              </button>
+              <button
+                type="button"
+                className="tv-tool-btn"
+                onClick={collapseAll}
+                title="Collapse all rows"
+              >
+                <span aria-hidden>▸</span> Collapse
+              </button>
+            </div>
+          )}
+
+          {mode === 'flat' && !isEmpty && (
+            <div className="tv-filter">
+              <span className="tv-filter-icon" aria-hidden>⌕</span>
+              <input
+                type="text"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder="Filter rows…"
+                className="tv-filter-input"
+                aria-label="Filter rows by label, note, or path"
+                spellCheck={false}
+              />
+              {filter && (
+                <button
+                  type="button"
+                  className="tv-filter-clear"
+                  onClick={() => setFilter('')}
+                  aria-label="Clear filter"
+                  title="Clear filter"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          )}
+
           <button
             type="button"
             onClick={() => onSwitchView?.('canvas')}
@@ -287,343 +444,61 @@ export default function TableView({
 
       {/* ---- Grid ---- */}
       <div className="tv-scroll">
-        {visiblePaths.length === 0 ? (
+        {isEmpty ? (
           <div className="tv-empty">
             <div className="tv-empty-icon" aria-hidden>▦</div>
             <h3>No rows to show</h3>
-            <p>
-              {data.rootId
-                ? 'The root has no children yet. Add a node on the canvas to see it here.'
-                : 'This map is empty. Add a node on the canvas to see it here.'}
-            </p>
+            <p>This map is empty. Add a node on the canvas to see it here.</p>
           </div>
+        ) : mode === 'tree' ? (
+          <HierTable
+            rows={hierRows}
+            data={data}
+            readonly={readonly}
+            collapsed={collapsed}
+            rootId={data.rootId}
+            onOpen={(id) => setDetailNodeId(id)}
+            onToggleCollapse={toggleCollapse}
+            onToggleDone={toggleDone}
+            onDelete={applyDeleteNode}
+          />
         ) : (
-          <table
-            className="tv-grid"
-            role="grid"
-            aria-label={`${rootLabel || 'Mind map'} — table view`}
-            aria-rowcount={visiblePaths.length}
-            aria-colcount={maxDepth + 3 + (readonly ? 0 : 1)}
-          >
-            <thead>
-              <tr>
-                <th className="tv-th tv-th-rowno" scope="col">
-                  <span className="tv-th-rowno-inner">#</span>
-                </th>
-                <th className="tv-th tv-th-tag" scope="col" title="Leaf colour tag">
-                  Tag
-                </th>
-                {Array.from({ length: maxDepth }).map((_, i) => (
-                  <th key={i} className="tv-th" scope="col">
-                    <div className="tv-th-inner">
-                      <span className="tv-th-dot" data-depth={i % 5} aria-hidden />
-                      <span className="tv-th-label">
-                        L{i + 1}
-                        <span className="tv-th-sub">
-                          {i === maxDepth - 1
-                            ? 'leaf'
-                            : i === 0
-                            ? 'branch'
-                            : 'branch'}
-                        </span>
-                      </span>
-                    </div>
-                  </th>
-                ))}
-                <th className="tv-th tv-th-note" scope="col" title="Per-row data: note, image, attachments">
-                  Data
-                </th>
-                {!readonly && (
-                  <th className="tv-th tv-th-actions" scope="col" aria-label="Row actions" />
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {visiblePaths.map((path, rowIdx) => {
-                const prev = rowIdx > 0 ? visiblePaths[rowIdx - 1] : null;
-                let firstNew = 0;
-                if (prev) {
-                  while (
-                    firstNew < path.length &&
-                    firstNew < prev.length &&
-                    path[firstNew] === prev[firstNew]
-                  ) {
-                    firstNew++;
-                  }
-                }
-                const leafId = path[path.length - 1];
-                const leafNode = data.nodes[leafId];
-                const colorIdx = leafNode?.colorIdx ?? 0;
-                const isSelected = selectedRow === rowIdx;
-                return (
-                  <tr
-                    key={rowIdx}
-                    className={`tv-row ${isSelected ? 'is-selected' : ''}`}
-                    onClick={() => setSelectedRow(rowIdx)}
-                  >
-                    <td className="tv-cell tv-cell-rowno">
-                      <span className="tv-rowno">{rowIdx + 1}</span>
-                    </td>
-                    <td className="tv-cell tv-cell-tag">
-                      <span
-                        className="tv-tag-pill"
-                        style={{
-                          background: `linear-gradient(135deg, ${ACCENT_PALETTE[colorIdx % 5]}, ${
-                            ACCENT_PALETTE[(colorIdx + 2) % 5]
-                          })`,
-                        }}
-                        aria-hidden
-                      />
-                    </td>
-                    {Array.from({ length: maxDepth }).map((_, colIdx) => {
-                      const id = path[colIdx];
-                      if (!id) {
-                        return (
-                          <td
-                            key={colIdx}
-                            className="tv-cell tv-cell-empty"
-                            aria-hidden
-                          />
-                        );
-                      }
-                      const node = data.nodes[id];
-                      const isContinuation = colIdx < firstNew;
-                      const isLeaf = colIdx === path.length - 1;
-                      const hasNote = !!node?.note?.trim();
-                      const hasImage = !!node?.imageUrl;
-                      const attachCount = node?.attachments?.length ?? 0;
-                      const hasData = hasNote || hasImage || attachCount > 0;
-                      // Every cell is a click-target for the detail panel.
-                      // Continuation cells point at the same node as the row
-                      // above so clicking them is harmless (they just open
-                      // the panel for that same ancestor). Empty trailing
-                      // cells stay non-interactive.
-                      return (
-                        <td
-                          key={colIdx}
-                          ref={(el) => {
-                            const key = `${rowIdx}-${colIdx}`;
-                            if (el) cellRefs.current.set(key, el);
-                            else cellRefs.current.delete(key);
-                          }}
-                          className={[
-                            'tv-cell',
-                            'tv-cell-clickable',
-                            isContinuation ? 'tv-cell-continuation' : '',
-                            isLeaf ? 'tv-cell-leaf' : '',
-                          ]
-                            .filter(Boolean)
-                            .join(' ')}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setFocusedCell({ row: rowIdx, col: colIdx });
-                            openNodeDetail(id, rowIdx);
-                          }}
-                          onFocus={() => {
-                            // Mouse-focusing a non-focused cell updates the
-                            // roving target so Tab-out / Tab-back returns
-                            // to the cell the user last interacted with.
-                            if (
-                              focusedCell.row !== rowIdx ||
-                              focusedCell.col !== colIdx
-                            ) {
-                              setFocusedCell({ row: rowIdx, col: colIdx });
-                            }
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              openNodeDetail(id, rowIdx);
-                              return;
-                            }
-                            if (e.key === 'ArrowRight') {
-                              e.preventDefault();
-                              moveFocus(0, 1, visiblePaths);
-                              return;
-                            }
-                            if (e.key === 'ArrowLeft') {
-                              e.preventDefault();
-                              moveFocus(0, -1, visiblePaths);
-                              return;
-                            }
-                            if (e.key === 'ArrowDown') {
-                              e.preventDefault();
-                              moveFocus(1, 0, visiblePaths);
-                              return;
-                            }
-                            if (e.key === 'ArrowUp') {
-                              e.preventDefault();
-                              moveFocus(-1, 0, visiblePaths);
-                              return;
-                            }
-                            if (e.key === 'Home') {
-                              e.preventDefault();
-                              setFocusedCell({
-                                row: e.ctrlKey || e.metaKey ? 0 : rowIdx,
-                                col: 0,
-                              });
-                              return;
-                            }
-                            if (e.key === 'End') {
-                              e.preventDefault();
-                              const targetRow =
-                                e.ctrlKey || e.metaKey
-                                  ? visiblePaths.length - 1
-                                  : rowIdx;
-                              setFocusedCell({
-                                row: targetRow,
-                                col: visiblePaths[targetRow].length - 1,
-                              });
-                              return;
-                            }
-                          }}
-                          role="gridcell"
-                          tabIndex={
-                            focusedCell.row === rowIdx &&
-                            focusedCell.col === colIdx
-                              ? 0
-                              : -1
-                          }
-                          aria-label={`Open details for ${node?.label || 'this node'}`}
-                          title={node?.note || node?.label || ''}
-                          data-depth={colIdx % 5}
-                        >
-                          {!isContinuation && (
-                            <span className="tv-cell-rail" aria-hidden />
-                          )}
-                          <span className="tv-cell-label">
-                            {node?.label || (
-                              <span className="tv-cell-untitled">Untitled</span>
-                            )}
-                          </span>
-                          {!isContinuation && hasData && (
-                            <span className="tv-cell-flags">
-                              {hasNote && (
-                                <span
-                                  className="tv-cell-flag has-note"
-                                  data-tip="Has a note"
-                                >
-                                  ≡
-                                </span>
-                              )}
-                              {hasImage && (
-                                <span
-                                  className="tv-cell-flag has-image"
-                                  data-tip="Image attached"
-                                >
-                                  ▣
-                                </span>
-                              )}
-                              {attachCount > 0 && (
-                                <span
-                                  className="tv-cell-flag has-attach"
-                                  data-tip={`${attachCount} file attachment${attachCount === 1 ? '' : 's'}`}
-                                >
-                                  ◧{attachCount}
-                                </span>
-                              )}
-                            </span>
-                          )}
-                        </td>
-                      );
-                    })}
-                    <td className="tv-cell tv-cell-noteflag">
-                      <button
-                        type="button"
-                        className="tv-row-details-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (leafId) setDetailNodeId(leafId);
-                        }}
-                        title="Open this row's leaf node details"
-                      >
-                        <span className="tv-row-flags">
-                          {leafNode?.note?.trim() && (
-                            <span
-                              className="tv-row-flag has-note"
-                              data-tip="Has a note"
-                            >
-                              <span className="tv-row-flag-icon" aria-hidden>≡</span>
-                              <span className="tv-row-flag-label">Note</span>
-                            </span>
-                          )}
-                          {leafNode?.imageUrl && (
-                            <span
-                              className="tv-row-flag has-image"
-                              data-tip="Image attached"
-                            >
-                              <span className="tv-row-flag-icon" aria-hidden>▣</span>
-                              <span className="tv-row-flag-label">Image</span>
-                            </span>
-                          )}
-                          {(leafNode?.attachments?.length ?? 0) > 0 && (
-                            <span
-                              className="tv-row-flag has-attach"
-                              data-tip={`${leafNode!.attachments!.length} file attachment${
-                                leafNode!.attachments!.length === 1 ? '' : 's'
-                              }`}
-                            >
-                              <span className="tv-row-flag-icon" aria-hidden>◧</span>
-                              <span className="tv-row-flag-label">
-                                {leafNode!.attachments!.length}{' '}
-                                {leafNode!.attachments!.length === 1 ? 'file' : 'files'}
-                              </span>
-                            </span>
-                          )}
-                          {!leafNode?.note?.trim() &&
-                            !leafNode?.imageUrl &&
-                            !(leafNode?.attachments?.length) && (
-                              <span className="tv-row-flag tv-row-flag-empty">No extras</span>
-                            )}
-                        </span>
-                        <span className="tv-row-details-cta">Open ↗</span>
-                      </button>
-                    </td>
-                    {!readonly && (
-                      <td className="tv-cell tv-cell-actions">
-                        <button
-                          type="button"
-                          className="tv-row-delete-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!leafId) return;
-                            if (
-                              typeof window === 'undefined' ||
-                              window.confirm(
-                                `Delete "${leafNode?.label || 'this node'}"? Removes it from the canvas too.`,
-                              )
-                            ) {
-                              applyDeleteNode(leafId);
-                            }
-                          }}
-                          data-tip="Delete this row's leaf node"
-                          aria-label="Delete leaf node"
-                        >
-                          <svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                            <path d="M2.5 3.5 H 11.5" />
-                            <path d="M4 3.5 V 2.5 a1 1 0 0 1 1 -1 h4 a1 1 0 0 1 1 1 V 3.5" />
-                            <path d="M3.5 3.5 V 11.5 a1 1 0 0 0 1 1 h5 a1 1 0 0 0 1 -1 V 3.5" />
-                          </svg>
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="tv-foot">
-                {/* Columns: # + Tag + maxDepth depth cols + Data (+ Actions when editable) */}
-                <td colSpan={maxDepth + 3 + (readonly ? 0 : 1)}>
-                  Showing {visiblePaths.length}{' '}
-                  {visiblePaths.length === 1 ? 'row' : 'rows'} ·{' '}
-                  {rootLabel ? `under "${rootLabel}"` : 'every leaf path from root to tip'}.
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+          <FlatTable
+            rows={flatRows}
+            data={data}
+            readonly={readonly}
+            rootId={data.rootId}
+            sortKey={sortKey}
+            sortDir={sortDir}
+            onSort={onSort}
+            onOpen={(id) => setDetailNodeId(id)}
+            onToggleDone={toggleDone}
+            onDelete={applyDeleteNode}
+          />
         )}
       </div>
+
+      {!isEmpty && (
+        <div className="tv-foot-bar">
+          {mode === 'tree' ? (
+            <>
+              Showing {visibleCount}{' '}
+              {visibleCount === 1 ? 'row' : 'rows'}
+              {collapsed.size > 0
+                ? ` · ${collapsed.size} branch${collapsed.size === 1 ? '' : 'es'} collapsed`
+                : ' · fully expanded'}
+              .
+            </>
+          ) : (
+            <>
+              Showing {visibleCount} of {flatRowsBase.length}{' '}
+              {flatRowsBase.length === 1 ? 'node' : 'nodes'}
+              {filter ? ` matching “${filter}”` : ''} · sorted by {sortKey} (
+              {sortDir}).
+            </>
+          )}
+        </div>
+      )}
 
       {detailNode && (
         <NodeDetailPanel
@@ -707,8 +582,6 @@ export default function TableView({
           padding: 2px 7px;
           border-radius: 999px;
         }
-        /* Root breadcrumb in the toolbar — replaces the dropped L1 column.
-           Surfaces the root name once instead of repeating it on every row. */
         .tv-root-crumb {
           display: inline-flex;
           align-items: center;
@@ -751,6 +624,7 @@ export default function TableView({
           color: var(--text);
           font-weight: 600;
           font-variant-numeric: tabular-nums;
+          font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
           font-size: 13px;
         }
         .tv-stat-lbl {
@@ -763,33 +637,113 @@ export default function TableView({
           display: flex;
           align-items: center;
           gap: 10px;
+          flex-wrap: wrap;
         }
-        .tv-density {
+
+        /* Mode segmented control */
+        .tv-modeseg {
           display: inline-flex;
           background: rgba(255, 255, 255, 0.04);
           border: 1px solid var(--border);
-          border-radius: 8px;
+          border-radius: 9px;
           padding: 2px;
         }
-        .tv-density-btn {
+        .tv-mode-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
           background: transparent;
           color: var(--text-dim);
           border: none;
           font-size: 11px;
-          font-weight: 500;
-          padding: 4px 10px;
-          border-radius: 6px;
+          font-weight: 600;
+          letter-spacing: 0.2px;
+          padding: 5px 12px;
+          border-radius: 7px;
           cursor: pointer;
           transition: all 0.15s;
         }
-        .tv-density-btn:hover {
+        .tv-mode-btn:hover {
           color: var(--text);
         }
-        .tv-density-btn.is-active {
+        .tv-mode-btn.is-active {
           color: var(--text);
+          background: linear-gradient(
+            135deg,
+            rgba(236, 72, 153, 0.22),
+            rgba(139, 92, 246, 0.22)
+          );
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+
+        .tv-treetools {
+          display: inline-flex;
+          gap: 6px;
+        }
+        .tv-tool-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          background: rgba(255, 255, 255, 0.04);
+          color: var(--text-dim);
+          border: 1px solid var(--border);
+          font-size: 11px;
+          font-weight: 500;
+          padding: 5px 10px;
+          border-radius: 7px;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+        .tv-tool-btn:hover {
           background: rgba(255, 255, 255, 0.08);
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+          color: var(--text);
+          border-color: var(--border-strong);
         }
+
+        /* Filter input */
+        .tv-filter {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          padding: 3px 8px;
+          transition: border-color 0.15s;
+        }
+        .tv-filter:focus-within {
+          border-color: rgba(139, 92, 246, 0.5);
+        }
+        .tv-filter-icon {
+          font-size: 13px;
+          color: var(--text-dim);
+        }
+        .tv-filter-input {
+          background: transparent;
+          border: none;
+          outline: none;
+          color: var(--text);
+          font: inherit;
+          font-size: 12px;
+          width: 150px;
+        }
+        .tv-filter-input::placeholder {
+          color: var(--text-dim);
+        }
+        .tv-filter-clear {
+          background: transparent;
+          border: none;
+          color: var(--text-dim);
+          font-size: 11px;
+          cursor: pointer;
+          padding: 0 2px;
+          line-height: 1;
+          transition: color 0.12s;
+        }
+        .tv-filter-clear:hover {
+          color: var(--text);
+        }
+
         .tv-canvas-btn {
           display: inline-flex;
           align-items: center;
@@ -810,17 +764,12 @@ export default function TableView({
           transform: translateY(-1px);
         }
 
-        /* ---- Scroll container with grid background ---- */
+        /* ---- Scroll container ---- */
         .tv-scroll {
           flex: 1;
           min-height: 0;
           overflow: auto;
           padding: 0;
-          background-image:
-            linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
-          background-size: 32px 32px;
-          background-position: -1px -1px;
         }
 
         /* ---- Empty state ---- */
@@ -848,410 +797,13 @@ export default function TableView({
           margin: 0;
         }
 
-        /* ---- Grid ---- */
-        .tv-grid {
-          width: 100%;
-          border-collapse: separate;
-          border-spacing: 0;
-          font-size: 13px;
-          background: rgba(10, 11, 22, 0.4);
-        }
-
-        /* Headers — sticky, label-on-top */
-        .tv-th {
-          position: sticky;
-          top: 0;
-          z-index: 3;
-          text-align: left;
-          background: rgba(15, 17, 36, 0.92);
-          backdrop-filter: blur(14px);
-          -webkit-backdrop-filter: blur(14px);
-          color: var(--text-dim);
-          font-size: 10px;
-          letter-spacing: 0.9px;
-          text-transform: uppercase;
-          font-weight: 600;
-          padding: 12px 14px;
-          border-bottom: 1px solid var(--border-strong);
-          border-right: 1px solid rgba(255, 255, 255, 0.04);
-          white-space: nowrap;
-        }
-        .tv-th:last-child {
-          border-right: none;
-        }
-        .tv-th-inner {
-          display: inline-flex;
-          align-items: center;
-          gap: 7px;
-        }
-        .tv-th-label {
-          display: inline-flex;
-          align-items: baseline;
-          gap: 5px;
-          color: var(--text);
-          font-size: 11px;
-          letter-spacing: 0.6px;
-        }
-        .tv-th-sub {
-          color: var(--text-dim);
-          font-size: 9px;
-          letter-spacing: 0.5px;
-          text-transform: lowercase;
-          font-weight: 400;
-        }
-        .tv-th-dot {
-          width: 7px;
-          height: 7px;
-          border-radius: 50%;
+        /* ---- Footer bar ---- */
+        .tv-foot-bar {
           flex-shrink: 0;
-          display: inline-block;
-        }
-        .tv-th-dot[data-depth='0'] { background: #ec4899; }
-        .tv-th-dot[data-depth='1'] { background: #8b5cf6; }
-        .tv-th-dot[data-depth='2'] { background: #06b6d4; }
-        .tv-th-dot[data-depth='3'] { background: #22d3ee; }
-        .tv-th-dot[data-depth='4'] { background: #f59e0b; }
-
-        .tv-th-rowno {
-          width: 56px;
-          padding: 12px 0;
-          text-align: center;
-        }
-        .tv-th-rowno-inner {
-          display: inline-block;
-          color: var(--text-dim);
-          font-size: 11px;
-          letter-spacing: 0.6px;
-        }
-        .tv-th-tag {
-          width: 60px;
-          padding: 12px 8px;
-        }
-        .tv-th-note {
-          width: 30%;
-          min-width: 200px;
-        }
-
-        /* Rows */
-        .tv-row {
-          transition: background 0.1s;
-          cursor: default;
-        }
-        .tv-row:nth-child(even) {
-          background: rgba(255, 255, 255, 0.012);
-        }
-        .tv-row:hover {
-          background: rgba(139, 92, 246, 0.05);
-        }
-        .tv-row.is-selected {
-          background: linear-gradient(
-            90deg,
-            rgba(236, 72, 153, 0.12) 0%,
-            rgba(139, 92, 246, 0.08) 100%
-          );
-          box-shadow: inset 3px 0 0 #ec4899;
-        }
-
-        /* Cells — densities are real: comfy gets roomy 16px/18px padding
-           with bigger line-height; compact gets a tight 4px/12px so the
-           toggle reads as "spreadsheet" vs "data grid". */
-        .tv-cell {
-          padding: 14px 16px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-          border-right: 1px solid rgba(255, 255, 255, 0.025);
-          vertical-align: top;
-          position: relative;
-          min-width: 160px;
-          max-width: 260px;
-          color: var(--text);
-          line-height: 1.5;
-          font-size: 13px;
-        }
-        .tv-cell:last-child {
-          border-right: none;
-        }
-        .comfy .tv-cell {
-          padding: 16px 18px;
-          line-height: 1.55;
-          font-size: 13.5px;
-        }
-        .comfy .tv-th {
-          padding: 16px 18px;
-          font-size: 11px;
-        }
-        .compact .tv-cell {
-          padding: 4px 12px;
-          line-height: 1.35;
-          font-size: 12px;
-        }
-        .compact .tv-th {
-          padding: 6px 12px;
-          font-size: 9.5px;
-        }
-        /* Compact also tightens the per-row data column so rows feel
-           genuinely dense rather than just shorter. */
-        .compact .tv-row-details-btn {
-          padding: 4px 8px;
-          font-size: 10px;
-        }
-        .compact .tv-row-flag {
-          padding: 1px 6px 1px 5px;
-          font-size: 9.5px;
-        }
-
-        .tv-cell-rowno {
-          width: 56px;
-          min-width: 56px;
-          padding: 10px 0;
-          text-align: center;
-          color: var(--text-dim);
-          font-variant-numeric: tabular-nums;
-          font-size: 11px;
-          background: rgba(0, 0, 0, 0.15);
-          border-right: 1px solid var(--border);
-        }
-        .tv-rowno {
-          display: inline-block;
-          font-weight: 500;
-        }
-        .tv-row.is-selected .tv-rowno {
-          color: var(--text);
-          font-weight: 700;
-        }
-
-        .tv-cell-tag {
-          width: 60px;
-          min-width: 60px;
-          padding: 10px 12px;
-        }
-        .tv-tag-pill {
-          display: inline-block;
-          width: 12px;
-          height: 12px;
-          border-radius: 4px;
-          box-shadow:
-            0 0 0 1px rgba(255, 255, 255, 0.1),
-            0 2px 6px rgba(0, 0, 0, 0.4);
-        }
-
-        .tv-cell-rail {
-          position: absolute;
-          left: 0;
-          top: 14%;
-          bottom: 14%;
-          width: 2px;
-          border-radius: 1px;
-          opacity: 0.55;
-        }
-        .tv-cell[data-depth='0'] .tv-cell-rail { background: #ec4899; }
-        .tv-cell[data-depth='1'] .tv-cell-rail { background: #8b5cf6; }
-        .tv-cell[data-depth='2'] .tv-cell-rail { background: #06b6d4; }
-        .tv-cell[data-depth='3'] .tv-cell-rail { background: #22d3ee; }
-        .tv-cell[data-depth='4'] .tv-cell-rail { background: #f59e0b; }
-
-        .tv-cell-continuation {
-          color: rgba(232, 234, 255, 0.3);
-          background: rgba(255, 255, 255, 0.008);
-        }
-        .tv-cell-leaf .tv-cell-label {
-          font-weight: 500;
-        }
-        .tv-cell-empty {
-          background: rgba(0, 0, 0, 0.12);
-          border-bottom-color: transparent;
-        }
-        .tv-cell-label {
-          display: inline-block;
-          word-wrap: break-word;
-        }
-        .tv-cell-untitled {
-          color: var(--text-dim);
-          font-style: italic;
-        }
-
-        .tv-cell-noteflag {
-          width: 220px;
-          min-width: 180px;
-          padding: 6px 10px;
-        }
-        .tv-row-details-btn {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 8px;
-          width: 100%;
-          background: rgba(255, 255, 255, 0.02);
-          border: 1px solid var(--border);
-          color: var(--text);
-          padding: 6px 10px;
-          border-radius: 8px;
-          cursor: pointer;
-          font: inherit;
-          font-size: 11px;
-          transition: all 0.15s;
-        }
-        .tv-row-details-btn:hover {
-          background: rgba(139, 92, 246, 0.1);
-          border-color: rgba(139, 92, 246, 0.4);
-        }
-        .tv-row-flags {
-          display: inline-flex;
-          gap: 5px;
-          align-items: center;
-          flex-wrap: wrap;
-        }
-        .tv-row-flag {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          font-size: 10px;
-          font-weight: 500;
-          letter-spacing: 0.2px;
-          padding: 2px 7px 2px 6px;
-          border-radius: 999px;
-          background: rgba(255, 255, 255, 0.04);
-          color: var(--text);
-          cursor: default;
-        }
-        .tv-row-flag-icon {
-          font-size: 10px;
-          line-height: 1;
-        }
-        .tv-row-flag-label {
-          font-weight: 500;
-        }
-        .tv-row-flag.has-note {
-          background: rgba(6, 182, 212, 0.12);
-          color: #a5f3fc;
-        }
-        .tv-row-flag.has-note .tv-row-flag-icon { color: #67e8f9; }
-        .tv-row-flag.has-image {
-          background: rgba(245, 158, 11, 0.12);
-          color: #fcd34d;
-        }
-        .tv-row-flag.has-image .tv-row-flag-icon { color: #f59e0b; }
-        .tv-row-flag.has-attach {
-          background: rgba(236, 72, 153, 0.12);
-          color: #fbcfe8;
-          font-variant-numeric: tabular-nums;
-        }
-        .tv-row-flag.has-attach .tv-row-flag-icon { color: #ec4899; }
-        .tv-row-flag-empty {
-          color: var(--text-dim);
-          font-style: italic;
-          font-weight: 400;
-          background: transparent;
-          border-color: transparent;
-        }
-        .tv-row-details-cta {
-          font-size: 10px;
-          color: var(--text-dim);
-          flex-shrink: 0;
-          font-weight: 500;
-        }
-        .tv-row-details-btn:hover .tv-row-details-cta {
-          color: var(--text);
-        }
-
-        /* Trailing actions column — narrow, holds the row's delete × */
-        .tv-th-actions {
-          width: 44px;
-          min-width: 44px;
-          padding: 12px 6px;
-        }
-        .tv-cell-actions {
-          width: 44px;
-          min-width: 44px;
-          padding: 6px;
-          text-align: center;
-          vertical-align: middle;
-        }
-        .tv-row-delete-btn {
-          opacity: 0;
-          width: 26px;
-          height: 26px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          background: rgba(239, 68, 68, 0.08);
-          color: #fca5a5;
-          border: 1px solid rgba(239, 68, 68, 0.25);
-          border-radius: 50%;
-          cursor: pointer;
-          transition: all 0.15s;
-          padding: 0;
-          line-height: 0;
-        }
-        .tv-row:hover .tv-row-delete-btn,
-        .tv-row.is-selected .tv-row-delete-btn {
-          opacity: 1;
-        }
-        .tv-row-delete-btn:hover {
-          background: rgba(239, 68, 68, 0.22);
-          border-color: rgba(239, 68, 68, 0.6);
-          color: #fee2e2;
-          transform: scale(1.08);
-        }
-        .compact .tv-row-delete-btn {
-          width: 22px;
-          height: 22px;
-        }
-
-        /* Per-cell hover flags + details button */
-        .tv-cell-flags {
-          display: inline-flex;
-          gap: 4px;
-          margin-left: 8px;
-          vertical-align: middle;
-        }
-        .tv-cell-flag {
-          display: inline-flex;
-          align-items: center;
-          font-size: 10px;
-          color: var(--text);
-          background: rgba(255, 255, 255, 0.05);
-          padding: 1px 6px;
-          border-radius: 999px;
-          font-weight: 600;
-          cursor: default;
-        }
-        .tv-cell-flag.has-note {
-          background: rgba(6, 182, 212, 0.15);
-          color: #67e8f9;
-        }
-        .tv-cell-flag.has-image {
-          background: rgba(245, 158, 11, 0.15);
-          color: #fcd34d;
-        }
-        .tv-cell-flag.has-attach {
-          background: rgba(236, 72, 153, 0.15);
-          color: #f9a8d4;
-          font-variant-numeric: tabular-nums;
-        }
-        /* Every depth-cell is a click target for the detail panel. Show
-           a pointer cursor + a subtle inset highlight on hover so the
-           affordance is unambiguous. */
-        .tv-cell-clickable {
-          cursor: pointer;
-        }
-        .tv-cell-clickable:hover {
-          box-shadow: inset 2px 0 0 color-mix(in srgb, var(--accent-violet, #8b5cf6) 60%, transparent);
-          background: rgba(139, 92, 246, 0.05);
-        }
-        .tv-cell-clickable:focus-visible {
-          outline: none;
-          box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent-violet, #8b5cf6) 60%, transparent);
-        }
-        .tv-row.is-selected .tv-cell-clickable:hover {
-          background: rgba(236, 72, 153, 0.12);
-        }
-
-        /* Footer */
-        .tv-foot td {
-          padding: 12px 14px;
+          padding: 9px 18px;
           font-size: 11px;
           color: var(--text-dim);
-          background: rgba(0, 0, 0, 0.15);
+          background: rgba(10, 11, 22, 0.55);
           border-top: 1px solid var(--border);
           font-style: italic;
         }
@@ -1259,3 +811,906 @@ export default function TableView({
     </div>
   );
 }
+
+// ============================================================================
+// Hierarchical grid — rows mirror the tree via indentation.
+// ============================================================================
+
+type HierTableProps = {
+  rows: Row[];
+  data: MindMapData;
+  readonly: boolean;
+  collapsed: Set<string>;
+  rootId: string | null;
+  onOpen: (id: string) => void;
+  onToggleCollapse: (id: string) => void;
+  onToggleDone: (id: string) => void;
+  onDelete: (id: string) => void;
+};
+
+function HierTable({
+  rows,
+  data,
+  readonly,
+  collapsed,
+  rootId,
+  onOpen,
+  onToggleCollapse,
+  onToggleDone,
+  onDelete,
+}: HierTableProps) {
+  return (
+    <table className="tv-grid" aria-label="Mind map — hierarchical table">
+      <thead>
+        <tr>
+          <th className="tv-th tv-th-tag" scope="col" title="Colour tag from the node's palette index">
+            Tag
+          </th>
+          <th className="tv-th tv-th-name" scope="col">
+            Name
+          </th>
+          <th className="tv-th tv-th-note" scope="col">
+            Note
+          </th>
+          <th className="tv-th tv-th-image" scope="col">
+            Image
+          </th>
+          <th className="tv-th tv-th-done" scope="col" title="Task completion">
+            Done
+          </th>
+          <th className="tv-th tv-th-children" scope="col" title="Direct children">
+            Children
+          </th>
+          {!readonly && (
+            <th className="tv-th tv-th-actions" scope="col" aria-label="Row actions" />
+          )}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => {
+          const node = data.nodes[row.id];
+          if (!node) return null;
+          const isRoot = row.id === rootId;
+          const colorIdx = node.colorIdx ?? 0;
+          const accent = ACCENT_PALETTE[colorIdx % 5];
+          const isCollapsed = collapsed.has(row.id);
+          const note = node.note?.trim() || '';
+          const done = !!node.done;
+          return (
+            <tr
+              key={row.id}
+              className={`tv-row ${done ? 'is-done' : ''} ${isRoot ? 'is-root' : ''}`}
+            >
+              {/* Tag */}
+              <td className="tv-cell tv-cell-tag">
+                <span
+                  className="tv-tag-pill"
+                  style={{
+                    background: `linear-gradient(135deg, ${accent}, ${
+                      ACCENT_PALETTE[(colorIdx + 2) % 5]
+                    })`,
+                  }}
+                  title={`Colour ${colorIdx + 1}`}
+                  aria-hidden
+                />
+              </td>
+
+              {/* Name — indented, with caret + clickable label opening detail */}
+              <td className="tv-cell tv-cell-name">
+                <span
+                  className="tv-name-indent"
+                  style={{ paddingLeft: row.depth * INDENT_PX }}
+                >
+                  {row.hasChildren ? (
+                    <button
+                      type="button"
+                      className={`tv-caret ${isCollapsed ? 'is-folded' : 'is-open'}`}
+                      onClick={() => onToggleCollapse(row.id)}
+                      aria-expanded={!isCollapsed}
+                      aria-label={
+                        isCollapsed
+                          ? `Expand ${node.label || 'node'}`
+                          : `Collapse ${node.label || 'node'}`
+                      }
+                    >
+                      <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden>
+                        <path
+                          d="M4 2.5 L8 6 L4 9.5"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  ) : (
+                    <span className="tv-caret is-empty" aria-hidden>
+                      ·
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    className="tv-name-btn"
+                    onClick={() => onOpen(row.id)}
+                    title={node.label || 'Untitled — open details'}
+                  >
+                    <span className="tv-name-label">
+                      {node.label || <span className="tv-untitled">Untitled</span>}
+                    </span>
+                  </button>
+                </span>
+              </td>
+
+              {/* Note (truncated, full text in tooltip) */}
+              <td className="tv-cell tv-cell-note">
+                {note ? (
+                  <span className="tv-note-text" title={note}>
+                    {note}
+                  </span>
+                ) : (
+                  <span className="tv-dash" aria-hidden>
+                    —
+                  </span>
+                )}
+              </td>
+
+              {/* Image thumbnail */}
+              <td className="tv-cell tv-cell-image">
+                {node.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={node.imageUrl}
+                    alt={`Thumbnail for ${node.label || 'node'}`}
+                    className="tv-thumb"
+                  />
+                ) : (
+                  <span className="tv-dash" aria-hidden>
+                    —
+                  </span>
+                )}
+              </td>
+
+              {/* Done checkbox */}
+              <td className="tv-cell tv-cell-done">
+                <button
+                  type="button"
+                  className={`tv-check ${done ? 'is-done' : ''}`}
+                  onClick={() => onToggleDone(row.id)}
+                  disabled={readonly}
+                  role="checkbox"
+                  aria-checked={done}
+                  aria-label={
+                    done
+                      ? `Mark ${node.label || 'node'} not done`
+                      : `Mark ${node.label || 'node'} done`
+                  }
+                  title={done ? 'Done — click to clear' : 'Mark done'}
+                >
+                  {done ? (
+                    <svg viewBox="0 0 14 14" width="12" height="12" aria-hidden>
+                      <path
+                        d="M2.5 7.5 L6 11 L11.5 3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  ) : null}
+                </button>
+              </td>
+
+              {/* Direct children count */}
+              <td className="tv-cell tv-cell-children">
+                {row.hasChildren ? (
+                  <span className="tv-count">{row.childCount}</span>
+                ) : (
+                  <span className="tv-dash" aria-hidden>
+                    —
+                  </span>
+                )}
+              </td>
+
+              {/* Delete action */}
+              {!readonly && (
+                <td className="tv-cell tv-cell-actions">
+                  {!isRoot && (
+                    <button
+                      type="button"
+                      className="tv-row-delete-btn"
+                      onClick={() => {
+                        if (
+                          typeof window === 'undefined' ||
+                          window.confirm(
+                            `Delete "${node.label || 'this node'}" and everything beneath it? Removes it from the canvas too.`,
+                          )
+                        ) {
+                          onDelete(row.id);
+                        }
+                      }}
+                      aria-label={`Delete ${node.label || 'this node'}`}
+                      title="Delete this node and subtree"
+                    >
+                      <svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d="M2.5 3.5 H 11.5" />
+                        <path d="M4 3.5 V 2.5 a1 1 0 0 1 1 -1 h4 a1 1 0 0 1 1 1 V 3.5" />
+                        <path d="M3.5 3.5 V 11.5 a1 1 0 0 0 1 1 h5 a1 1 0 0 0 1 -1 V 3.5" />
+                      </svg>
+                    </button>
+                  )}
+                </td>
+              )}
+            </tr>
+          );
+        })}
+      </tbody>
+
+      <style jsx>{tableStyles}</style>
+    </table>
+  );
+}
+
+// ============================================================================
+// Flat spreadsheet — every node a row, sortable, with a breadcrumb Path column.
+// ============================================================================
+
+type FlatTableProps = {
+  rows: Row[];
+  data: MindMapData;
+  readonly: boolean;
+  rootId: string | null;
+  sortKey: SortKey;
+  sortDir: SortDir;
+  onSort: (key: SortKey) => void;
+  onOpen: (id: string) => void;
+  onToggleDone: (id: string) => void;
+  onDelete: (id: string) => void;
+};
+
+function FlatTable({
+  rows,
+  data,
+  readonly,
+  rootId,
+  sortKey,
+  sortDir,
+  onSort,
+  onOpen,
+  onToggleDone,
+  onDelete,
+}: FlatTableProps) {
+  // A sortable header cell: a real <button> carrying aria-sort on its <th>.
+  function SortHeader({
+    col,
+    label,
+    className,
+    title,
+  }: {
+    col: SortKey;
+    label: string;
+    className?: string;
+    title?: string;
+  }) {
+    const active = sortKey === col;
+    const ariaSort = active
+      ? sortDir === 'asc'
+        ? 'ascending'
+        : 'descending'
+      : 'none';
+    return (
+      <th
+        className={`tv-th tv-th-sortable ${className || ''} ${active ? 'is-sorted' : ''}`}
+        scope="col"
+        aria-sort={ariaSort}
+        title={title}
+      >
+        <button
+          type="button"
+          className="tv-sort-btn"
+          onClick={() => onSort(col)}
+          aria-label={`Sort by ${label} ${active && sortDir === 'asc' ? 'descending' : 'ascending'}`}
+        >
+          <span>{label}</span>
+          <span className="tv-sort-arrow" aria-hidden>
+            {active ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}
+          </span>
+        </button>
+      </th>
+    );
+  }
+
+  return (
+    <table className="tv-grid" aria-label="Mind map — flat spreadsheet">
+      <thead>
+        <tr>
+          <th className="tv-th tv-th-tag" scope="col" title="Colour tag from the node's palette index">
+            Tag
+          </th>
+          <SortHeader col="label" label="Label" className="tv-th-name" />
+          <SortHeader
+            col="path"
+            label="Path"
+            className="tv-th-path"
+            title="Breadcrumb ancestry from the root"
+          />
+          <SortHeader col="note" label="Note" className="tv-th-note" />
+          <th className="tv-th tv-th-image" scope="col">
+            Image
+          </th>
+          <SortHeader col="done" label="Done" className="tv-th-done" title="Task completion" />
+          <SortHeader
+            col="children"
+            label="Children"
+            className="tv-th-children"
+            title="Direct children"
+          />
+          {!readonly && (
+            <th className="tv-th tv-th-actions" scope="col" aria-label="Row actions" />
+          )}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.length === 0 ? (
+          <tr>
+            <td className="tv-cell tv-noresults" colSpan={readonly ? 7 : 8}>
+              No nodes match your filter.
+            </td>
+          </tr>
+        ) : (
+          rows.map((row) => {
+            const node = data.nodes[row.id];
+            if (!node) return null;
+            const isRoot = row.id === rootId;
+            const colorIdx = node.colorIdx ?? 0;
+            const accent = ACCENT_PALETTE[colorIdx % 5];
+            const note = node.note?.trim() || '';
+            const done = !!node.done;
+            // Path breadcrumb: drop the last element (== this node's own
+            // label) so the column shows ancestry; show "—" for the root.
+            const ancestry = row.path.slice(0, -1);
+            return (
+              <tr key={row.id} className={`tv-row ${done ? 'is-done' : ''}`}>
+                {/* Tag */}
+                <td className="tv-cell tv-cell-tag">
+                  <span
+                    className="tv-tag-pill"
+                    style={{
+                      background: `linear-gradient(135deg, ${accent}, ${
+                        ACCENT_PALETTE[(colorIdx + 2) % 5]
+                      })`,
+                    }}
+                    title={`Colour ${colorIdx + 1}`}
+                    aria-hidden
+                  />
+                </td>
+
+                {/* Label — clickable, opens detail */}
+                <td className="tv-cell tv-cell-name">
+                  <button
+                    type="button"
+                    className="tv-name-btn"
+                    onClick={() => onOpen(row.id)}
+                    title={node.label || 'Untitled — open details'}
+                  >
+                    <span className="tv-name-label">
+                      {node.label || <span className="tv-untitled">Untitled</span>}
+                    </span>
+                  </button>
+                </td>
+
+                {/* Path breadcrumb */}
+                <td className="tv-cell tv-cell-path">
+                  {ancestry.length > 0 ? (
+                    <span className="tv-path" title={row.path.join(' › ')}>
+                      {ancestry.join(' › ')}
+                    </span>
+                  ) : (
+                    <span className="tv-dash" aria-hidden>
+                      —
+                    </span>
+                  )}
+                </td>
+
+                {/* Note */}
+                <td className="tv-cell tv-cell-note">
+                  {note ? (
+                    <span className="tv-note-text" title={note}>
+                      {note}
+                    </span>
+                  ) : (
+                    <span className="tv-dash" aria-hidden>
+                      —
+                    </span>
+                  )}
+                </td>
+
+                {/* Image thumbnail */}
+                <td className="tv-cell tv-cell-image">
+                  {node.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={node.imageUrl}
+                      alt={`Thumbnail for ${node.label || 'node'}`}
+                      className="tv-thumb"
+                    />
+                  ) : (
+                    <span className="tv-dash" aria-hidden>
+                      —
+                    </span>
+                  )}
+                </td>
+
+                {/* Done */}
+                <td className="tv-cell tv-cell-done">
+                  <button
+                    type="button"
+                    className={`tv-check ${done ? 'is-done' : ''}`}
+                    onClick={() => onToggleDone(row.id)}
+                    disabled={readonly}
+                    role="checkbox"
+                    aria-checked={done}
+                    aria-label={
+                      done
+                        ? `Mark ${node.label || 'node'} not done`
+                        : `Mark ${node.label || 'node'} done`
+                    }
+                    title={done ? 'Done — click to clear' : 'Mark done'}
+                  >
+                    {done ? (
+                      <svg viewBox="0 0 14 14" width="12" height="12" aria-hidden>
+                        <path
+                          d="M2.5 7.5 L6 11 L11.5 3.5"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    ) : null}
+                  </button>
+                </td>
+
+                {/* Children */}
+                <td className="tv-cell tv-cell-children">
+                  {row.hasChildren ? (
+                    <span className="tv-count">{row.childCount}</span>
+                  ) : (
+                    <span className="tv-dash" aria-hidden>
+                      —
+                    </span>
+                  )}
+                </td>
+
+                {/* Delete */}
+                {!readonly && (
+                  <td className="tv-cell tv-cell-actions">
+                    {!isRoot && (
+                      <button
+                        type="button"
+                        className="tv-row-delete-btn"
+                        onClick={() => {
+                          if (
+                            typeof window === 'undefined' ||
+                            window.confirm(
+                              `Delete "${node.label || 'this node'}" and everything beneath it? Removes it from the canvas too.`,
+                            )
+                          ) {
+                            onDelete(row.id);
+                          }
+                        }}
+                        aria-label={`Delete ${node.label || 'this node'}`}
+                        title="Delete this node and subtree"
+                      >
+                        <svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <path d="M2.5 3.5 H 11.5" />
+                          <path d="M4 3.5 V 2.5 a1 1 0 0 1 1 -1 h4 a1 1 0 0 1 1 1 V 3.5" />
+                          <path d="M3.5 3.5 V 11.5 a1 1 0 0 0 1 1 h5 a1 1 0 0 0 1 -1 V 3.5" />
+                        </svg>
+                      </button>
+                    )}
+                  </td>
+                )}
+              </tr>
+            );
+          })
+        )}
+      </tbody>
+
+      <style jsx>{tableStyles}</style>
+    </table>
+  );
+}
+
+// Shared grid styles for both table modes. Kept as a string constant so the
+// two sub-components stay self-contained inside this single file.
+const tableStyles = `
+  .tv-grid {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 13px;
+    background: rgba(10, 11, 22, 0.4);
+  }
+
+  /* Headers — sticky */
+  .tv-th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    text-align: left;
+    background: rgba(15, 17, 36, 0.94);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    color: var(--text-dim);
+    font-size: 10px;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+    font-weight: 600;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border-strong);
+    border-right: 1px solid rgba(255, 255, 255, 0.04);
+    white-space: nowrap;
+  }
+  .tv-th:last-child {
+    border-right: none;
+  }
+  .tv-th-sortable {
+    padding: 0;
+  }
+  .tv-th-sortable.is-sorted {
+    color: var(--text);
+  }
+  .tv-sort-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: inherit;
+    font: inherit;
+    font-size: 10px;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+    font-weight: 600;
+    padding: 11px 14px;
+    cursor: pointer;
+    transition: color 0.12s;
+  }
+  .tv-sort-btn:hover {
+    color: var(--text);
+  }
+  .tv-sort-arrow {
+    font-size: 8px;
+    opacity: 0.7;
+  }
+  .is-sorted .tv-sort-arrow {
+    opacity: 1;
+    color: #c4b5fd;
+  }
+
+  .tv-th-tag {
+    width: 50px;
+    min-width: 50px;
+    padding-left: 16px;
+    padding-right: 8px;
+  }
+  .tv-th-name {
+    min-width: 220px;
+  }
+  .tv-th-path {
+    min-width: 200px;
+  }
+  .tv-th-note {
+    min-width: 200px;
+  }
+  .tv-th-image {
+    width: 64px;
+    min-width: 64px;
+    text-align: center;
+  }
+  .tv-th-done {
+    width: 64px;
+    min-width: 64px;
+  }
+  .tv-th-children {
+    width: 86px;
+    min-width: 86px;
+  }
+  .tv-th-actions {
+    width: 46px;
+    min-width: 46px;
+  }
+
+  /* Rows — zebra striping + hover + done state */
+  .tv-row {
+    transition: background 0.1s;
+  }
+  .tv-row:nth-child(even) {
+    background: rgba(255, 255, 255, 0.014);
+  }
+  .tv-row:hover {
+    background: rgba(139, 92, 246, 0.06);
+  }
+  .tv-row.is-root {
+    background: linear-gradient(
+      90deg,
+      rgba(236, 72, 153, 0.08) 0%,
+      rgba(139, 92, 246, 0.04) 60%,
+      transparent 100%
+    );
+  }
+  .tv-row.is-done .tv-name-label {
+    text-decoration: line-through;
+    color: var(--text-dim);
+  }
+  .tv-row.is-done {
+    opacity: 0.78;
+  }
+
+  /* Cells */
+  .tv-cell {
+    padding: 9px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    border-right: 1px solid rgba(255, 255, 255, 0.025);
+    vertical-align: middle;
+    color: var(--text);
+    line-height: 1.45;
+    font-size: 13px;
+  }
+  .tv-cell:last-child {
+    border-right: none;
+  }
+  .tv-noresults {
+    text-align: center;
+    color: var(--text-dim);
+    font-style: italic;
+    padding: 40px 14px;
+  }
+
+  /* Tag column */
+  .tv-cell-tag {
+    width: 50px;
+    min-width: 50px;
+    padding-left: 16px;
+    padding-right: 8px;
+    text-align: left;
+  }
+  .tv-tag-pill {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 4px;
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.1),
+      0 2px 6px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Name column (hierarchical indent + caret) */
+  .tv-cell-name {
+    min-width: 220px;
+    max-width: 360px;
+  }
+  .tv-name-indent {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+  }
+  .tv-caret {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    color: var(--text-dim);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    padding: 0;
+    transition: all 0.15s;
+  }
+  .tv-caret:hover:not(.is-empty) {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text);
+  }
+  .tv-caret svg {
+    display: block;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .tv-caret.is-open svg {
+    transform: rotate(90deg);
+  }
+  .tv-caret.is-empty {
+    color: rgba(255, 255, 255, 0.18);
+    cursor: default;
+    font-size: 16px;
+    line-height: 0;
+  }
+  .tv-name-btn {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 13.5px;
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .tv-name-btn:hover {
+    background: rgba(139, 92, 246, 0.1);
+    border-color: rgba(139, 92, 246, 0.32);
+  }
+  .tv-name-btn:focus-visible {
+    outline: none;
+    background: rgba(139, 92, 246, 0.1);
+    border-color: rgba(139, 92, 246, 0.5);
+  }
+  .tv-name-label {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .tv-untitled {
+    color: var(--text-dim);
+    font-style: italic;
+    font-weight: 400;
+  }
+
+  /* Path column */
+  .tv-cell-path {
+    min-width: 200px;
+    max-width: 320px;
+  }
+  .tv-path {
+    display: block;
+    font-size: 11.5px;
+    color: var(--text-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Note column */
+  .tv-cell-note {
+    min-width: 200px;
+    max-width: 360px;
+  }
+  .tv-note-text {
+    display: block;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12.5px;
+  }
+
+  /* Image column */
+  .tv-cell-image {
+    width: 64px;
+    min-width: 64px;
+    text-align: center;
+  }
+  .tv-thumb {
+    width: 28px;
+    height: 28px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+    vertical-align: middle;
+  }
+
+  /* Done column */
+  .tv-cell-done {
+    width: 64px;
+    min-width: 64px;
+    text-align: center;
+  }
+  .tv-check {
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1.5px solid var(--border-strong);
+    border-radius: 5px;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.15s;
+    padding: 0;
+  }
+  .tv-check:hover:not(:disabled) {
+    border-color: rgba(34, 197, 94, 0.6);
+    background: rgba(34, 197, 94, 0.1);
+  }
+  .tv-check:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.45);
+  }
+  .tv-check.is-done {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    border-color: #22c55e;
+    color: #fff;
+  }
+  .tv-check:disabled {
+    cursor: default;
+    opacity: 0.7;
+  }
+
+  /* Children column */
+  .tv-cell-children {
+    width: 86px;
+    min-width: 86px;
+    text-align: left;
+  }
+  .tv-count {
+    display: inline-block;
+    min-width: 22px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    padding: 2px 7px;
+    border-radius: 999px;
+  }
+
+  .tv-dash {
+    color: var(--text-dim);
+    opacity: 0.5;
+  }
+
+  /* Actions column */
+  .tv-cell-actions {
+    width: 46px;
+    min-width: 46px;
+    padding: 6px;
+    text-align: center;
+  }
+  .tv-row-delete-btn {
+    opacity: 0;
+    width: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(239, 68, 68, 0.08);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.15s;
+    padding: 0;
+    line-height: 0;
+  }
+  .tv-row:hover .tv-row-delete-btn {
+    opacity: 1;
+  }
+  .tv-row-delete-btn:focus-visible {
+    opacity: 1;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.45);
+  }
+  .tv-row-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.22);
+    border-color: rgba(239, 68, 68, 0.6);
+    color: #fee2e2;
+    transform: scale(1.08);
+  }
+`;
