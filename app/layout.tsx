@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import './globals.css';
 import SquishyWidget from '@/components/SquishyWidget';
 import SquishyToolBridge from '@/components/SquishyToolBridge';
-import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
   metadataBase: new URL(
@@ -33,22 +32,19 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({
+// Intentionally NOT async and does NOT read auth: keeping the root layout free
+// of any server-side cookie read lets the public marketing/blog pages render
+// statically / ISR. SquishyWidget resolves login state client-side.
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const isLoggedIn = !!user;
-
   return (
     <html lang="en">
       <body>
         {children}
-        <SquishyWidget isLoggedIn={isLoggedIn} />
+        <SquishyWidget />
         <SquishyToolBridge />
       </body>
     </html>

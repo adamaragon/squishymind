@@ -8,6 +8,7 @@ import {
   loadConversationId,
   saveConversationId,
 } from '@/lib/squishy';
+import { createClient } from '@/lib/supabase/client';
 
 const AGENT_ID = 'agent_1701kqznwkttftqavkgq9gg1ct1p';
 
@@ -19,15 +20,15 @@ type ConvaiElement = HTMLElement & {
   updateDynamicVariables?: (vars: Record<string, string>) => void;
 };
 
-type SquishyWidgetProps = {
-  isLoggedIn?: boolean;
-};
-
-export default function SquishyWidget({ isLoggedIn = false }: SquishyWidgetProps) {
+export default function SquishyWidget() {
   const pathname = usePathname();
   const widgetRef = useRef<HTMLElement | null>(null);
   const [resumedId, setResumedId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  // Auth is resolved client-side so the root layout can stay static (no
+  // server-side cookie read). Starts logged-out for the first paint, then
+  // resolves once Supabase answers and on any future auth-state change.
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   // Count of other collaborators currently in the open map. The canvas
   // dispatches 'squishymind:collaborator-count' on presence sync; we push it
   // to the agent as a dynamic variable so Squishy can mention them naturally.
@@ -37,6 +38,23 @@ export default function SquishyWidget({ isLoggedIn = false }: SquishyWidgetProps
   useEffect(() => {
     setResumedId(loadConversationId());
     setMounted(true);
+  }, []);
+
+  // Resolve auth client-side (keeps the layout — and every public page —
+  // statically renderable). Updates on sign-in / sign-out too.
+  useEffect(() => {
+    const supabase = createClient();
+    let active = true;
+    supabase.auth.getUser().then(({ data }) => {
+      if (active) setIsLoggedIn(!!data.user);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session?.user);
+    });
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   // Listen for collaborator count broadcasts from the canvas.

@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
 import { NavShareButton } from '@/components/ShareButtons';
+import HeaderAuth from '@/components/HeaderAuth';
 
 // Content links mirror the footer. Rendered as subtle pills in the top nav.
 // Hidden below `lg` so the bar stays uncrowded on small screens — the footer
@@ -15,21 +15,14 @@ const NAV_LINKS: { href: string; label: string }[] = [
   { href: '/changelog', label: "What's new" },
 ];
 
-// Shared pill styles. Content pills are quiet; auth/account pills get
-// distinct, louder treatments so the primary actions stand out.
+// Quiet content-pill styling. The louder auth/account pills live in HeaderAuth.
 const PILL_CONTENT =
   'px-3.5 py-1.5 rounded-full text-sm glass border border-white/10 text-[--text-dim] hover:text-white hover:border-white/20 transition-colors';
-const PILL_GHOST =
-  'px-4 py-1.5 rounded-full text-sm border border-white/10 text-[--text-dim] hover:text-white hover:border-white/25 transition-colors';
-const PILL_ACCENT =
-  'px-4 py-1.5 rounded-full text-sm font-medium border border-violet-500/40 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20 transition-colors';
-const PILL_PRIMARY =
-  'px-5 py-1.5 rounded-full text-sm font-medium text-white border border-transparent transition-all hover:-translate-y-px';
 
-export default async function Header() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
+// Server component — intentionally does NOT read auth. The account/login pills
+// are a client island (HeaderAuth) so this header, and every page that renders
+// it, can be statically rendered / ISR instead of forced dynamic.
+export default function Header() {
   return (
     <header className="flex items-center justify-between gap-3 px-6 py-4 border-b border-white/5">
       <Link href="/" className="flex items-center gap-3 group shrink-0">
@@ -59,33 +52,8 @@ export default async function Header() {
             mobile/Safari. Visible to everyone since growth lives in the nav. */}
         <NavShareButton />
 
-        {/* Auth / account — distinct, louder pill treatments. */}
-        {user ? (
-          <>
-            <Link href="/dashboard" className={PILL_ACCENT}>
-              My maps
-            </Link>
-            <Link href="/account" className={PILL_GHOST}>
-              Account
-            </Link>
-          </>
-        ) : (
-          <>
-            <Link href="/login" className={PILL_GHOST}>
-              Log in
-            </Link>
-            <Link
-              href="/signup"
-              className={PILL_PRIMARY}
-              style={{
-                background: 'linear-gradient(135deg, var(--accent-violet), var(--accent-pink))',
-                boxShadow: '0 6px 20px rgba(139, 92, 246, 0.3)',
-              }}
-            >
-              Sign up free
-            </Link>
-          </>
-        )}
+        {/* Auth / account — client island so the header stays static. */}
+        <HeaderAuth />
       </nav>
     </header>
   );
