@@ -33,7 +33,10 @@ export type CanvasCommand =
   | { type: 'switch_theme'; theme: 'aurora' | 'sunrise' | 'forest' | 'mono' | 'nebula' | 'ember' }
   | { type: 'list_templates' }
   | { type: 'apply_template'; template_id: string }
-  | { type: 'switch_view'; mode: 'canvas' | 'tree' | 'outline' | 'table' }
+  | {
+      type: 'switch_view';
+      mode: 'canvas' | 'tree' | 'outline' | 'table' | 'gallery';
+    }
   // ---- Wave 1: command-palette / focus / tasks ----
   /** Toggle a node's task-done state. Defaults to the selected node. */
   | { type: 'toggle_done'; node_id?: string }

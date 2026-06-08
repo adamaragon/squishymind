@@ -36,6 +36,10 @@ const TableView = dynamic(() => import('@/components/views/TableView'), {
   ssr: false,
   loading: () => <ViewSwitchLoader label="Table" />,
 });
+const GalleryView = dynamic(() => import('@/components/views/GalleryView'), {
+  ssr: false,
+  loading: () => <ViewSwitchLoader label="Gallery" />,
+});
 
 // Tiny loading state — sits where the view will mount so the switcher
 // doesn't appear broken during the lazy chunk fetch (usually one frame).
@@ -144,7 +148,7 @@ export default function EditorShell({
         return { success: true };
       }
       if (cmd.type !== 'switch_view') return undefined;
-      const valid: ViewMode[] = ['canvas', 'tree', 'outline', 'table'];
+      const valid: ViewMode[] = ['canvas', 'tree', 'outline', 'table', 'gallery'];
       if (!valid.includes(cmd.mode)) {
         return {
           success: false,
@@ -466,6 +470,16 @@ export default function EditorShell({
         ) : viewMode === 'table' ? (
           <TableView
             key={`${id}-table`}
+            mindmapId={id}
+            initialData={lastDataRef.current}
+            initialTitle={title}
+            readonly={!canEdit}
+            onSwitchView={handleViewChange}
+            onDataChange={onDataChange}
+          />
+        ) : viewMode === 'gallery' ? (
+          <GalleryView
+            key={`${id}-gallery`}
             mindmapId={id}
             initialData={lastDataRef.current}
             initialTitle={title}

@@ -192,7 +192,7 @@ export async function executeSquishyTool(
 
     case 'switch_view': {
       const mode = asString(params.mode)?.toLowerCase();
-      const valid = ['canvas', 'tree', 'outline', 'table'] as const;
+      const valid = ['canvas', 'tree', 'outline', 'table', 'gallery'] as const;
       if (!mode || !(valid as readonly string[]).includes(mode)) {
         return {
           success: false,

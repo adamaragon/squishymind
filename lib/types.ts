@@ -57,7 +57,7 @@ export type Visibility = 'private' | 'unlisted' | 'public';
 /** Which layout the editor renders for the current user. Persisted in
  *  localStorage per-user, NOT per-map. The underlying MindMapData stays
  *  unchanged across switches — each view just renders it differently. */
-export type ViewMode = 'canvas' | 'tree' | 'outline' | 'table';
+export type ViewMode = 'canvas' | 'tree' | 'outline' | 'table' | 'gallery';
 
 export type Mindmap = {
   id: string;
