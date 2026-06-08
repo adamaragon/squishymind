@@ -6242,7 +6242,10 @@ export default function MindMapCanvas({
            just inside the node's 13px border) and the strip rounds the
            bottom. */
         .smm-root :global(.node.has-image) {
-          padding: 0;
+          /* 10px reveal on top + sides so the node's gradient frame peeks
+             out around the image; the title bar stays full-bleed at the
+             bottom (it breaks out of the side padding below). */
+          padding: 10px 10px 0;
           width: 188px;
           max-width: 188px;
           min-width: 0;
@@ -6252,9 +6255,9 @@ export default function MindMapCanvas({
         .smm-root :global(.node-thumb) {
           display: block;
           width: 100%;
-          height: 134px;
+          height: 118px;
           object-fit: cover;
-          border-radius: 12px 12px 0 0;
+          border-radius: 8px 8px 0 0;
           margin: 0;
           border: 0;
           box-shadow: none;
@@ -6262,6 +6265,9 @@ export default function MindMapCanvas({
         }
         .smm-root :global(.node.has-image .node-label) {
           display: block;
+          /* full-bleed: cancel the 10px side padding so the caption bar
+             spans the card and fills the rounded bottom corners. */
+          margin: 0 -10px;
           padding: 9px 13px 10px;
           border-radius: 0 0 12px 12px;
           border-top: 1px solid
