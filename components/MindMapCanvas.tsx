@@ -605,6 +605,8 @@ export default function MindMapCanvas({
       if (state.selectedId && doomed.has(state.selectedId))
         state.selectedId = n.parentId;
       stripIncomingLinks(state.nodes, doomed);
+      // Clear any dot-votes attached to the removed subtree (best-effort).
+      cleanupVotesFor([...doomed]);
     }
 
     function getDescendants(id: string): string[] {
@@ -3910,6 +3912,29 @@ export default function MindMapCanvas({
       } catch {
         void fetchVotes();
       }
+    }
+
+    // Best-effort cleanup of dot-votes for a deleted subtree so node_votes
+    // doesn't accumulate orphan rows. RLS lets the map owner clear everyone's
+    // votes and a collaborator clear their own; whatever it can't touch stays
+    // inert (chips only ever render for live nodes, and ids are never reused).
+    // Fire-and-forget — never blocks the delete. Trade-off: undoing a delete
+    // restores the node but not its votes (gone server-side); votes are a
+    // transient signal, so that's acceptable.
+    function cleanupVotesFor(nodeIds: string[]) {
+      if (nodeIds.length === 0) return;
+      for (const id of nodeIds) delete nodeVotes[id];
+      void (async () => {
+        try {
+          await realtimeClient
+            .from('node_votes')
+            .delete()
+            .eq('mindmap_id', mindmapId)
+            .in('node_id', nodeIds);
+        } catch {
+          /* ignore — orphan vote rows are harmless */
+        }
+      })();
     }
 
     if (currentUserId) {

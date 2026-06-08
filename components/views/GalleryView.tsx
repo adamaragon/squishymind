@@ -41,6 +41,11 @@ export default function GalleryView({
 }: Props) {
   const [filter, setFilter] = useState<Filter>('all');
   const [detailNodeId, setDetailNodeId] = useState<string | null>(null);
+  // Image URLs that failed to load this session, keyed `${id}::${url}` so a
+  // node whose image is later swapped gets a fresh attempt. A failed image
+  // makes the card fall back to the text layout — mirroring the canvas, which
+  // reverts a broken image node to a plain pill.
+  const [failedImages, setFailedImages] = useState<Set<string>>(() => new Set());
   // Local data state so detail-panel edits feel immediate. Resyncs when the
   // parent reseeds with new initialData (view switch / realtime). Mirrors
   // TableView's approach exactly.
@@ -177,7 +182,8 @@ export default function GalleryView({
             {cards.map((node) => {
               const colorIdx = node.colorIdx ?? 0;
               const accent = ACCENT_PALETTE[colorIdx % ACCENT_PALETTE.length];
-              const hasImage = !!node.imageUrl;
+              const imgKey = `${node.id}::${node.imageUrl ?? ''}`;
+              const hasImage = !!node.imageUrl && !failedImages.has(imgKey);
               const note = node.note?.trim();
               const isDone = !!node.done;
               const label = node.label || 'Untitled';
@@ -208,6 +214,14 @@ export default function GalleryView({
                             alt={label}
                             className="gv-card-img"
                             loading="lazy"
+                            onError={() =>
+                              setFailedImages((prev) => {
+                                if (prev.has(imgKey)) return prev;
+                                const next = new Set(prev);
+                                next.add(imgKey);
+                                return next;
+                              })
+                            }
                           />
                           {isDone && (
                             <span className="gv-done-badge" aria-hidden>
@@ -543,7 +557,11 @@ export default function GalleryView({
           position: relative;
           width: 100%;
           height: 150px;
-          background: rgba(0, 0, 0, 0.35);
+          /* Frame the image the way the canvas image node does: an ~8px reveal
+             on the top + sides lets the card surface peek around the artwork,
+             and the image rounds its top corners (the strip rounds the bottom). */
+          padding: 8px 8px 0;
+          background: transparent;
           overflow: hidden;
         }
         .gv-card-img {
@@ -551,14 +569,17 @@ export default function GalleryView({
           height: 100%;
           object-fit: cover;
           display: block;
+          border-radius: 8px 8px 0 0;
         }
         .gv-card-strip {
           display: flex;
           flex-direction: column;
           gap: 2px;
-          padding: 10px 12px;
-          background: rgba(10, 11, 22, 0.55);
-          border-top: 1px solid rgba(255, 255, 255, 0.04);
+          padding: 9px 13px 10px;
+          /* Echo the canvas caption bar: a node-bg-2 surface with an
+             accent-tinted hairline along the top. */
+          background: color-mix(in srgb, var(--node-bg-2, #232649) 88%, black 6%);
+          border-top: 1px solid color-mix(in srgb, var(--gv-accent) 30%, transparent);
         }
 
         /* ---- Text card ---- */

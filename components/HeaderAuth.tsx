@@ -21,8 +21,13 @@ export default function HeaderAuth() {
   useEffect(() => {
     const supabase = createClient();
     let active = true;
-    supabase.auth.getUser().then(({ data }) => {
-      if (active) setIsLoggedIn(!!data.user);
+    // getSession() reads the persisted session from local storage with no
+    // network round trip (unlike getUser, which validates against the server).
+    // That collapses the "Log in / Sign up → My maps / Account" flash a
+    // logged-in user would otherwise see on these statically-rendered pages
+    // from a few hundred ms down to a single frame.
+    supabase.auth.getSession().then(({ data }) => {
+      if (active) setIsLoggedIn(!!data.session?.user);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsLoggedIn(!!session?.user);
