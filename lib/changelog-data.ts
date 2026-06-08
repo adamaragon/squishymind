@@ -17,6 +17,18 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v5.0',
+    title: 'Image nodes, a Gallery view, and a spreadsheet-grade Table',
+    date: 'June 2026',
+    highlights: [
+      'Attach an image to a node and it turns into a card — the picture fills the top, your title rides a clean strip beneath it (yes, it’s a little bit Pinterest)',
+      'A new Gallery / Moodboard view lays your whole map out as image cards — ideal for visual brainstorms, mood boards, and picking a direction at a glance',
+      'The Table view grew up: a tidy hierarchy grid that mirrors your tree, with one click to flatten it into a sortable, filterable spreadsheet (path breadcrumbs and all)',
+    ],
+    squishyNote:
+      'Drop a picture on a node, darling — I’ll frame it. Then flip to Gallery and admire your own genius.',
+  },
+  {
     version: 'v4.9',
     title: 'Frameworks that snap to shape',
     date: 'June 2026',
