@@ -2006,14 +2006,21 @@ export default function MindMapCanvas({
           }
           el.appendChild(lbl);
         } else if (n.imageUrl) {
+          // Image-forward "card" node: image fills the top, title rides a
+          // solid strip below. The `has-image` class flips the node from a
+          // padded text pill into an edge-to-edge image card (see CSS).
+          el.classList.add('has-image');
           const thumb = document.createElement('img');
           thumb.className = 'node-thumb';
           thumb.src = n.imageUrl;
           thumb.alt = '';
           thumb.draggable = false;
           thumb.addEventListener('error', () => {
-            // Graceful fallback: if image fails to load, hide thumb so label still reads.
+            // Graceful fallback: if the image fails to load, drop the card
+            // styling so the node reverts to a normal text pill and the
+            // label still reads.
             thumb.style.display = 'none';
+            el.classList.remove('has-image');
           });
           el.appendChild(thumb);
           const lbl = document.createElement('div');
@@ -6226,18 +6233,46 @@ export default function MindMapCanvas({
           cursor: not-allowed;
         }
 
-        /* Image attachments */
+        /* Image-forward node cards ("Pinterest mode"): when a node has an
+           image it flips into a card — image fills the top edge-to-edge at
+           the node's curvature, the title rides a solid strip beneath it.
+           We deliberately avoid overflow:hidden on the node so the + add-
+           handle and flow handles (positioned outside the box) aren't
+           clipped; instead the image rounds its own top corners (12px sits
+           just inside the node's 13px border) and the strip rounds the
+           bottom. */
+        .smm-root :global(.node.has-image) {
+          padding: 0;
+          width: 188px;
+          max-width: 188px;
+          min-width: 0;
+          text-align: center;
+          overflow: visible;
+        }
         .smm-root :global(.node-thumb) {
           display: block;
-          width: 100px;
-          height: 100px;
+          width: 100%;
+          height: 134px;
           object-fit: cover;
-          border-radius: 10px;
-          margin: -2px auto 6px;
-          border: 1px solid color-mix(in srgb, var(--accent-c1, var(--accent-1)) 35%, var(--node-border));
-          box-shadow: 0 2px 6px var(--node-shadow);
+          border-radius: 12px 12px 0 0;
+          margin: 0;
+          border: 0;
+          box-shadow: none;
           background: color-mix(in srgb, var(--node-bg) 80%, black 8%);
         }
+        .smm-root :global(.node.has-image .node-label) {
+          display: block;
+          padding: 9px 13px 10px;
+          border-radius: 0 0 12px 12px;
+          border-top: 1px solid
+            color-mix(in srgb, var(--accent-c1, var(--accent-1)) 30%, transparent);
+          background: color-mix(in srgb, var(--node-bg-2) 88%, black 6%);
+          font-size: 13px;
+          font-weight: 600;
+          line-height: 1.3;
+          letter-spacing: -0.01em;
+        }
+        /* Plain label fallback (non-card contexts). */
         .smm-root :global(.node-label) {
           display: block;
         }
