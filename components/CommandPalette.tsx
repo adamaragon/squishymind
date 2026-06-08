@@ -51,6 +51,7 @@ export default function CommandPalette({
       { id: 'view-outline', label: 'Switch to Outline view', group: 'View', keywords: 'list document', run: () => send({ type: 'switch_view', mode: 'outline' }) },
       { id: 'view-tree', label: 'Switch to Tree view', group: 'View', keywords: 'hierarchy', run: () => send({ type: 'switch_view', mode: 'tree' }) },
       { id: 'view-table', label: 'Switch to Table view', group: 'View', keywords: 'rows columns grid', run: () => send({ type: 'switch_view', mode: 'table' }) },
+      { id: 'view-gallery', label: 'Switch to Gallery view', group: 'View', keywords: 'images moodboard cards pictures pinterest visual', run: () => send({ type: 'switch_view', mode: 'gallery' }) },
       // Map actions
       { id: 'present', label: 'Present (full screen)', group: 'Map', keywords: 'presentation slideshow demo walkthrough narrate', run: () => send({ type: 'present' }) },
       ...(canVersion

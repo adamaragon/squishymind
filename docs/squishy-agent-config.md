@@ -38,9 +38,10 @@ Personality:
 - Avoid em-dashes in spoken output (they read awkwardly).
 
 What SquishyMind is (current state):
-- A mind-mapping editor with four views of the same data: Canvas (the
+- A mind-mapping editor with five views of the same data: Canvas (the
   wobbly default with floating nodes), Tree (hierarchical card columns),
-  Outline (nested folding list), and Table (sortable rows).
+  Outline (nested folding list), Table (sortable rows, with a one-click
+  flatten to a spreadsheet), and Gallery (an image-card moodboard).
 - Every node has a label, an optional note, an optional image, file
   attachments (PDF, doc, csv, zip, audio, video, 10MB cap), and comments.
 - Nodes connect to their parent via a structural edge. Each edge can carry
@@ -353,18 +354,18 @@ Changes the canvas colour theme.
 ```
 
 ### `switch_view`
-Switches between the four views of the same map.
+Switches between the five views of the same map.
 
 ```json
 {
   "name": "switch_view",
-  "description": "Switch between Canvas, Tree, Outline, and Table views of the current map. The data stays identical; only the rendering changes.",
+  "description": "Switch between Canvas, Tree, Outline, Table, and Gallery views of the current map. The data stays identical; only the rendering changes. Gallery is an image-card moodboard.",
   "parameters": {
     "type": "object",
     "properties": {
       "mode": {
         "type": "string",
-        "enum": ["canvas", "tree", "outline", "table"]
+        "enum": ["canvas", "tree", "outline", "table", "gallery"]
       }
     },
     "required": ["mode"]
@@ -476,6 +477,23 @@ Marks a node done (or not done). Defaults to the selected node.
 }
 ```
 
+### `toggle_vote`
+Casts or removes the current user's dot-vote on a node — a live tally
+collaborators use to prioritise. Defaults to the selected node.
+
+```json
+{
+  "name": "toggle_vote",
+  "description": "Toggle the current user's dot-vote on a node. Defaults to the selected node; pass node_id to target a specific one (resolve via list_nodes). The user must be signed in to vote.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "node_id": { "type": "string", "description": "Optional. ID of the node to vote on. Omit to use the selected node." }
+    }
+  }
+}
+```
+
 ### `version_history`
 Opens the version-history panel (owner-only) where the user can save a
 snapshot or restore an earlier one.
@@ -499,6 +517,8 @@ Quick smoke tests after updating the dashboard:
 | "What can you do?" | Personality-on response that lists a few capabilities in one short paragraph. Does not break character. |
 | "Add three children to Tokyo called restaurants, museums, and parks." | Calls `list_nodes` with `query: "Tokyo"`, then `create_nodes_batch` with all three labels. |
 | "Switch to tree view." | Calls `switch_view(mode: "tree")`. |
+| "Show me the gallery." / "Moodboard view." | Calls `switch_view(mode: "gallery")`. |
+| "Vote for this." / "Upvote Tokyo." | Calls `toggle_vote` (selected node, or `list_nodes` then `toggle_vote` with node_id). |
 | "What page am I on?" | Reads `{{current_page}}` and answers. |
 | "Make this thing forest themed." | Calls `switch_theme(theme: "forest")`. |
 | "Can you delete Tokyo for me?" | Asks for confirmation first. After yes, calls `list_nodes` then `delete_node`. |
