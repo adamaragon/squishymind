@@ -23,6 +23,7 @@ export const CANVAS_TOOLS = [
   // Wave 1/2 — voice can now drive these too (register matching tools on the
   // ElevenLabs dashboard; see docs/squishy-agent-config.md).
   'toggle_done',
+  'toggle_vote',
   'toggle_focus_mode',
   'present',
   'summarize_map',
@@ -205,6 +206,10 @@ export async function executeSquishyTool(
 
     case 'toggle_done':
       command = { type: 'toggle_done', node_id: asString(params.node_id) };
+      break;
+
+    case 'toggle_vote':
+      command = { type: 'toggle_vote', node_id: asString(params.node_id) };
       break;
 
     case 'toggle_focus_mode':

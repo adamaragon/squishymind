@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MindMapData, MindMapNode, ViewMode } from '@/lib/types';
 import NodeDetailPanel from './NodeDetailPanel';
 import { stripIncomingLinks } from '@/lib/canvas/layout';
+import { createClient } from '@/lib/supabase/client';
 
 type Props = {
   mindmapId: string;
@@ -149,15 +150,12 @@ function buildFlatRows(d: MindMapData): Row[] {
 }
 
 // Sortable columns in the flat view.
-type SortKey = 'label' | 'path' | 'note' | 'done' | 'children';
+type SortKey = 'label' | 'path' | 'note' | 'done' | 'children' | 'votes';
 type SortDir = 'asc' | 'desc';
 
 export default function TableView({
-  // mindmapId + initialTitle are part of the shared view-component
-  // interface so callers can pass identical props to all four views.
-  // TableView happens not to need them today; underscore signals
-  // intentionally-unused without resorting to a `void` statement.
-  mindmapId: _mindmapId,
+  // initialTitle is part of the shared view-component interface; unused here.
+  mindmapId,
   initialData,
   initialTitle: _initialTitle,
   readonly = false,
@@ -172,6 +170,11 @@ export default function TableView({
   const [sortKey, setSortKey] = useState<SortKey>('path');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [filter, setFilter] = useState('');
+
+  // Dot-vote tallies per node id, fetched from node_votes and kept live.
+  const [votes, setVotes] = useState<Record<string, { count: number; mine: boolean }>>({});
+  const [canVote, setCanVote] = useState(false);
+  const uidRef = useRef<string | null>(null);
 
   // Local data state so detail-panel edits feel immediate. Resyncs when the
   // parent reseeds with new initialData (view switch / realtime sync).
@@ -220,6 +223,88 @@ export default function TableView({
     if (!node) return;
     applyNodeUpdate({ ...node, done: !node.done });
   }
+
+  // ---- Dot-voting: fetch tallies + keep them live (mirrors the canvas) ----
+  useEffect(() => {
+    const supabase = createClient();
+    let active = true;
+    const refetch = async () => {
+      const { data: rows, error } = await supabase
+        .from('node_votes')
+        .select('node_id,user_id')
+        .eq('mindmap_id', mindmapId);
+      if (error || !active) return;
+      const next: Record<string, { count: number; mine: boolean }> = {};
+      const uid = uidRef.current;
+      for (const r of (rows as Array<{ node_id: string; user_id: string }> | null) || []) {
+        if (!next[r.node_id]) next[r.node_id] = { count: 0, mine: false };
+        next[r.node_id].count += 1;
+        if (uid && r.user_id === uid) next[r.node_id].mine = true;
+      }
+      if (active) setVotes(next);
+    };
+    supabase.auth.getUser().then(({ data: u }) => {
+      uidRef.current = u.user?.id ?? null;
+      if (active) setCanVote(!!uidRef.current);
+      void refetch();
+    });
+    const channel = supabase
+      .channel(`map:${mindmapId}:votes:table`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'node_votes',
+          filter: `mindmap_id=eq.${mindmapId}`,
+        },
+        () => {
+          void refetch();
+        },
+      )
+      .subscribe();
+    return () => {
+      active = false;
+      supabase.removeChannel(channel);
+    };
+  }, [mindmapId]);
+
+  // Toggle the current user's vote on a node (optimistic; realtime reconciles).
+  const toggleVote = useCallback(
+    async (nodeId: string) => {
+      const uid = uidRef.current;
+      if (!uid) return;
+      const wasMine = votes[nodeId]?.mine ?? false;
+      const supabase = createClient();
+      setVotes((prev) => {
+        const cur = prev[nodeId] || { count: 0, mine: false };
+        return {
+          ...prev,
+          [nodeId]: {
+            count: Math.max(0, cur.count + (wasMine ? -1 : 1)),
+            mine: !wasMine,
+          },
+        };
+      });
+      try {
+        if (!wasMine) {
+          await supabase
+            .from('node_votes')
+            .insert({ mindmap_id: mindmapId, node_id: nodeId, user_id: uid });
+        } else {
+          await supabase
+            .from('node_votes')
+            .delete()
+            .eq('mindmap_id', mindmapId)
+            .eq('node_id', nodeId)
+            .eq('user_id', uid);
+        }
+      } catch {
+        /* realtime refetch reconciles */
+      }
+    },
+    [votes, mindmapId],
+  );
 
   function toggleCollapse(id: string) {
     setCollapsed((prev) => {
@@ -299,11 +384,14 @@ export default function TableView({
         case 'children':
           cmp = a.childCount - b.childCount;
           break;
+        case 'votes':
+          cmp = (votes[a.id]?.count || 0) - (votes[b.id]?.count || 0);
+          break;
       }
       return cmp * dir;
     });
     return sorted;
-  }, [flatRowsBase, data, filter, sortKey, sortDir]);
+  }, [flatRowsBase, data, filter, sortKey, sortDir, votes]);
 
   // Stats for the header strip.
   const stats = useMemo(() => {
@@ -461,6 +549,9 @@ export default function TableView({
             onToggleCollapse={toggleCollapse}
             onToggleDone={toggleDone}
             onDelete={applyDeleteNode}
+            votes={votes}
+            canVote={canVote}
+            onToggleVote={toggleVote}
           />
         ) : (
           <FlatTable
@@ -474,6 +565,9 @@ export default function TableView({
             onOpen={(id) => setDetailNodeId(id)}
             onToggleDone={toggleDone}
             onDelete={applyDeleteNode}
+            votes={votes}
+            canVote={canVote}
+            onToggleVote={toggleVote}
           />
         )}
       </div>
@@ -826,6 +920,9 @@ type HierTableProps = {
   onToggleCollapse: (id: string) => void;
   onToggleDone: (id: string) => void;
   onDelete: (id: string) => void;
+  votes: Record<string, { count: number; mine: boolean }>;
+  canVote: boolean;
+  onToggleVote: (id: string) => void;
 };
 
 function HierTable({
@@ -838,6 +935,9 @@ function HierTable({
   onToggleCollapse,
   onToggleDone,
   onDelete,
+  votes,
+  canVote,
+  onToggleVote,
 }: HierTableProps) {
   return (
     <table className="tv-grid" aria-label="Mind map — hierarchical table">
@@ -861,6 +961,9 @@ function HierTable({
           <th className="tv-th tv-th-children" scope="col" title="Direct children">
             Children
           </th>
+          <th className="tv-th tv-th-votes" scope="col" title="Dot-votes">
+            Votes
+          </th>
           {!readonly && (
             <th className="tv-th tv-th-actions" scope="col" aria-label="Row actions" />
           )}
@@ -876,6 +979,7 @@ function HierTable({
           const isCollapsed = collapsed.has(row.id);
           const note = node.note?.trim() || '';
           const done = !!node.done;
+          const v = votes[row.id] || { count: 0, mine: false };
           return (
             <tr
               key={row.id}
@@ -1013,6 +1117,34 @@ function HierTable({
                 )}
               </td>
 
+              {/* Dot-votes */}
+              <td className="tv-cell tv-cell-votes">
+                <button
+                  type="button"
+                  className={`tv-vote ${v.mine ? 'is-mine' : ''} ${v.count > 0 ? 'has-votes' : ''}`}
+                  onClick={() => onToggleVote(row.id)}
+                  disabled={!canVote || isRoot}
+                  aria-pressed={v.mine}
+                  aria-label={
+                    v.mine
+                      ? `Remove your vote (${v.count})`
+                      : `Vote for ${node.label || 'node'} (${v.count})`
+                  }
+                  title={
+                    isRoot
+                      ? 'The root is not votable'
+                      : canVote
+                        ? v.mine
+                          ? 'Remove your vote'
+                          : 'Vote'
+                        : 'Sign in to vote'
+                  }
+                >
+                  <span className="tv-vote-caret" aria-hidden>▲</span>
+                  <span className="tv-vote-count">{v.count}</span>
+                </button>
+              </td>
+
               {/* Delete action */}
               {!readonly && (
                 <td className="tv-cell tv-cell-actions">
@@ -1067,6 +1199,9 @@ type FlatTableProps = {
   onOpen: (id: string) => void;
   onToggleDone: (id: string) => void;
   onDelete: (id: string) => void;
+  votes: Record<string, { count: number; mine: boolean }>;
+  canVote: boolean;
+  onToggleVote: (id: string) => void;
 };
 
 function FlatTable({
@@ -1080,6 +1215,9 @@ function FlatTable({
   onOpen,
   onToggleDone,
   onDelete,
+  votes,
+  canVote,
+  onToggleVote,
 }: FlatTableProps) {
   // A sortable header cell: a real <button> carrying aria-sort on its <th>.
   function SortHeader({
@@ -1146,6 +1284,7 @@ function FlatTable({
             className="tv-th-children"
             title="Direct children"
           />
+          <SortHeader col="votes" label="Votes" className="tv-th-votes" title="Dot-votes" />
           {!readonly && (
             <th className="tv-th tv-th-actions" scope="col" aria-label="Row actions" />
           )}
@@ -1154,7 +1293,7 @@ function FlatTable({
       <tbody>
         {rows.length === 0 ? (
           <tr>
-            <td className="tv-cell tv-noresults" colSpan={readonly ? 7 : 8}>
+            <td className="tv-cell tv-noresults" colSpan={readonly ? 8 : 9}>
               No nodes match your filter.
             </td>
           </tr>
@@ -1167,6 +1306,7 @@ function FlatTable({
             const accent = ACCENT_PALETTE[colorIdx % 5];
             const note = node.note?.trim() || '';
             const done = !!node.done;
+            const v = votes[row.id] || { count: 0, mine: false };
             // Path breadcrumb: drop the last element (== this node's own
             // label) so the column shows ancestry; show "—" for the root.
             const ancestry = row.path.slice(0, -1);
@@ -1282,6 +1422,34 @@ function FlatTable({
                       —
                     </span>
                   )}
+                </td>
+
+                {/* Dot-votes */}
+                <td className="tv-cell tv-cell-votes">
+                  <button
+                    type="button"
+                    className={`tv-vote ${v.mine ? 'is-mine' : ''} ${v.count > 0 ? 'has-votes' : ''}`}
+                    onClick={() => onToggleVote(row.id)}
+                    disabled={!canVote || isRoot}
+                    aria-pressed={v.mine}
+                    aria-label={
+                      v.mine
+                        ? `Remove your vote (${v.count})`
+                        : `Vote for ${node.label || 'node'} (${v.count})`
+                    }
+                    title={
+                      isRoot
+                        ? 'The root is not votable'
+                        : canVote
+                          ? v.mine
+                            ? 'Remove your vote'
+                            : 'Vote'
+                          : 'Sign in to vote'
+                    }
+                  >
+                    <span className="tv-vote-caret" aria-hidden>▲</span>
+                    <span className="tv-vote-count">{v.count}</span>
+                  </button>
                 </td>
 
                 {/* Delete */}
@@ -1669,6 +1837,53 @@ const tableStyles = `
     border: 1px solid var(--border);
     padding: 2px 7px;
     border-radius: 999px;
+  }
+
+  /* Dot-votes column */
+  .tv-cell-votes {
+    width: 78px;
+    min-width: 78px;
+    text-align: left;
+  }
+  .tv-vote {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+    color: var(--text-dim);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tv-vote .tv-vote-caret {
+    font-size: 8px;
+    opacity: 0.8;
+  }
+  .tv-vote.has-votes {
+    color: var(--text);
+  }
+  .tv-vote:hover:not(:disabled) {
+    border-color: var(--border-strong);
+    transform: translateY(-1px);
+  }
+  .tv-vote:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.5);
+  }
+  .tv-vote.is-mine {
+    color: #fff;
+    background: linear-gradient(135deg, #8b5cf6, #06b6d4);
+    border-color: transparent;
+  }
+  .tv-vote:disabled {
+    cursor: default;
+    opacity: 0.6;
   }
 
   .tv-dash {
