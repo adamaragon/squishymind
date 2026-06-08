@@ -17,6 +17,18 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v5.1',
+    title: 'Dot-voting — and a much snappier site',
+    date: 'June 2026',
+    highlights: [
+      'Dot-voting on nodes: click the ▲ chip (or press V) to vote, and the tally updates live for everyone in a shared map — so a group can prioritise together and the result sticks',
+      'Anyone viewing a map sees the tallies; signed-in collaborators cast the votes',
+      'The public site (home, blog, templates, pricing and friends) now renders as static pages, so it loads noticeably faster',
+    ],
+    squishyNote:
+      'Vote with the little ▲, darling. I tally in real time and I do not play favourites. Mostly.',
+  },
+  {
     version: 'v5.0',
     title: 'Image nodes, a Gallery view, and a spreadsheet-grade Table',
     date: 'June 2026',
@@ -429,16 +441,10 @@ export const shipped: ShippedEntry[] = [
 
 export const roadmap: RoadmapEntry[] = [
   {
-    title: 'Dot-voting on nodes',
-    description:
-      'Live reactions and the session timer shipped. Next: persistent dot-voting that tallies on each node, so a group can prioritise a map together and the result sticks.',
-    status: 'next',
-  },
-  {
     title: 'Squishy gets smarter at teaching',
     description:
       'Squishy already summarizes maps and finds gaps. Next: she does it by voice too, building example branches with you in real time.',
-    status: 'soon',
+    status: 'next',
   },
   {
     title: 'Live layout modes',
