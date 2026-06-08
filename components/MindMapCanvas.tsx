@@ -175,6 +175,10 @@ export default function MindMapCanvas({
     // The realtime channel itself is wired up later, near the data channel.
     let otherPresence: Record<string, PresenceState> = {};
     let lastCursorBroadcast = 0;
+    // Dot-vote tallies per node id ({count, mine}). Declared early (out of
+    // TDZ) so renderNodes' applyVoteChips() can read it on the first paint,
+    // before the realtime fetch populates it.
+    let nodeVotes: Record<string, { count: number; mine: boolean }> = {};
 
     // Hydrate from initialData (only the persistent bits)
     const seed = cloneData(initialDataRef.current);
@@ -2292,6 +2296,8 @@ export default function MindMapCanvas({
       renderActionChip();
       // Reapply any collaborator-edit chips after the node DOM is rebuilt.
       applyEditingBadges();
+      // Repaint dot-vote chips after the node DOM is rebuilt.
+      applyVoteChips();
     }
 
     function renderEdges() {
@@ -3032,6 +3038,12 @@ export default function MindMapCanvas({
       } else if (e.key.toLowerCase() === 'x') {
         if (readonlyRef.current) return;
         if (state.selectedId) toggleDone(state.selectedId);
+      } else if (e.key.toLowerCase() === 'v' && !e.metaKey && !e.ctrlKey) {
+        // Dot-vote the selected node (not the root). toggleVote no-ops when
+        // the viewer isn't signed in.
+        if (state.selectedId && state.selectedId !== state.rootId) {
+          void toggleVote(state.selectedId);
+        }
       }
     }
 
@@ -3784,6 +3796,122 @@ export default function MindMapCanvas({
       )
       .subscribe();
 
+    // ---- Dot-voting: live tallies on nodes (mirrors the comments channel) ----
+    const votesChannel = realtimeClient
+      .channel(`map:${mindmapId}:votes`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'node_votes',
+          filter: `mindmap_id=eq.${mindmapId}`,
+        },
+        () => {
+          void fetchVotes();
+        },
+      )
+      .subscribe();
+    void fetchVotes();
+
+    // Pull the current tallies for the whole map and repaint chips. Cheap:
+    // votes are sparse and grouping happens client-side.
+    async function fetchVotes() {
+      try {
+        const { data, error } = await realtimeClient
+          .from('node_votes')
+          .select('node_id,user_id')
+          .eq('mindmap_id', mindmapId);
+        if (error) return;
+        const next: Record<string, { count: number; mine: boolean }> = {};
+        for (const row of (data as Array<{ node_id: string; user_id: string }> | null) ||
+          []) {
+          const nid = row.node_id;
+          if (!next[nid]) next[nid] = { count: 0, mine: false };
+          next[nid].count += 1;
+          if (currentUserId && row.user_id === currentUserId) next[nid].mine = true;
+        }
+        nodeVotes = next;
+        applyVoteChips();
+      } catch {
+        /* ignore — chips keep their last state */
+      }
+    }
+
+    // Paint/refresh a vote chip on each node from nodeVotes. Created once per
+    // node element (renderNodes rebuilds them), updated in place on realtime
+    // changes. The root "brain" isn't votable.
+    function applyVoteChips() {
+      const canVote = !!currentUserId;
+      nodesLayer.querySelectorAll<HTMLElement>('.node').forEach((el) => {
+        const id = el.dataset.id || '';
+        if (id === state.rootId) return;
+        const v = nodeVotes[id] || { count: 0, mine: false };
+        let chip = el.querySelector('.vote-chip') as HTMLButtonElement | null;
+        // Nothing to show for view-only visitors on an unvoted node.
+        if (v.count === 0 && !canVote) {
+          if (chip) chip.remove();
+          return;
+        }
+        if (!chip) {
+          chip = document.createElement('button');
+          chip.className = 'vote-chip';
+          chip.type = 'button';
+          chip.innerHTML =
+            '<span class="vote-emoji" aria-hidden="true">▲</span><span class="vote-count"></span>';
+          if (canVote) {
+            chip.addEventListener('mousedown', (ev) => ev.stopPropagation());
+            chip.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              void toggleVote(id);
+            });
+          } else {
+            chip.style.cursor = 'default';
+            chip.tabIndex = -1;
+          }
+          el.appendChild(chip);
+        }
+        chip.classList.toggle('voted', v.mine);
+        chip.classList.toggle('has-votes', v.count > 0);
+        const cnt = chip.querySelector('.vote-count') as HTMLElement | null;
+        if (cnt) cnt.textContent = v.count > 0 ? String(v.count) : '';
+        chip.setAttribute(
+          'aria-label',
+          v.mine ? `Remove your vote (${v.count})` : `Vote for this node (${v.count})`,
+        );
+        chip.setAttribute('aria-pressed', v.mine ? 'true' : 'false');
+      });
+    }
+
+    // Toggle the current user's vote on a node. Optimistic; the realtime
+    // subscription reconciles (our own write echoes back and re-fetches).
+    async function toggleVote(nodeId: string) {
+      if (!currentUserId) return;
+      const cur = nodeVotes[nodeId] || { count: 0, mine: false };
+      const willVote = !cur.mine;
+      nodeVotes[nodeId] = {
+        count: Math.max(0, cur.count + (willVote ? 1 : -1)),
+        mine: willVote,
+      };
+      applyVoteChips();
+      try {
+        if (willVote) {
+          await realtimeClient
+            .from('node_votes')
+            .insert({ mindmap_id: mindmapId, node_id: nodeId, user_id: currentUserId });
+        } else {
+          await realtimeClient
+            .from('node_votes')
+            .delete()
+            .eq('mindmap_id', mindmapId)
+            .eq('node_id', nodeId)
+            .eq('user_id', currentUserId);
+        }
+      } catch {
+        void fetchVotes();
+      }
+    }
+
     if (currentUserId) {
       presenceChannel = realtimeClient.channel(presenceChannelName(mindmapId), {
         config: { presence: { key: currentUserId } },
@@ -4266,6 +4394,20 @@ export default function MindMapCanvas({
         return { success: true, data: { node_id: nid, done: !!state.nodes[nid]?.done } };
       }
 
+      if (cmd.type === 'toggle_vote') {
+        if (!currentUserId) return { success: false, error: 'Sign in to vote.' };
+        const nid = cmd.node_id || state.selectedId;
+        if (!nid || !state.nodes[nid]) {
+          return { success: false, error: 'No node selected.' };
+        }
+        if (nid === state.rootId) {
+          return { success: false, error: 'The root node is not votable.' };
+        }
+        void toggleVote(nid);
+        const v = nodeVotes[nid] || { count: 0, mine: false };
+        return { success: true, data: { node_id: nid, voted: v.mine, count: v.count } };
+      }
+
       if (cmd.type === 'toggle_focus_mode') {
         toggleFocusMode();
         return { success: true, data: { focus_mode: focusModeRef.current } };
@@ -4368,6 +4510,11 @@ export default function MindMapCanvas({
       }
       try {
         commentsChannel.unsubscribe();
+      } catch {
+        /* ignore */
+      }
+      try {
+        votesChannel.unsubscribe();
       } catch {
         /* ignore */
       }
@@ -5633,6 +5780,63 @@ export default function MindMapCanvas({
           box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
           pointer-events: none;
           z-index: 4;
+        }
+
+        /* Dot-vote chip — top-left corner so it clears the right-center
+           add-handle and the top-right editing badge. */
+        .smm-root :global(.vote-chip) {
+          position: absolute;
+          top: -11px;
+          left: -8px;
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+          padding: 2px 7px 2px 6px;
+          min-width: 22px;
+          height: 22px;
+          border-radius: 999px;
+          font-size: 11px;
+          font-weight: 700;
+          line-height: 1;
+          font-variant-numeric: tabular-nums;
+          color: var(--node-text);
+          background: color-mix(in srgb, var(--node-bg-2) 88%, black 8%);
+          border: 1px solid
+            color-mix(in srgb, var(--accent-c1, var(--accent-1)) 40%, transparent);
+          box-shadow: 0 2px 8px var(--node-shadow);
+          cursor: pointer;
+          opacity: 0.85;
+          transition:
+            opacity 0.15s ease,
+            transform 0.15s ease,
+            background 0.15s ease,
+            border-color 0.15s ease;
+          z-index: 4;
+        }
+        .smm-root :global(.vote-chip .vote-emoji) {
+          font-size: 9px;
+          line-height: 1;
+          opacity: 0.85;
+        }
+        .smm-root :global(.vote-chip:not(.has-votes)) {
+          opacity: 0.5;
+        }
+        .smm-root :global(.node:hover .vote-chip),
+        .smm-root :global(.vote-chip:hover) {
+          opacity: 1;
+        }
+        .smm-root :global(.vote-chip:hover) {
+          transform: scale(1.08);
+        }
+        .smm-root :global(.vote-chip.voted) {
+          color: white;
+          background: linear-gradient(
+            135deg,
+            var(--accent-c1, var(--accent-1)),
+            var(--accent-c2, var(--accent-2))
+          );
+          border-color: transparent;
+          opacity: 1;
         }
 
         .smm-root :global(.smm-cursor) {

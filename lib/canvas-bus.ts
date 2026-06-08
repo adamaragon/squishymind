@@ -40,6 +40,9 @@ export type CanvasCommand =
   // ---- Wave 1: command-palette / focus / tasks ----
   /** Toggle a node's task-done state. Defaults to the selected node. */
   | { type: 'toggle_done'; node_id?: string }
+  /** Toggle the current user's dot-vote on a node. Defaults to the selected
+   *  node. Requires an authenticated owner/collaborator. */
+  | { type: 'toggle_vote'; node_id?: string }
   /** Toggle Focus (Spotlight) mode — dims everything but the active branch. */
   | { type: 'toggle_focus_mode' }
   /** Export the current map. 'doc' produces a Markdown document. */
