@@ -17,6 +17,12 @@ const config: Config = {
       fontFamily: {
         sans: ['-apple-system', 'BlinkMacSystemFont', 'Inter', 'Segoe UI', 'sans-serif'],
       },
+      fontSize: {
+        display: 'var(--text-display)',
+      },
+      letterSpacing: {
+        display: '-0.02em',
+      },
     },
   },
   plugins: [],

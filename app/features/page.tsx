@@ -224,7 +224,7 @@ export default function FeaturesPage() {
       <main className="px-6">
         {/* Hero */}
         <section className="max-w-4xl mx-auto pt-16 pb-12 text-center">
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-5 leading-[1.05]">
+          <h1 className="text-display font-bold tracking-display mb-5 leading-[1.05]">
             Everything you need to{' '}
             <span className="gradient-text">map your mind</span>.
           </h1>
@@ -284,7 +284,7 @@ export default function FeaturesPage() {
 
         {/* CTA */}
         <section className="max-w-3xl mx-auto px-6 py-16 text-center">
-          <h2 className="text-3xl md:text-4xl font-semibold mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">
             Start for free. Stay for the brain.
           </h2>
           <p className="text-[--text-dim] mb-7 text-lg leading-relaxed">

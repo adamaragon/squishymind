@@ -78,7 +78,7 @@ export default function FAQ() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
-      <h2 id="faq-heading" className="text-3xl font-semibold mb-8 text-center">
+      <h2 id="faq-heading" className="text-3xl font-bold mb-8 text-center">
         Beta, simply.
       </h2>
       <div className="space-y-3">

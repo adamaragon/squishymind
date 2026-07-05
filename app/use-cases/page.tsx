@@ -117,7 +117,7 @@ export default function UseCasesPage() {
       <main className="px-6">
         {/* Hero */}
         <section className="max-w-4xl mx-auto pt-16 pb-12 text-center">
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-5 leading-[1.05]">
+          <h1 className="text-display font-bold tracking-display mb-5 leading-[1.05]">
             Your brain works differently.{' '}
             <span className="gradient-text">So does SquishyMind.</span>
           </h1>
@@ -150,7 +150,7 @@ export default function UseCasesPage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`/usecases/${uc.id}.jpg`}
-                alt=""
+                alt={uc.heading}
                 width={1200}
                 height={800}
                 className="rounded-2xl border border-white/10 aspect-[3/2] object-cover w-full mb-8"
@@ -178,7 +178,7 @@ export default function UseCasesPage() {
 
         {/* CTA */}
         <section className="max-w-3xl mx-auto px-6 py-16 text-center">
-          <h2 className="text-3xl md:text-4xl font-semibold mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">
             See what SquishyMind can do for you.
           </h2>
           <p className="text-[--text-dim] mb-7 text-lg leading-relaxed">

@@ -32,22 +32,22 @@ export default function FounderAccessPage() {
       <Header />
       <main className="px-6">
         {/* Hero */}
-        <section className="max-w-3xl mx-auto pt-16 pb-10 text-center">
-          <div className="inline-block mb-5">
-            <img src="/brain.svg" alt="" width={96} height={96} className="opacity-90" />
+        <section className="max-w-3xl mx-auto pt-20 pb-14 text-center">
+          <div className="inline-block mb-6">
+            <img src="/brain.svg" alt="" width={140} height={140} className="opacity-95" />
           </div>
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-5">
+          <h1 className="text-display font-bold tracking-display mb-6">
             <span className="gradient-text">Founder Access</span>
           </h1>
-          <p className="text-lg text-[--text-dim] max-w-2xl mx-auto leading-relaxed">
+          <p className="text-xl text-[--text-dim] max-w-2xl mx-auto leading-relaxed">
             40% off Premium, forever. A more generous free tier you keep even if you
             never pay us. Awarded to every account that signed up during beta.
           </p>
         </section>
 
         {/* Body — long-form explainer */}
-        <article className="max-w-2xl mx-auto pb-12 prose-squishy text-[--text-dim] leading-relaxed text-base">
-          <h2 className="text-2xl font-semibold text-white mt-12 mb-3">
+        <article className="max-w-[65ch] mx-auto pb-14 prose-squishy">
+          <h2 className="text-3xl font-bold text-white mt-14 mb-4">
             Why we don&apos;t promise &ldquo;free forever&rdquo;
           </h2>
           <p className="mb-4">
@@ -63,7 +63,7 @@ export default function FounderAccessPage() {
             <strong className="text-white"> Founder Access</strong>.
           </p>
 
-          <h2 className="text-2xl font-semibold text-white mt-12 mb-3">
+          <h2 className="text-3xl font-bold text-white mt-16 mb-4">
             What Founder Access actually is
           </h2>
           <p className="mb-6">
@@ -105,7 +105,7 @@ export default function FounderAccessPage() {
             absolutely do.
           </p>
 
-          <h2 className="text-2xl font-semibold text-white mt-12 mb-3">
+          <h2 className="text-3xl font-bold text-white mt-16 mb-4">
             What about new features?
           </h2>
           <p className="mb-4">
@@ -114,7 +114,7 @@ export default function FounderAccessPage() {
             your Founder price. The deal you signed up for is the deal you keep.
           </p>
 
-          <h2 className="text-2xl font-semibold text-white mt-12 mb-3">
+          <h2 className="text-3xl font-bold text-white mt-16 mb-4">
             How to claim it
           </h2>
           <p className="mb-4">
@@ -123,17 +123,17 @@ export default function FounderAccessPage() {
             screen and the price will already be the Founder rate. Nothing to do.
           </p>
 
-          <h2 className="text-2xl font-semibold text-white mt-12 mb-3">
+          <h2 className="text-3xl font-bold text-white mt-16 mb-4">
             What &ldquo;beta-era&rdquo; means
           </h2>
-          <p className="mb-8">
+          <p className="mb-10">
             Beta ends when we launch paid tiers — likely some time in the next four to
             six months. After that, new signups get the standard free tier and Premium
             pricing. Sign up before then and you&apos;re in.
           </p>
 
-          <div className="text-center mt-12 mb-4">
-            <Link href="/signup" className="btn btn-primary text-base px-8 py-3">
+          <div className="text-center mt-16 mb-4">
+            <Link href="/signup" className="btn btn-primary text-lg px-10 py-4">
               Sign up free →
             </Link>
             <p className="text-xs text-[--text-dim] mt-3">

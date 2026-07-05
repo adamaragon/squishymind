@@ -106,7 +106,7 @@ export default async function CompareDetailPage({
             <span className="mx-2" aria-hidden>/</span>
             <span>vs {c.name}</span>
           </nav>
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-5 leading-[1.1]">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-display mb-5 leading-[1.1]">
             SquishyMind vs <span className="gradient-text">{c.name}</span>
           </h1>
           <p className="text-sm text-[--text-dim] mb-6">{c.tagline}</p>
@@ -116,7 +116,7 @@ export default async function CompareDetailPage({
         {/* Strengths / weaknesses */}
         <section className="max-w-4xl mx-auto pb-10 grid md:grid-cols-2 gap-5">
           <div className="glass rounded-2xl p-6">
-            <h2 className="font-semibold mb-3 text-emerald-400">Where {c.name} wins</h2>
+            <h2 className="font-bold mb-3 text-emerald-400">Where {c.name} wins</h2>
             <ul className="space-y-2">
               {c.strengths.map((s) => (
                 <li key={s} className="flex items-start gap-2 text-sm text-[--text-dim]">
@@ -127,7 +127,7 @@ export default async function CompareDetailPage({
             </ul>
           </div>
           <div className="glass rounded-2xl p-6">
-            <h2 className="font-semibold mb-3 text-pink-400">Where SquishyMind wins</h2>
+            <h2 className="font-bold mb-3 text-pink-400">Where SquishyMind wins</h2>
             <ul className="space-y-2">
               {c.weaknesses.map((w) => (
                 <li key={w} className="flex items-start gap-2 text-sm text-[--text-dim]">
@@ -142,11 +142,11 @@ export default async function CompareDetailPage({
         {/* Decision guidance */}
         <section className="max-w-4xl mx-auto pb-10 grid md:grid-cols-2 gap-5">
           <div className="glass rounded-2xl p-6 border-white/10">
-            <h2 className="font-semibold mb-2">Pick {c.name} if…</h2>
+            <h2 className="font-bold mb-2">Pick {c.name} if…</h2>
             <p className="text-sm text-[--text-dim] leading-relaxed">{c.pickThemIf}</p>
           </div>
           <div className="glass rounded-2xl p-6 border-violet-500/20">
-            <h2 className="font-semibold mb-2">Pick SquishyMind if…</h2>
+            <h2 className="font-bold mb-2">Pick SquishyMind if…</h2>
             <p className="text-sm text-[--text-dim] leading-relaxed">{c.pickUsIf}</p>
           </div>
         </section>
@@ -154,7 +154,7 @@ export default async function CompareDetailPage({
         {/* Bottom line */}
         <section className="max-w-3xl mx-auto pb-12">
           <div className="glass rounded-2xl p-7 border-violet-500/20">
-            <h2 className="font-semibold mb-3 text-sm uppercase tracking-wide text-[--text-dim]">
+            <h2 className="font-bold mb-3 text-sm uppercase tracking-wide text-[--text-dim]">
               Bottom line
             </h2>
             <p className="leading-relaxed text-[--text-dim]">{c.verdict}</p>
@@ -163,7 +163,7 @@ export default async function CompareDetailPage({
 
         {/* CTA */}
         <section className="max-w-3xl mx-auto px-6 pb-12 text-center">
-          <h2 className="text-3xl font-semibold mb-4">Decide with your own hands.</h2>
+          <h2 className="text-3xl font-bold mb-4">Decide with your own hands.</h2>
           <p className="text-[--text-dim] mb-7 text-lg leading-relaxed">
             SquishyMind is free during beta. Sign up in 10 seconds, no credit card —
             and lock in Founder pricing for life.
@@ -180,7 +180,7 @@ export default async function CompareDetailPage({
 
         {/* Other comparisons */}
         <section className="max-w-4xl mx-auto pb-12">
-          <h2 className="text-xl font-semibold mb-5">Compare with others</h2>
+          <h2 className="text-xl font-bold mb-5">Compare with others</h2>
           <div className="grid sm:grid-cols-3 gap-4">
             {others.map((o) => (
               <Link

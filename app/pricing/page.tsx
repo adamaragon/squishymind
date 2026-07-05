@@ -91,8 +91,27 @@ const TIERS: Tier[] = [
     cta: { label: 'Sign up free', href: '/signup', style: 'ghost' },
   },
   {
+    name: 'Founder Access',
+    badge: 'Best value — beta only',
+    badgeTone: 'pink',
+    price: '$2.99',
+    priceSub: '/month — or $24.99/year, forever',
+    tagline: 'For people who showed up early.',
+    features: [
+      'Everything in Premium',
+      'Plus: a more generous free tier you keep even if you cancel — 8 maps, 150 nodes per map, 40 voice minutes/month',
+      'Plus: Founder badge on your profile',
+      'Plus: early access to new features',
+    ],
+    cta: {
+      label: 'Sign up now — beta closes when paid tiers launch',
+      href: '/signup',
+      style: 'primary',
+    },
+  },
+  {
     name: 'Squishy Premium',
-    badge: 'Most popular',
+    badge: 'Coming soon',
     badgeTone: 'violet',
     price: '$4.99',
     priceSub: '/month — or $39.99/year',
@@ -114,25 +133,6 @@ const TIERS: Tier[] = [
       label: 'Coming soon — sign up during beta to lock in Founder pricing',
       href: '/signup',
       style: 'muted',
-    },
-  },
-  {
-    name: 'Founder Access',
-    badge: 'Beta signups only',
-    badgeTone: 'pink',
-    price: '$2.99',
-    priceSub: '/month — or $24.99/year, forever',
-    tagline: 'For people who showed up early.',
-    features: [
-      'Everything in Premium',
-      'Plus: a more generous free tier you keep even if you cancel — 8 maps, 150 nodes per map, 40 voice minutes/month',
-      'Plus: Founder badge on your profile',
-      'Plus: early access to new features',
-    ],
-    cta: {
-      label: 'Sign up now — beta closes when paid tiers launch',
-      href: '/signup',
-      style: 'primary',
     },
   },
 ];
@@ -158,7 +158,7 @@ export default function PricingPage() {
       <main className="px-6">
         {/* Hero */}
         <section className="max-w-4xl mx-auto pt-16 pb-10 text-center">
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-4">
+          <h1 className="text-display font-bold tracking-display mb-4">
             <span className="gradient-text">Simple pricing.</span> We say what we mean.
           </h1>
           <p className="text-lg text-[--text-dim] max-w-2xl mx-auto leading-relaxed">
@@ -168,14 +168,16 @@ export default function PricingPage() {
         </section>
 
         {/* Tiers */}
-        <section className="max-w-6xl mx-auto pb-10 grid md:grid-cols-3 gap-5">
-          {TIERS.map((tier) => (
+        <section className="max-w-6xl mx-auto pb-12 grid md:grid-cols-[1fr_1.35fr_1fr] gap-5 items-start">
+          {TIERS.map((tier) => {
+            const isFounder = tier.name === 'Founder Access';
+            return (
             <div
               key={tier.name}
-              className={`glass rounded-2xl p-7 flex flex-col relative ${
-                tier.name === 'Founder Access'
-                  ? 'border-pink-500/40 shadow-[0_0_40px_rgba(236,72,153,0.15)]'
-                  : ''
+              className={`glass rounded-2xl flex flex-col relative ${
+                isFounder
+                  ? 'p-9 border-pink-500/40 shadow-[0_0_60px_rgba(236,72,153,0.2)]'
+                  : 'p-7'
               }`}
             >
               {tier.badge && tier.badgeTone && (
@@ -185,17 +187,17 @@ export default function PricingPage() {
                   {tier.badge}
                 </span>
               )}
-              <h2 className="text-xl font-semibold mb-1">{tier.name}</h2>
+              <h2 className={`font-bold mb-1 ${isFounder ? 'text-2xl' : 'text-xl'}`}>{tier.name}</h2>
               <p className="text-sm text-[--text-dim] mb-5">{tier.tagline}</p>
               <div className="mb-6">
-                <span className="text-4xl font-bold">{tier.price}</span>
+                <span className={`font-bold ${isFounder ? 'text-5xl' : 'text-4xl'}`}>{tier.price}</span>
                 <span className="text-sm text-[--text-dim] ml-1">{tier.priceSub}</span>
               </div>
               <ul className="text-sm space-y-2.5 mb-7 flex-1">
                 {tier.features.map((f) => (
                   <li key={f} className="flex items-start gap-2 leading-relaxed">
-                    <span className="text-violet-400 mt-0.5 shrink-0" aria-hidden>
-                      ✓
+                    <span className={`mt-0.5 shrink-0 ${isFounder ? 'text-pink-400' : 'text-violet-400'}`} aria-hidden>
+                      {isFounder ? '★' : '✓'}
                     </span>
                     <span className="text-[--text-dim]">{f}</span>
                   </li>
@@ -205,7 +207,7 @@ export default function PricingPage() {
                 href={tier.cta.href}
                 className={
                   tier.cta.style === 'primary'
-                    ? 'btn btn-primary text-sm'
+                    ? `btn btn-primary ${isFounder ? 'text-base px-8 py-3.5' : 'text-sm'}`
                     : tier.cta.style === 'ghost'
                       ? 'btn btn-ghost text-sm'
                       : 'btn btn-ghost text-sm opacity-70 cursor-default pointer-events-none'
@@ -214,7 +216,7 @@ export default function PricingPage() {
                 {tier.cta.label}
               </Link>
             </div>
-          ))}
+          )})}
         </section>
 
         {/* Footnote */}

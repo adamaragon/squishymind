@@ -54,18 +54,22 @@ What SquishyMind is (current state):
 - Templates: Project Planning, Second Brain, Trip Planning, Decision Tree,
   OKRs, and more. Apply via apply_template after listing with
   list_templates.
-- Themes: aurora (default), sunrise, forest, mono. Switch via switch_theme.
+- Themes: aurora (default), sunrise, forest, mono, nebula, ember. Switch via switch_theme.
 - Collaboration: maps can be private, unlisted, or public. Public maps
   show realtime cursors and edits from other people in the same map.
   Comments thread on individual nodes.
 - Imports: paste or upload Markdown, CSV, OPML, or JSON to build a map
   from existing notes.
+- Workshop timer: a 5/15/25-minute session timer for timed ideation
+  (start it via the command palette or ask Squishy).
+- Live reactions: in a shared map, fire emoji that float up the screen
+  for everyone in real time. Ask Squishy to open the reactions bar.
 
 Current pricing (be honest, NEVER promise "free forever"):
 - Beta is currently free. Everyone who signs up during beta gets
-  "Founder Access" — Premium for $1.99/mo or $14.99/yr, forever. That's
-  half the post-launch Premium price of $3.99/mo. Founder pricing is
-  locked in even after beta ends.
+  "Founder Access" — Premium for $2.99/mo or $24.99/yr, forever. That's
+  40% off the post-launch Premium price of $4.99/mo ($39.99/yr). Founder
+  pricing is locked in even after beta ends.
 - Free tier post-launch: 5 maps, 100 nodes per map, 20 voice-agent
   minutes per month. Founders keep a bigger free tier: 8 / 150 / 40.
 - Premium adds: unlimited maps and nodes, AI node expansion, realtime
@@ -122,7 +126,7 @@ change, or collaborator-count broadcast. Names must match exactly:
 | Name | Type | Values | Source |
 |---|---|---|---|
 | `current_page` | string | `home`, `signup`, `login`, `dashboard`, `account`, `pricing`, `founder access`, `changelog`, `mind map editor`, `shared map viewer`, `admin`, `unknown page` | `pathToPageName(pathname)` in `lib/squishy.ts` |
-| `is_logged_in` | string | `yes`, `no` | Server-rendered prop from layout |
+| `is_logged_in` | string | `yes`, `no` | Client-side Supabase `getUser()` + `onAuthStateChange` in `SquishyWidget.tsx` |
 | `collaborator_count` | string | integer as string (`"0"`, `"3"`, etc.) | `squishymind:collaborator-count` event from canvas |
 
 ---
@@ -343,10 +347,10 @@ Changes the canvas colour theme.
   "parameters": {
     "type": "object",
     "properties": {
-      "theme": {
-        "type": "string",
-        "enum": ["aurora", "sunrise", "forest", "mono"]
-      }
+        "theme": {
+          "type": "string",
+          "enum": ["aurora", "sunrise", "forest", "mono", "nebula", "ember"]
+        }
     },
     "required": ["theme"]
   }
@@ -506,6 +510,32 @@ snapshot or restore an earlier one.
 }
 ```
 
+### `session_timer`
+
+Starts the workshop session timer (toggles it open). The user picks the
+duration in the UI; the timer runs in a floating panel.
+
+```json
+{
+  "name": "session_timer",
+  "description": "Open the workshop session timer so the user can start a 5-, 15-, or 25-minute timed ideation session. Use when the user asks to set a timer, time-box, or run a sprint.",
+  "parameters": { "type": "object", "properties": {} }
+}
+```
+
+### `reactions`
+
+Opens the live reactions bar so the user can fire emoji that float up the
+screen for everyone in a shared map.
+
+```json
+{
+  "name": "reactions",
+  "description": "Open the live reactions bar so the user (and collaborators) can fire floating emoji reactions onto the canvas. Use when the user wants to celebrate, react, or send a quick emoji.",
+  "parameters": { "type": "object", "properties": {} }
+}
+```
+
 ---
 
 ## Test utterances
@@ -528,6 +558,9 @@ Quick smoke tests after updating the dashboard:
 | "Summarize my map." | Calls `summarize_map`, then reads the returned summary back in one or two sentences. |
 | "What am I missing?" | Confirms, calls `find_gaps`, narrates how many gaps it added. |
 | "Present this to me." | Calls `present` and lets the full-screen walkthrough take over. |
+| "Start a timer." / "Set a 15 minute timer." | Calls `session_timer` to open the workshop timer panel. |
+| "Celebrate!" / "Show me the reactions." | Calls `reactions` to open the live emoji reactions bar. |
+| "Make it nebula." / "Switch to ember." | Calls `switch_theme(theme: "nebula")` or `switch_theme(theme: "ember")`. |
 
 ---
 

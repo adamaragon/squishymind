@@ -58,7 +58,7 @@ export function loadViewMode(): ViewMode {
   if (typeof window === 'undefined') return 'canvas';
   try {
     const v = window.localStorage.getItem(VIEW_MODE_KEY);
-    if (v === 'canvas' || v === 'tree' || v === 'outline' || v === 'table') {
+    if (v === 'canvas' || v === 'tree' || v === 'outline' || v === 'table' || v === 'gallery') {
       return v;
     }
   } catch {

@@ -28,7 +28,7 @@ export default function NotFound() {
               filter: 'drop-shadow(0 8px 24px rgba(139, 92, 246, 0.35))',
             }}
           />
-          <h1 className="text-3xl md:text-4xl font-semibold mb-3 gradient-text">
+          <h1 className="text-3xl md:text-4xl font-bold mb-3 gradient-text">
             That page squished away
           </h1>
           <p className="text-[--text-dim] mb-6 text-base leading-relaxed">

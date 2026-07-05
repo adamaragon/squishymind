@@ -30,6 +30,8 @@ export type BlogPost = {
     | 'How-to';
   /** Rough reading time in minutes, shown on the card + post header. */
   readingMinutes: number;
+  /** Alt text for the cover image. Falls back to the post title if unset. */
+  coverAlt?: string;
   tags: string[];
   /** One-paragraph teaser for the index card + OG description fallback. */
   excerpt: string;

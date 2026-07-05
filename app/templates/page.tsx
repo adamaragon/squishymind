@@ -105,7 +105,7 @@ export default function TemplatesPage() {
       <main className="px-6">
         {/* Hero */}
         <section className="max-w-4xl mx-auto pt-16 pb-10 text-center">
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-4 leading-[1.05]">
+          <h1 className="text-display font-bold tracking-display mb-4 leading-[1.05]">
             Templates for <span className="gradient-text">real work</span>
           </h1>
           <p className="text-lg text-[--text-dim] max-w-2xl mx-auto leading-relaxed">
@@ -152,7 +152,7 @@ export default function TemplatesPage() {
 
         {/* The rest — compact */}
         <section className="max-w-5xl mx-auto pb-12">
-          <h2 className="text-xl font-semibold mb-4">More starting points</h2>
+          <h2 className="text-xl font-bold mb-4">More starting points</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {rest.map((t) => (
               <div key={t.id} className="glass rounded-xl p-5">
@@ -166,7 +166,7 @@ export default function TemplatesPage() {
 
         {/* CTA */}
         <section className="max-w-3xl mx-auto px-6 pb-14 text-center">
-          <h2 className="text-3xl font-semibold mb-4">Or just tell Squishy what you’re working on.</h2>
+          <h2 className="text-3xl font-bold mb-4">Or just tell Squishy what you’re working on.</h2>
           <p className="text-[--text-dim] mb-7 text-lg leading-relaxed">
             Describe your project out loud and the voice AI sets up the right structure for you —
             no template hunting required. Free during beta.

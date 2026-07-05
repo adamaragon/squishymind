@@ -11,7 +11,7 @@ export default function SquishyCTA() {
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-pink-400 animate-pulse" />
               <span className="text-pink-300">Squishy is online</span>
             </div>
-            <h2 className="text-3xl md:text-4xl font-semibold mb-4 leading-tight">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 leading-tight">
               Talk to <span className="gradient-text">Squishy</span>. Or don&apos;t. She&apos;ll cope.
             </h2>
             <p className="text-[--text-dim] text-lg leading-relaxed mb-4 max-w-2xl">
@@ -37,7 +37,7 @@ export default function SquishyCTA() {
           {/* Pointer to the widget */}
           <div className="flex flex-col items-center gap-3 text-center md:text-right">
             <div className="text-xs uppercase tracking-wider text-[--text-dim]">Click here →</div>
-            <div className="text-5xl md:text-6xl animate-bounce">↘</div>
+            <div className="text-5xl md:text-6xl gentle-bob">↘</div>
             <div className="text-xs text-[--text-dim]">(bottom-right of your screen)</div>
           </div>
         </div>

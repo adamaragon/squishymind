@@ -110,7 +110,7 @@ export default async function BlogPostPage({
       ))}
       <Header />
       <main className="px-6">
-        <article className="max-w-2xl mx-auto pt-12 pb-8">
+        <article className="max-w-[65ch] mx-auto pt-12 pb-8">
           {/* Breadcrumb */}
           <nav className="text-xs text-[--text-dim] mb-6" aria-label="Breadcrumb">
             <Link href="/blog" className="hover:text-white transition-colors">
@@ -124,7 +124,7 @@ export default async function BlogPostPage({
 
           {/* Header */}
           <header className="mb-10">
-            <h1 className="text-3xl md:text-5xl font-bold tracking-tight mb-5 leading-[1.1]">
+            <h1 className="text-3xl md:text-5xl font-bold tracking-display mb-5 leading-[1.1]">
               {post.title}
             </h1>
             <div className="flex items-center gap-3 text-sm text-[--text-dim] flex-wrap">
@@ -140,7 +140,7 @@ export default async function BlogPostPage({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={postImage(post.slug)}
-            alt=""
+            alt={post.coverAlt || post.title}
             width={1200}
             height={800}
             className="w-full rounded-2xl border border-white/10 mb-10 aspect-[3/2] object-cover"
@@ -171,7 +171,7 @@ export default async function BlogPostPage({
             <div className="inline-block mb-4">
               <img src="/brain.svg" alt="" width={64} height={64} className="opacity-90 mx-auto" />
             </div>
-            <h2 className="text-2xl font-semibold mb-3">Try it with your own brain</h2>
+            <h2 className="text-2xl font-bold mb-3">Try it with your own brain</h2>
             <p className="text-[--text-dim] mb-6 leading-relaxed">
               SquishyMind is free during beta. Sign up in 10 seconds and lock in
               Founder Access — 40% off Premium, forever.
@@ -185,7 +185,7 @@ export default async function BlogPostPage({
         {/* Related posts */}
         {related.length > 0 && (
           <section className="max-w-4xl mx-auto py-12">
-            <h2 className="text-2xl font-semibold mb-6">Keep reading</h2>
+            <h2 className="text-2xl font-bold mb-6">Keep reading</h2>
             <div className="grid md:grid-cols-3 gap-5">
               {related.map((p) => (
                 <Link
@@ -196,7 +196,7 @@ export default async function BlogPostPage({
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={postImage(p.slug)}
-                    alt=""
+                    alt={p.coverAlt || p.title}
                     width={1200}
                     height={800}
                     className="w-full aspect-[3/2] object-cover border-b border-white/10"

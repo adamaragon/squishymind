@@ -343,6 +343,7 @@ export default function EditorShell({
               <button
                 onClick={() => { setSlugInput(slug); setSlugOpen(false); setSlugState('idle'); }}
                 className="text-xs text-[--text-dim] hover:text-white transition-colors"
+                aria-label="Close slug editor"
               >
                 ✕
               </button>

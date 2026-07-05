@@ -29,8 +29,8 @@ function LoginForm() {
 
   return (
     <form onSubmit={onSubmit} className="glass rounded-2xl p-8 w-full max-w-sm">
-      <h1 className="text-2xl font-semibold mb-1">Log in</h1>
-      <p className="text-sm text-[--text-dim] mb-6">Welcome back.</p>
+      <h1 className="text-2xl font-semibold mb-1">Welcome back.</h1>
+      <p className="text-sm text-[--text-dim] mb-6">Squishy missed you. Just a little.</p>
 
       <label className="block text-xs uppercase tracking-wide text-[--text-dim] mb-1">Email</label>
       <input className="input mb-3" type="email" required

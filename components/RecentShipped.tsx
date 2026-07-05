@@ -7,7 +7,7 @@ export default function RecentShipped() {
   return (
     <section className="max-w-5xl mx-auto px-6 py-16">
       <div className="flex items-baseline justify-between mb-8 flex-wrap gap-3">
-        <h2 className="text-3xl font-semibold">Recently shipped</h2>
+        <h2 className="text-3xl font-bold">Recently shipped</h2>
         <Link
           href="/changelog"
           className="text-sm text-[--text-dim] hover:text-white transition-colors flex items-center gap-1.5"
@@ -24,7 +24,7 @@ export default function RecentShipped() {
               </span>
               <span className="text-xs text-[--text-dim] ml-auto">{entry.date}</span>
             </div>
-            <h3 className="font-medium mb-3">{entry.title}</h3>
+            <h3 className="font-semibold mb-3">{entry.title}</h3>
             <p className="text-sm text-[--text-dim] leading-relaxed">
               {entry.highlights[0]}
             </p>

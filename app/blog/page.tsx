@@ -74,7 +74,7 @@ export default function BlogIndexPage() {
       <main className="px-6">
         {/* Hero */}
         <section className="max-w-4xl mx-auto pt-16 pb-10 text-center">
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-4 leading-[1.05]">
+          <h1 className="text-display font-bold tracking-display mb-4 leading-[1.05]">
             The <span className="gradient-text">SquishyMind</span> blog
           </h1>
           <p className="text-lg text-[--text-dim] max-w-2xl mx-auto leading-relaxed">
@@ -92,7 +92,7 @@ export default function BlogIndexPage() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={postImage(featured.slug)}
-              alt=""
+              alt={featured.coverAlt || featured.title}
               width={1200}
               height={800}
               className="w-full rounded-2xl border border-white/10 aspect-[3/2] object-cover order-first md:order-last"
@@ -132,7 +132,7 @@ export default function BlogIndexPage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={postImage(p.slug)}
-                alt=""
+                alt={p.coverAlt || p.title}
                 width={1200}
                 height={800}
                 className="w-full aspect-[3/2] object-cover border-b border-white/10"

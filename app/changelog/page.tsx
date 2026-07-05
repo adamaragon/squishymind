@@ -40,10 +40,10 @@ export default function ChangelogPage() {
       <main className="px-6">
         {/* Hero */}
         <section className="max-w-4xl mx-auto pt-16 pb-12 text-center">
-          <div className="inline-block mb-5 changelog-brain">
-            <img src="/brain.svg" alt="" width={120} height={120} />
+          <div className="inline-block mb-5">
+            <img src="/brain.svg" alt="" width={120} height={120} className="animate-[breathe_4s_ease-in-out_infinite] origin-bottom" style={{ filter: 'drop-shadow(0 0 14px rgba(255, 130, 170, 0.45)) drop-shadow(0 0 28px rgba(236, 72, 153, 0.35))' }} />
           </div>
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-4">
+          <h1 className="text-display font-bold tracking-display mb-4">
             <span className="gradient-text">What&apos;s new</span>
             <span className="text-[--text-dim]"> &amp; what&apos;s next</span>
           </h1>
@@ -56,25 +56,25 @@ export default function ChangelogPage() {
         {/* Roadmap */}
         <section className="max-w-6xl mx-auto py-12">
           <div className="flex items-baseline gap-3 mb-8 flex-wrap">
-            <h2 className="text-3xl font-semibold">Coming up</h2>
+            <h2 className="text-3xl font-bold">Coming up</h2>
             <span className="text-sm text-[--text-dim]">
               No promised dates. We ship when it&apos;s ready.
             </span>
           </div>
           <div className="grid md:grid-cols-3 gap-5">
-            <RoadmapColumn label="Next" items={next} accent="from-pink-500 to-violet-500" pulse />
-            <RoadmapColumn label="Soon" items={soon} accent="from-violet-500 to-cyan-500" />
+            <RoadmapColumn label="Next" items={next} color="bg-pink-400" pulse />
+            <RoadmapColumn label="Soon" items={soon} color="bg-violet-400" />
             <RoadmapColumn
               label="Considering"
               items={considering}
-              accent="from-cyan-500 to-amber-500"
+              color="bg-cyan-400"
             />
           </div>
         </section>
 
         {/* Changelog */}
         <section className="max-w-4xl mx-auto py-12">
-          <h2 className="text-3xl font-semibold mb-8">What we shipped</h2>
+          <h2 className="text-3xl font-bold mb-8">What we shipped</h2>
           <ol className="relative border-l border-white/10 ml-3 space-y-10 pl-8">
             {shipped.map((entry) => (
               <ShippedCard key={entry.version} entry={entry} />
@@ -91,17 +91,9 @@ export default function ChangelogPage() {
       <Footer />
 
       <style>{`
-        @keyframes changelogBrainWobble {
+        @keyframes breathe {
           0%, 100% { transform: scale(1) rotate(0deg); }
-          25%      { transform: scale(1.06) rotate(-3deg); }
-          50%      { transform: scale(1.02) rotate(2deg); }
-          75%      { transform: scale(1.08) rotate(3deg); }
-        }
-        .changelog-brain {
-          animation: changelogBrainWobble 3.6s ease-in-out infinite;
-          transform-origin: 50% 60%;
-          filter: drop-shadow(0 0 14px rgba(255, 130, 170, 0.45))
-                  drop-shadow(0 0 28px rgba(236, 72, 153, 0.35));
+          50%      { transform: scale(1.04) rotate(0.5deg); }
         }
       `}</style>
     </>
@@ -111,19 +103,19 @@ export default function ChangelogPage() {
 function RoadmapColumn({
   label,
   items,
-  accent,
+  color,
   pulse = false,
 }: {
   label: string;
   items: RoadmapEntry[];
-  accent: string;
+  color: string;
   pulse?: boolean;
 }) {
   return (
     <div>
       <div className="flex items-center gap-2 mb-4">
         <span
-          className={`inline-block h-2 w-2 rounded-full bg-gradient-to-br ${accent} ${pulse ? 'animate-pulse' : ''}`}
+          className={`inline-block h-2 w-2 rounded-full ${color} ${pulse ? 'animate-pulse' : ''}`}
         />
         <h3 className="text-lg font-medium">{label}</h3>
       </div>
@@ -146,10 +138,10 @@ function ShippedCard({ entry }: { entry: ShippedEntry }) {
   return (
     <li className="relative">
       {/* Dot on the timeline */}
-      <span className="absolute -left-[42px] top-2 h-3 w-3 rounded-full bg-gradient-to-br from-pink-500 to-violet-500 ring-4 ring-[--bg-1]" />
+      <span className="absolute -left-[42px] top-2 h-3 w-3 rounded-full bg-pink-400 ring-4 ring-[--bg-1]" />
       <div className="glass rounded-2xl p-6">
         <div className="flex items-baseline gap-3 mb-3 flex-wrap">
-          <span className="px-2.5 py-0.5 rounded-md bg-gradient-to-r from-pink-500/20 to-violet-500/20 border border-violet-500/30 text-xs font-mono">
+          <span className="px-2.5 py-0.5 rounded-md bg-pink-500/15 border border-pink-500/30 text-xs font-mono text-pink-300">
             {entry.version}
           </span>
           <h3 className="text-xl font-semibold">{entry.title}</h3>
@@ -164,7 +156,7 @@ function ShippedCard({ entry }: { entry: ShippedEntry }) {
           ))}
         </ul>
         {entry.squishyNote && (
-          <blockquote className="border-l-2 border-pink-500/40 pl-3 py-1 italic text-sm text-[--text-dim] bg-pink-500/5 rounded-r">
+          <blockquote className="border border-pink-500/20 pl-3 py-2 italic text-sm text-[--text-dim] bg-pink-500/5 rounded-lg">
             <span className="text-pink-400 font-mono text-xs not-italic mr-2">
               Squishy:
             </span>

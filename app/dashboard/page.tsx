@@ -38,7 +38,7 @@ export default async function DashboardPage() {
       <Header />
       <main className="max-w-5xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
-          <h1 className="text-3xl font-semibold">Your mind maps</h1>
+          <h1 className="text-3xl font-bold">Your mind maps</h1>
           <div className="flex items-center gap-2">
             <ImportButton />
             <NewMapButton />
@@ -47,10 +47,22 @@ export default async function DashboardPage() {
 
         {(!maps || maps.length === 0) ? (
           <div className="glass rounded-2xl p-10 text-center">
-            <img src="/brain.svg" alt="" width={80} height={80} className="mx-auto mb-4 opacity-80" />
-            <p className="text-lg mb-2">No maps yet — your brain is empty.</p>
-            <p className="text-sm text-[--text-dim] mb-5">(In a healthy way. Let&apos;s fix that.)</p>
-            <NewMapButton label="Create your first mind map" />
+            <div
+              className="mx-auto mb-5"
+              style={{
+                width: 80,
+                height: 80,
+                animation: 'empty-float 4s ease-in-out infinite',
+                filter: 'drop-shadow(0 6px 20px rgba(236, 72, 153, 0.2))',
+              }}
+            >
+              <img src="/brain.svg" alt="" width={80} height={80} className="opacity-90" />
+            </div>
+            <p className="text-lg font-medium mb-1.5">So much room for thoughts.</p>
+            <p className="text-sm text-[--text-dim] mb-5 max-w-xs mx-auto leading-relaxed">
+              Squishy would be <em>delighted</em> to help you fill this space. Go on — put something in here.
+            </p>
+            <NewMapButton label="Start your first map" />
           </div>
         ) : (
           <ul className="grid md:grid-cols-2 gap-4">
@@ -82,6 +94,14 @@ export default async function DashboardPage() {
         )}
       </main>
       <Footer />
+      <style>{`
+        @keyframes empty-float {
+          0%, 100% { transform: translateY(0) scale(1) rotate(0deg); }
+          25%      { transform: translateY(-4px) scale(1.04) rotate(-1.5deg); }
+          50%      { transform: translateY(-2px) scale(1.01) rotate(1deg); }
+          75%      { transform: translateY(-5px) scale(1.05) rotate(1.5deg); }
+        }
+      `}</style>
     </>
   );
 }

@@ -69,34 +69,34 @@ export default function HomePage() {
 
       <main className="px-6">
         {/* HERO */}
-        <section className="max-w-5xl mx-auto pt-10 md:pt-14 pb-16 text-center">
+        <section className="max-w-5xl mx-auto pt-12 md:pt-20 pb-20 text-center">
           <BetaBanner />
-          <div className="flex justify-center mt-8 mb-6">
-            <div className="animate-[wobble_3.6s_ease-in-out_infinite] origin-bottom">
-              <img src="/brain.svg" alt="" width={160} height={130} />
+          <div className="flex justify-center mt-10 mb-8">
+            <div className="brain-enter animate-[wobble_3.6s_ease-in-out_infinite] origin-bottom" style={{ animationDelay: '0s, 0.8s' }}>
+              <img src="/brain.svg" alt="" width={240} height={200} />
             </div>
           </div>
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-[1.05]">
+          <h1 className="text-display font-bold tracking-display mb-8 leading-tight md:leading-[1.02]">
             Your brain, but{' '}
             <span className="gradient-text">squishier</span>.
           </h1>
-          <p className="text-lg md:text-xl text-[--text-dim] mb-9 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-lg md:text-xl text-[--text-dim] mb-10 max-w-3xl mx-auto leading-relaxed">
             A wobbly, slightly sentient mind-mapping canvas you can talk to, build with friends, or
             click and drag like a normal person.{' '}
             <span className="text-white">
               Beta is free. Founders get a permanent discount when paid tiers launch.
             </span>
           </p>
-          <div className="flex items-center justify-center gap-3 flex-wrap">
-            <Link href="/signup" className="btn btn-primary text-base px-7 py-3">
+          <div className="flex items-center justify-center gap-4 flex-wrap">
+            <Link href="/signup" className="btn btn-primary text-lg px-10 py-4">
               Claim Founder Access →
             </Link>
             <Link href="#features" className="btn btn-ghost text-base px-7 py-3">
               Tell me more
             </Link>
           </div>
-          <p className="text-xs text-[--text-dim] mt-5">
-            No credit card. No email confirmation. No onboarding flow trying to learn your “goals.”
+          <p className="text-xs text-[--text-dim] mt-6">
+            No credit card. No email confirmation. No onboarding flow trying to learn your &ldquo;goals.&rdquo;
             10 seconds, then you&apos;re mapping.
           </p>
         </section>
@@ -107,21 +107,32 @@ export default function HomePage() {
         {/* Feature grid */}
         <section
           id="features"
-          className="max-w-6xl mx-auto px-6 py-16 grid md:grid-cols-3 gap-5"
+          className="max-w-6xl mx-auto px-6 py-20 grid md:grid-cols-3 gap-5"
         >
-          <Feature
-            accent="pink"
-            icon={
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <div className="glass rounded-2xl p-8 feature-card md:col-span-2 grid md:grid-cols-[auto,1fr] gap-7 items-center">
+            <div
+              className="feature-icon !w-[56px] !h-[56px] !rounded-[14px] flex-shrink-0"
+              style={{
+                background: ACCENT_STYLE.pink.bg,
+                boxShadow: `0 12px 28px ${ACCENT_STYLE.pink.glow}, 0 0 0 1px ${ACCENT_STYLE.pink.ring} inset`,
+                color: ACCENT_STYLE.pink.fg,
+              }}
+              aria-hidden
+            >
+              <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M4 5 h13 a3 3 0 0 1 3 3 v6 a3 3 0 0 1 -3 3 h-5 l-4 3 v-3 h-4 a3 3 0 0 1 -3 -3 v-6 a3 3 0 0 1 3 -3 z" />
                 <circle cx="9" cy="11" r="0.9" fill="currentColor" stroke="none" />
                 <circle cx="13" cy="11" r="0.9" fill="currentColor" stroke="none" />
                 <circle cx="17" cy="11" r="0.9" fill="currentColor" stroke="none" />
               </svg>
-            }
-            title="She talks back"
-            body="Squishy creates branches, moves them, summarizes your structure, builds entire subtrees on command. Or argues with you. She's been argued with."
-          />
+            </div>
+            <div>
+              <h3 className="font-semibold text-xl mb-2">She talks back</h3>
+              <p className="text-sm text-[--text-dim] leading-relaxed">
+                Squishy creates branches, moves them, summarizes your structure, builds entire subtrees on command. Or argues with you. She&apos;s been argued with.
+              </p>
+            </div>
+          </div>
           <Feature
             accent="violet"
             icon={
@@ -255,19 +266,19 @@ export default function HomePage() {
         <FAQ />
 
         {/* Final CTA */}
-        <section className="max-w-3xl mx-auto px-6 py-20 text-center">
-          <h2 className="text-3xl md:text-4xl font-semibold mb-4">
+        <section className="max-w-3xl mx-auto px-6 py-24 text-center">
+          <h2 className="text-4xl md:text-5xl font-bold mb-5 leading-tight">
             There&apos;s a brain in the corner waiting to meet you.
           </h2>
-          <p className="text-[--text-dim] mb-7 text-lg leading-relaxed">
+          <p className="text-[--text-dim] mb-9 text-lg leading-relaxed">
             Sign up during beta to lock in Founder Access — Premium for 40% off,
             forever. Or just click the brain in the bottom-right and have Squishy do
             the talking — your call.
           </p>
-          <Link href="/signup" className="btn btn-primary text-base px-8 py-3">
+          <Link href="/signup" className="btn btn-primary text-lg px-10 py-4">
             Sign up — claim Founder Access
           </Link>
-          <p className="text-xs text-[--text-dim] mt-4">
+          <p className="text-xs text-[--text-dim] mt-5">
             We promise this is the last time we&apos;ll ask.
           </p>
         </section>
@@ -309,10 +320,16 @@ export default function HomePage() {
           align-items: center;
           justify-content: center;
           margin-bottom: 16px;
-          transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+          transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                      box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .feature-card:hover .feature-icon {
-          animation: wobble 0.65s ease;
+          animation: wobble 0.65s ease, glow-pulse 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes glow-pulse {
+          0%   { filter: brightness(1) drop-shadow(0 0 0 transparent); }
+          50%  { filter: brightness(1.25) drop-shadow(0 0 12px currentColor); }
+          100% { filter: brightness(1) drop-shadow(0 0 0 transparent); }
         }
       `}</style>
     </>

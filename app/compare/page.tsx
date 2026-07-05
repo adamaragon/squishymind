@@ -50,7 +50,7 @@ export default function ComparePage() {
       <main className="px-6">
         {/* Hero */}
         <section className="max-w-4xl mx-auto pt-16 pb-12 text-center">
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-5 leading-[1.05]">
+          <h1 className="text-display font-bold tracking-display mb-5 leading-[1.05]">
             SquishyMind vs{' '}
             <span className="gradient-text">the alternatives</span>.
           </h1>
@@ -73,7 +73,7 @@ export default function ComparePage() {
 
         {/* Feature matrix */}
         <section className="max-w-4xl mx-auto pb-16">
-          <h2 className="text-2xl font-semibold mb-6">What SquishyMind includes</h2>
+          <h2 className="text-2xl font-bold mb-6">What SquishyMind includes</h2>
           <div className="glass rounded-2xl overflow-hidden">
             <table className="w-full text-sm">
               <thead>
@@ -159,7 +159,7 @@ export default function ComparePage() {
 
         {/* CTA */}
         <section className="max-w-3xl mx-auto px-6 py-16 text-center">
-          <h2 className="text-3xl md:text-4xl font-semibold mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">
             Try it and see for yourself.
           </h2>
           <p className="text-[--text-dim] mb-7 text-lg leading-relaxed">
