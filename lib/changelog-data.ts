@@ -17,6 +17,59 @@ export type RoadmapEntry = {
 
 export const shipped: ShippedEntry[] = [
   {
+    version: 'v5.4',
+    title: 'Editor polish, mobile responsive, and performance',
+    date: 'July 2026',
+    commit: '4845050',
+    highlights: [
+      'Nodes lift and glow on hover, table rows highlight, and gallery cards shimmer while images load — proper hover, focus, and active states on every interactive element',
+      'Export now shows a loading spinner while rendering PNG or PDF',
+      'Collaboration cursors pulse subtly and reveal collaborator names on hover',
+      'The whole site is now mobile-responsive — touch targets are 44px minimum everywhere, the editor toolbar scrolls, and the gallery adapts from 1 to 4 columns',
+      'SEO: canonical URLs, Open Graph metadata, and a dark color scheme meta tag across all marketing pages',
+      'Loading spinners replaced every old plain-text "Loading\u2026" state across the app',
+      'Skeleton loading states on the dashboard and editor — no more blank space during data fetch',
+      'Tree view cards animate in when you switch views',
+    ],
+    squishyNote:
+      'I glow when you hover, darling. The nodes do too. It\u2019s a whole thing now.',
+  },
+  {
+    version: 'v5.3',
+    title: 'Product UX polish and Squishy\u2019s new tools',
+    date: 'July 2026',
+    highlights: [
+      'Squishy gained 13 new voice tools — she can switch views, open the detail panel, toggle task-done, cast dot-votes, start Focus mode, present, summarize, find gaps, make a plan, open version history, start the workshop timer, and fire reactions',
+      'Squishy now knows when collaborators are in the map',
+      'Deleting a node in Outline view asks for confirmation first, matching Table and the Detail panel',
+      'The session timer changes color as time runs low — amber at 60 seconds, red at 10',
+      'Drag-and-drop files onto the Import dialog\u2019s upload zone',
+      'Account page shows your Founder Access status',
+      'Node detail panel says \u201cColor \u00b7 Pink\u201d instead of \u201cColor \u00b7 idx 0\u201d',
+      'Import text area is taller and the font is bigger',
+      'Version history restore has a two-step confirmation so you can\u2019t accidentally nuke your map',
+    ],
+    squishyNote:
+      'Thirteen new tools, love. I can finally open the gallery without making you click. And I know when your friends are watching.',
+  },
+  {
+    version: 'v5.2',
+    title: 'Design system and visual identity',
+    date: 'July 2026',
+    highlights: [
+      'Refreshed visual identity across the whole site — bolder hero, more dramatic brain, asymmetric layouts',
+      'Pricing page now makes Founder Access the centerpiece with a wider, glow-accented card',
+      'Empty states and error pages got a personality injection — Squishy\u2019s voice, animated brains, warmer signup pages with a satisfying confirmation animation',
+      'Typography got a proper hierarchy with consistent heading weights, a modular scale, and better readability on dark backgrounds',
+      'Glitchy gradient text is gone, replaced with clean readable pink',
+      'Bouncy easing is out, exponential ease-out curves are in — motion feels polished, not cartoonish',
+      'The changelog roadmap swapped AI-typical gradients for solid colours',
+      'Button active states have a satisfying press-down effect',
+    ],
+    squishyNote:
+      'I looked in the mirror, darling. I liked what I saw.',
+  },
+  {
     version: 'v5.1',
     title: 'Dot-voting — and a much snappier site',
     date: 'June 2026',
