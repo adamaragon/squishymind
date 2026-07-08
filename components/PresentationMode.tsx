@@ -65,6 +65,8 @@ export default function PresentationMode({
         if (cancelled) return;
         const url = URL.createObjectURL(new Blob([buf], { type: 'audio/mpeg' }));
         if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.removeAttribute('src');
           audioRef.current.src = url;
           void audioRef.current.play().catch(() => {});
         }

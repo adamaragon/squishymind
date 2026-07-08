@@ -235,7 +235,7 @@ export default function CommandPalette({
             <input
               ref={inputRef}
               className="cmdk-input"
-              placeholder="Type a command…  (try “summarize”, “focus”, “export”)"
+              placeholder="Type a command… (try “summarize”, “focus”, “export”)"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={onInputKey}

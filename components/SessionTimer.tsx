@@ -76,10 +76,11 @@ export default function SessionTimer({ open, onClose }: { open: boolean; onClose
   if (!open) return null;
 
   const pct = total > 0 ? ((total - left) / total) * 100 : 0;
+  const accentColor = done ? '#10b981' : left <= 10 ? '#ef4444' : left <= 60 ? '#f59e0b' : '#8b5cf6';
 
   return (
     <div className={`st-root${done ? ' done' : ''}`} role="timer" aria-label="Session timer">
-      <div className="st-ring" style={{ background: `conic-gradient(var(--st-accent) ${pct}%, rgba(255,255,255,0.1) ${pct}%)` }}>
+      <div className="st-ring" style={{ background: `conic-gradient(${accentColor} ${pct}%, rgba(255,255,255,0.1) ${pct}%)` }}>
         <span className="st-time">{done ? "Time's up" : fmt(left)}</span>
       </div>
       <div className="st-controls">

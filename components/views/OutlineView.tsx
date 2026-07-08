@@ -683,7 +683,14 @@ export default function OutlineView({
                         className="ol-delete-btn"
                         onClick={(e) => {
                           e.stopPropagation();
-                          onDelete(id);
+                          if (
+                            typeof window === 'undefined' ||
+                            window.confirm(
+                              `Delete "${node.label || 'this node'}" and everything beneath it?`,
+                            )
+                          ) {
+                            onDelete(id);
+                          }
                         }}
                         data-tip="Delete this node and subtree"
                         aria-label={`Delete ${node.label || 'this node'}`}

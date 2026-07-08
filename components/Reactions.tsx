@@ -121,6 +121,9 @@ export default function Reactions({
           box-shadow: 0 14px 40px -10px rgba(0, 0, 0, 0.6);
           animation: rx-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
+        @media (max-width: 639px) {
+          .rx-bar { bottom: 80px; }
+        }
         @keyframes rx-in { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
         .rx-btn {
           font-size: 20px;

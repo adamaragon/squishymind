@@ -143,12 +143,14 @@ export default function MembersPanel({ mindmapId, isOwner, currentUserId, onClos
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && email.trim() && !inviting) invite();
                 }}
+                disabled={inviting}
               />
               <select
                 className="input"
                 style={{ width: 'auto' }}
                 value={role}
                 onChange={(e) => setRole(e.target.value as Role)}
+                disabled={inviting}
               >
                 <option value="editor">Editor</option>
                 <option value="commenter">Commenter</option>
@@ -158,7 +160,7 @@ export default function MembersPanel({ mindmapId, isOwner, currentUserId, onClos
                 className="btn btn-primary text-sm"
                 disabled={inviting || !email.trim()}
               >
-                {inviting ? 'Inviting…' : 'Invite'}
+                {inviting ? <><span className="spin" /> Inviting…</> : 'Invite'}
               </button>
             </div>
             {message && (
@@ -178,7 +180,7 @@ export default function MembersPanel({ mindmapId, isOwner, currentUserId, onClos
             Collaborators {members.length > 0 && `(${members.length})`}
           </h3>
           {loading ? (
-            <p className="text-sm text-[--text-dim]">Loading…</p>
+            <p className="text-sm text-[--text-dim] flex items-center gap-2"><span className="spin" /> Loading…</p>
           ) : members.length === 0 ? (
             <p className="text-sm text-[--text-dim]">
               No collaborators yet. {isOwner ? 'Invite someone above.' : ''}

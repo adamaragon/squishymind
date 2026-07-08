@@ -10,6 +10,8 @@ import type {
 } from '@/lib/types';
 import { iconForAttachment, humanSize } from '@/lib/attachments';
 
+const COLOR_NAMES = ['Pink', 'Violet', 'Cyan', 'Sky', 'Amber'];
+
 type Props = {
   node: MindMapNode;
   readonly?: boolean;
@@ -208,10 +210,10 @@ export default function NodeDetailPanel({
           />
           <div className="nd-meta-row">
             <span className="nd-meta-pill">
-              Color · idx {node.colorIdx}
+              Color · {COLOR_NAMES[(node.colorIdx ?? 0) % COLOR_NAMES.length]}
             </span>
             <span className="nd-meta-pill">
-              Depth · {node.depth}
+              Depth · Level {node.depth}
             </span>
             {node.createdAt > 0 && (
               <span className="nd-meta-pill">

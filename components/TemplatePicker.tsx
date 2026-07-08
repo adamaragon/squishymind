@@ -87,10 +87,10 @@ export default function TemplatePicker({ onClose }: { onClose: () => void }) {
           <button
             onClick={() => createFromTemplate(null)}
             disabled={creating !== null}
-            className="glass rounded-xl p-5 text-left hover:border-white/20 transition-all disabled:opacity-50 disabled:cursor-wait"
-          >
-            <div className="text-3xl mb-2">✨</div>
-            <h3 className="font-medium mb-1">Blank canvas</h3>
+            className="glass rounded-xl p-5 text-left hover:border-white/20 hover:-translate-y-0.5 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-wait"
+            >
+              <div className="text-3xl mb-2">✨</div>
+              <h3 className="font-medium mb-1">Blank canvas</h3>
             <p className="text-xs text-[--text-dim] leading-relaxed">
               Start with just the brain.
             </p>
@@ -101,7 +101,7 @@ export default function TemplatePicker({ onClose }: { onClose: () => void }) {
               key={t.id}
               onClick={() => createFromTemplate(t.id)}
               disabled={creating !== null}
-              className="glass rounded-xl p-5 text-left hover:border-white/20 transition-all disabled:opacity-50 disabled:cursor-wait"
+              className="glass rounded-xl p-5 text-left hover:border-white/20 hover:-translate-y-0.5 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-wait"
             >
               <div className="text-3xl mb-2">{t.icon}</div>
               <h3 className="font-medium mb-1">{t.name}</h3>
@@ -111,7 +111,7 @@ export default function TemplatePicker({ onClose }: { onClose: () => void }) {
         </div>
 
         {creating && (
-          <p className="text-center text-sm text-[--text-dim] mt-6">Creating your map…</p>
+          <p className="text-center text-sm text-[--text-dim] mt-6 flex items-center justify-center gap-2"><span className="spin" /> Creating your map…</p>
         )}
         {error && <p className="text-center text-sm text-red-300 mt-4">{error}</p>}
       </div>

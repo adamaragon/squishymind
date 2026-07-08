@@ -11,6 +11,7 @@ export default function ImportDialog({ onClose }: { onClose: () => void }) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -100,7 +101,32 @@ export default function ImportDialog({ onClose }: { onClose: () => void }) {
         </div>
 
         {tab === 'upload' ? (
-          <div className="border border-dashed border-white/20 rounded-xl p-8 text-center">
+          <div
+            className={`border border-dashed border-white/20 rounded-xl p-8 text-center transition-colors ${
+              dragOver ? 'border-violet-400 bg-violet-500/10' : ''
+            }`}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onDragEnter={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setDragOver(true);
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setDragOver(false);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setDragOver(false);
+              const f = e.dataTransfer.files?.[0];
+              if (f && !busy) handleFile(f);
+            }}
+          >
             <input
               ref={fileInputRef}
               type="file"
@@ -118,7 +144,7 @@ export default function ImportDialog({ onClose }: { onClose: () => void }) {
               htmlFor="import-file"
               className={`btn btn-primary cursor-pointer ${busy ? 'pointer-events-none opacity-50' : ''}`}
             >
-              {busy ? 'Importing…' : 'Choose a file'}
+              {busy ? <><span className="spin" /> Importing…</> : 'Choose a file'}
             </label>
             <p className="text-xs text-[--text-dim] mt-3">
               .md, .markdown, .txt, .csv, .opml, .xml, .json — up to 2&nbsp;MB
@@ -127,7 +153,7 @@ export default function ImportDialog({ onClose }: { onClose: () => void }) {
         ) : (
           <div>
             <textarea
-              className="input min-h-[200px] font-mono text-xs w-full"
+              className="input min-h-[320px] font-mono text-sm w-full"
               placeholder={`# My map\n\n## Branch one\n- child\n- another child\n\n## Branch two\n- ...`}
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -138,7 +164,7 @@ export default function ImportDialog({ onClose }: { onClose: () => void }) {
               className="btn btn-primary text-sm mt-3"
               disabled={busy || !text.trim()}
             >
-              {busy ? 'Importing…' : 'Import'}
+              {busy ? <><span className="spin" /> Importing…</> : 'Import'}
             </button>
           </div>
         )}

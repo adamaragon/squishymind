@@ -46,7 +46,7 @@ const GalleryView = dynamic(() => import('@/components/views/GalleryView'), {
 function ViewSwitchLoader({ label }: { label: string }) {
   return (
     <div className="h-full flex items-center justify-center text-[--text-dim] text-sm">
-      Loading {label}…
+      <span className="spin" /> Loading {label}…
     </div>
   );
 }
@@ -405,7 +405,7 @@ export default function EditorShell({
         {/* save indicator */}
         <span className="text-xs text-[--text-dim] shrink-0 min-w-[5rem] text-right" aria-live="polite">
           {saveState === 'saving' ? (
-            'Saving…'
+            <><span className="spin" /> Saving…</>
           ) : saveState === 'error' ? (
             <button
               onClick={retrySave}
@@ -416,7 +416,7 @@ export default function EditorShell({
           ) : savedAt ? (
             formatSavedAgo()
           ) : saving ? (
-            'Saving…'
+            <><span className="spin" /> Saving…</>
           ) : (
             ''
           )}

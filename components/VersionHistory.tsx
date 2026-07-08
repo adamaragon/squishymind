@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 type Version = {
   id: string;
@@ -41,7 +41,9 @@ export default function VersionHistory({
   const [available, setAvailable] = useState(true);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -61,6 +63,12 @@ export default function VersionHistory({
   useEffect(() => {
     if (open) refresh();
   }, [open, refresh]);
+
+  useEffect(() => {
+    return () => {
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -93,10 +101,21 @@ export default function VersionHistory({
     }
   }
 
-  async function restore(v: Version) {
-    if (!confirm('Restore this version? Your current map is snapshotted first, so you can undo by restoring "Before restore".')) {
+  function handleRestoreClick(v: Version) {
+    if (confirmingId === v.id) {
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+      setConfirmingId(null);
+      restore(v);
       return;
     }
+    setConfirmingId(v.id);
+    confirmTimerRef.current = setTimeout(() => {
+      setConfirmingId(null);
+      confirmTimerRef.current = null;
+    }, 3000);
+  }
+
+  async function restore(v: Version) {
     setBusy(v.id);
     setError(null);
     try {
@@ -107,7 +126,6 @@ export default function VersionHistory({
         setBusy(null);
         return;
       }
-      // Reload so the editor re-fetches the restored map data.
       window.location.reload();
     } catch {
       setError('Restore failed.');
@@ -139,7 +157,7 @@ export default function VersionHistory({
 
         <div className="vh-list">
           {loading ? (
-            <div className="vh-empty">Loading…</div>
+            <div className="vh-empty flex items-center justify-center gap-2"><span className="spin" /> Loading…</div>
           ) : versions.length === 0 ? (
             <div className="vh-empty">No versions yet. Save one to start your history.</div>
           ) : (
@@ -150,8 +168,12 @@ export default function VersionHistory({
                   <span className="vh-time">{relTime(v.created_at)}</span>
                   {v.label && <span className="vh-label">{v.label}</span>}
                 </div>
-                <button className="vh-restore" onClick={() => restore(v)} disabled={busy === v.id}>
-                  {busy === v.id ? '…' : 'Restore'}
+                <button
+                  className={`vh-restore${confirmingId === v.id ? ' vh-restore-confirm' : ''}`}
+                  onClick={() => handleRestoreClick(v)}
+                  disabled={busy === v.id}
+                >
+                  {busy === v.id ? '…' : confirmingId === v.id ? 'Really restore?' : 'Restore'}
                 </button>
               </div>
             ))
@@ -228,6 +250,8 @@ export default function VersionHistory({
           }
           .vh-restore:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); }
           .vh-restore:disabled { opacity: 0.5; cursor: default; }
+          .vh-restore-confirm { background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.35); color: #fca5a5; }
+          .vh-restore-confirm:hover:not(:disabled) { background: rgba(239, 68, 68, 0.3); }
         `}</style>
       </div>
     </div>

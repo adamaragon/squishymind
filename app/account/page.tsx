@@ -40,6 +40,12 @@ export default async function AccountPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('is_founder, created_at')
+    .eq('id', user.id)
+    .single();
+
   return (
     <>
       <Header />
@@ -59,6 +65,15 @@ export default async function AccountPage() {
             </div>
           </dl>
         </section>
+
+        {profile?.is_founder && (
+          <section className="glass rounded-2xl p-6 mb-5 border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-pink-500/10">
+            <h2 className="text-lg font-medium mb-2 text-amber-300">Founder Access</h2>
+            <p className="text-sm text-[--text-dim] leading-relaxed">
+              40% off Premium forever — locked in during beta.
+            </p>
+          </section>
+        )}
 
         <section className="glass rounded-2xl p-6 mb-5">
           <h2 className="text-lg font-medium mb-3">Sign out</h2>

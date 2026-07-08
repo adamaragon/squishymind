@@ -161,7 +161,7 @@ export default function ShareDialog({
                     checked={checked}
                     onChange={() => changeVisibility(opt.value)}
                     disabled={savingVisibility !== null}
-                    className="accent-white"
+                    className="accent-violet-400"
                   />
                   <span className="text-sm font-medium">{opt.label}</span>
                   {saving && <span className="text-xs text-[--text-dim]">saving…</span>}
