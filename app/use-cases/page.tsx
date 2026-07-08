@@ -2,13 +2,21 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
+const SITE = 'https://www.squishymind.com';
+
 export const metadata = {
   title: 'Use Cases — Mind Mapping for Teams, Students & Creators | SquishyMind',
   description:
     'How teams, students, writers, and product managers use SquishyMind to think better. Real-time collaboration, voice AI, and an infinite canvas — free during beta.',
+  alternates: { canonical: `${SITE}/use-cases` },
+  openGraph: {
+    title: 'Use Cases — SquishyMind',
+    description:
+      'How teams, students, writers, and product managers use SquishyMind to think better. Real-time collaboration, voice AI, and an infinite canvas — free during beta.',
+    url: `${SITE}/use-cases`,
+    type: 'website',
+  },
 };
-
-const SITE = 'https://www.squishymind.com';
 
 const useCasesJsonLd = {
   '@context': 'https://schema.org',
@@ -153,6 +161,8 @@ export default function UseCasesPage() {
                 alt={uc.heading}
                 width={1200}
                 height={800}
+                loading="lazy"
+                decoding="async"
                 className="rounded-2xl border border-white/10 aspect-[3/2] object-cover w-full mb-8"
               />
               <span className="inline-block text-xs font-semibold uppercase tracking-widest text-violet-400 mb-3">

@@ -36,14 +36,14 @@ export default async function DashboardPage() {
   return (
     <>
       <Header />
-      <main className="max-w-5xl mx-auto px-6 py-10">
-        <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
-          <h1 className="text-3xl font-bold">Your mind maps</h1>
-          <div className="flex items-center gap-2">
-            <ImportButton />
-            <NewMapButton />
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+          <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
+            <h1 className="text-3xl font-bold">Your mind maps</h1>
+            <div className="flex items-center gap-2">
+              <ImportButton className="btn btn-ghost min-h-[44px]" />
+              <NewMapButton className="btn btn-primary min-h-[44px]" />
+            </div>
           </div>
-        </div>
 
         {(!maps || maps.length === 0) ? (
           <div className="glass rounded-2xl p-10 text-center">
@@ -79,10 +79,10 @@ export default async function DashboardPage() {
                     Updated {new Date(m.updated_at).toLocaleDateString()}
                   </p>
                 </Link>
-                <div className="flex items-center gap-2 mt-1">
-                  <Link href={`/m/${m.id}`} className="btn btn-ghost text-xs">Open</Link>
+                <div className="flex items-center gap-2 mt-1 flex-wrap sm:flex-nowrap">
+                  <Link href={`/m/${m.id}`} className="btn btn-ghost text-xs min-h-[44px] min-w-[44px] px-4">Open</Link>
                   {m.visibility !== 'private' && (
-                    <Link href={`/share/${m.share_token}`} className="btn btn-ghost text-xs">
+                    <Link href={`/share/${m.share_token}`} className="btn btn-ghost text-xs min-h-[44px] min-w-[44px] px-4">
                       Share link
                     </Link>
                   )}

@@ -5,14 +5,21 @@ import ShareButtons from '@/components/ShareButtons';
 import { templates } from '@/lib/templates';
 import type { MindMapData } from '@/lib/types';
 
+const SITE = 'https://www.squishymind.com';
+
 export const metadata = {
   title: 'Mind Map Templates — Campaigns, SEO, Web Builds & More | SquishyMind',
   description:
     'Free, professional mind map templates: marketing campaigns, SEO projects, website builds, product launches, content strategy, and creative briefs — real work, mapped.',
-  alternates: { canonical: 'https://www.squishymind.com/templates' },
+  alternates: { canonical: `${SITE}/templates` },
+  openGraph: {
+    title: 'Mind Map Templates — Campaigns, SEO, Web Builds & More',
+    description:
+      'Free, professional mind map templates: marketing campaigns, SEO projects, website builds, product launches, content strategy, and creative briefs — real work, mapped.',
+    url: `${SITE}/templates`,
+    type: 'website',
+  },
 };
-
-const SITE = 'https://www.squishymind.com';
 
 // The deep professional templates lead; these ids get the full-outline treatment.
 const PRO_IDS = [

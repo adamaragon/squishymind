@@ -97,6 +97,7 @@ export default function MindMapCanvas({
   // ---- React state for things that drive React-rendered UI ----
   const [inDetailMode, setInDetailMode] = useState(false);
   const [infoVisible, setInfoVisible] = useState(true);
+  const [exportingLabel, setExportingLabel] = useState<string | null>(null);
 
   // ---- State the imperative engine owns (kept in a ref so renders don't reset it) ----
   const stateRef = useRef<InternalState>({
@@ -126,6 +127,7 @@ export default function MindMapCanvas({
   // Drain pending remote realtime updates that were queued during a drag.
   // Populated by the main effect, called from the drag-end handler.
   const flushPendingRemoteDataRef = useRef<(() => void) | null>(null);
+  const setExportingLabelRef = useRef<(label: string | null) => void>(setExportingLabel);
 
   // Keep latest callbacks/props readable from event handlers without re-running effect
   useEffect(() => {
@@ -137,6 +139,9 @@ export default function MindMapCanvas({
   useEffect(() => {
     readonlyRef.current = readonly;
   }, [readonly]);
+  useEffect(() => {
+    setExportingLabelRef.current = setExportingLabel;
+  }, []);
   // The brain's label is the page title; sync them so changes from the editor
   // toolbar propagate to the brain-label DOM under the SVG.
   useEffect(() => {
@@ -3411,6 +3416,7 @@ export default function MindMapCanvas({
     async function onExportPng() {
       if (readonlyRef.current || exporting) return;
       exporting = true;
+      setExportingLabelRef.current('Rendering PNG…');
       try {
         const dataUrl = await captureStagePng();
         const a = document.createElement('a');
@@ -3421,11 +3427,13 @@ export default function MindMapCanvas({
         alert('PNG export failed: ' + (err as Error).message);
       } finally {
         exporting = false;
+        setExportingLabelRef.current(null);
       }
     }
     async function onExportPdf() {
       if (readonlyRef.current || exporting) return;
       exporting = true;
+      setExportingLabelRef.current('Rendering PDF…');
       try {
         const dataUrl = await captureStagePng();
         const img = new Image();
@@ -3444,6 +3452,7 @@ export default function MindMapCanvas({
         alert('PDF export failed: ' + (err as Error).message);
       } finally {
         exporting = false;
+        setExportingLabelRef.current(null);
       }
     }
 
@@ -4051,6 +4060,7 @@ export default function MindMapCanvas({
         }
         const path = el.querySelector('path');
         if (path) path.setAttribute('fill', p.color);
+        el.style.color = p.color;
         const label = el.querySelector('.smm-cursor-label') as HTMLDivElement;
         if (label) {
           label.textContent = p.display_name;
@@ -4624,6 +4634,13 @@ export default function MindMapCanvas({
         <canvas ref={particlesCanvasRef} className="smm-particles" />
       </div>
 
+      {exportingLabel && (
+        <div className="smm-rendering-overlay">
+          <span className="spin" />
+          <span>{exportingLabel}</span>
+        </div>
+      )}
+
       <div className="panel smm-toolbar">
         <h1>SquishyMind</h1>
         {!readonly && (
@@ -5067,9 +5084,9 @@ export default function MindMapCanvas({
           backdrop-filter: blur(3px);
           cursor: pointer;
           transition:
-            transform 0.2s cubic-bezier(0.34, 1.56, 0.45, 1),
-            box-shadow 0.22s ease,
-            border-color 0.22s ease;
+            transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+            box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+            border-color 0.22s cubic-bezier(0.16, 1, 0.3, 1);
           font-size: 14px;
           font-weight: 500;
           letter-spacing: -0.01em;
@@ -5113,7 +5130,22 @@ export default function MindMapCanvas({
         }
         .smm-root :global(.node:active:not(.dragging)) {
           transform: translate(-50%, -50%) scale(0.95);
-          transition: transform 0.08s ease-out;
+          transition:
+            transform 0.08s cubic-bezier(0.16, 1, 0.3, 1),
+            box-shadow 0.08s cubic-bezier(0.16, 1, 0.3, 1),
+            border-color 0.08s cubic-bezier(0.16, 1, 0.3, 1);
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.06),
+            0 4px 10px -4px var(--node-shadow),
+            0 0 0 2px color-mix(in srgb, var(--accent-c1, var(--accent-1)) 28%, transparent);
+        }
+        .smm-root :global(.node:focus-visible) {
+          outline: none;
+          border-color: color-mix(in srgb, var(--accent-c1, var(--accent-1)) 85%, transparent);
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.12),
+            0 14px 30px -8px var(--node-shadow),
+            0 0 0 3px color-mix(in srgb, var(--accent-c1, var(--accent-1)) 40%, transparent);
         }
         .smm-root :global(.node.selected) {
           border-color: color-mix(in srgb, var(--selection) 80%, transparent);
@@ -5875,6 +5907,32 @@ export default function MindMapCanvas({
         .smm-root :global(.smm-cursor svg) {
           filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
         }
+        .smm-root :global(.smm-cursor::after) {
+          content: '';
+          position: absolute;
+          top: -3px;
+          left: -3px;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: transparent;
+          box-shadow: 0 0 0 0 currentColor;
+          animation: smm-presence-pulse 1.8s ease-out infinite;
+        }
+        @keyframes smm-presence-pulse {
+          0% {
+            box-shadow: 0 0 0 0 currentColor;
+            opacity: 0.5;
+          }
+          70% {
+            box-shadow: 0 0 0 10px transparent;
+            opacity: 0;
+          }
+          100% {
+            box-shadow: 0 0 0 0 transparent;
+            opacity: 0;
+          }
+        }
         .smm-root :global(.smm-cursor-label) {
           position: absolute;
           top: 18px;
@@ -5887,6 +5945,16 @@ export default function MindMapCanvas({
           border-radius: 4px;
           white-space: nowrap;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+          opacity: 0;
+          transform: translateY(-2px);
+          transition:
+            opacity 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+            transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+          pointer-events: none;
+        }
+        .smm-root :global(.smm-cursor:hover .smm-cursor-label) {
+          opacity: 1;
+          transform: translateY(0);
         }
         .smm-root :global(.brain-label) {
           font-weight: 600;
@@ -6698,9 +6766,9 @@ export default function MindMapCanvas({
           font-weight: 500;
           cursor: pointer;
           transition:
-            transform 0.16s cubic-bezier(0.34, 1.45, 0.5, 1),
-            background 0.16s ease,
-            border-color 0.16s ease;
+            transform 0.16s cubic-bezier(0.16, 1, 0.3, 1),
+            background 0.16s cubic-bezier(0.16, 1, 0.3, 1),
+            border-color 0.16s cubic-bezier(0.16, 1, 0.3, 1);
           display: flex;
           align-items: center;
           gap: 6px;
@@ -6712,6 +6780,10 @@ export default function MindMapCanvas({
         }
         .tb-btn:active {
           transform: translateY(0) scale(0.95);
+          transition:
+            transform 0.08s cubic-bezier(0.16, 1, 0.3, 1),
+            background 0.08s cubic-bezier(0.16, 1, 0.3, 1),
+            border-color 0.08s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .tb-btn.icon {
           padding: 7px 10px;
@@ -6837,6 +6909,28 @@ export default function MindMapCanvas({
           inset: 0;
           pointer-events: none;
           z-index: 2;
+        }
+
+        /* Export rendering overlay */
+        .smm-rendering-overlay {
+          position: absolute;
+          inset: 0;
+          z-index: 60;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          background: rgba(10, 11, 22, 0.6);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          color: var(--text);
+          font-size: 15px;
+          font-weight: 500;
+          animation: overlay-fade-in 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        @keyframes overlay-fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
       `}</style>
     </div>

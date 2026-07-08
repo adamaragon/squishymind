@@ -169,7 +169,7 @@ export default async function BlogPostPage({
         <section className="max-w-2xl mx-auto py-10 text-center">
           <div className="glass rounded-2xl p-8">
             <div className="inline-block mb-4">
-              <img src="/brain.svg" alt="" width={64} height={64} className="opacity-90 mx-auto" />
+              <img src="/brain.svg" alt="" width={64} height={64} loading="lazy" decoding="async" className="opacity-90 mx-auto" />
             </div>
             <h2 className="text-2xl font-bold mb-3">Try it with your own brain</h2>
             <p className="text-[--text-dim] mb-6 leading-relaxed">
@@ -199,6 +199,8 @@ export default async function BlogPostPage({
                     alt={p.coverAlt || p.title}
                     width={1200}
                     height={800}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full aspect-[3/2] object-cover border-b border-white/10"
                   />
                   <div className="p-5">

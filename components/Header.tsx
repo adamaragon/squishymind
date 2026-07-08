@@ -24,7 +24,7 @@ const PILL_CONTENT =
 // it, can be statically rendered / ISR instead of forced dynamic.
 export default function Header() {
   return (
-    <header className="flex items-center justify-between gap-3 px-6 py-4 border-b border-white/5">
+    <header className="flex items-center justify-between gap-3 px-4 sm:px-6 py-2 sm:py-4 border-b border-white/5 min-h-[56px]">
       <Link href="/" className="flex items-center gap-3 group shrink-0">
         <img
           src="/brain.svg"

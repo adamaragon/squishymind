@@ -288,7 +288,7 @@ export default function EditorShell({
       <Reactions open={reactionsOpen} onClose={() => setReactionsOpen(false)} mindmapId={id} />
       <ThemePicker open={themePickerOpen} onClose={() => setThemePickerOpen(false)} />
       {/* slim top bar */}
-      <div className="flex items-center gap-3 px-4 py-2 border-b border-white/10 bg-[--ui-bg] backdrop-blur shrink-0 flex-wrap">
+      <div className="flex items-center gap-2 sm:gap-3 px-2 sm:px-4 py-2 border-b border-white/10 bg-[--ui-bg] backdrop-blur shrink-0 overflow-x-auto">
         <Link href="/dashboard" className="text-[--text-dim] hover:text-white transition-colors text-sm shrink-0">
           ← Maps
         </Link>

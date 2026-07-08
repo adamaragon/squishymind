@@ -44,7 +44,7 @@ function LoginForm() {
 
       {error && <p className="text-sm text-red-300 mb-3">{error}</p>}
 
-      <button type="submit" className="btn btn-primary w-full mt-2" disabled={busy}>
+      <button type="submit" className="btn btn-primary w-full mt-2 min-h-[44px]" disabled={busy}>
         {busy ? 'Logging in…' : 'Log in'}
       </button>
 

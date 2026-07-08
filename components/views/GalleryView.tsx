@@ -46,6 +46,8 @@ export default function GalleryView({
   // makes the card fall back to the text layout — mirroring the canvas, which
   // reverts a broken image node to a plain pill.
   const [failedImages, setFailedImages] = useState<Set<string>>(() => new Set());
+  // Track which images have finished loading
+  const [loadedImages, setLoadedImages] = useState<Set<string>>(() => new Set());
   // Local data state so detail-panel edits feel immediate. Resyncs when the
   // parent reseeds with new initialData (view switch / realtime). Mirrors
   // TableView's approach exactly.
@@ -184,6 +186,7 @@ export default function GalleryView({
               const accent = ACCENT_PALETTE[colorIdx % ACCENT_PALETTE.length];
               const imgKey = `${node.id}::${node.imageUrl ?? ''}`;
               const hasImage = !!node.imageUrl && !failedImages.has(imgKey);
+              const isLoaded = loadedImages.has(imgKey);
               const note = node.note?.trim();
               const isDone = !!node.done;
               const label = node.label || 'Untitled';
@@ -208,12 +211,21 @@ export default function GalleryView({
                     {hasImage ? (
                       <>
                         <div className="gv-card-media">
+                          {!isLoaded && <div className="gv-card-shimmer" />}
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={node.imageUrl as string}
                             alt={label}
-                            className="gv-card-img"
+                            className={`gv-card-img ${isLoaded ? 'is-loaded' : ''}`}
                             loading="lazy"
+                            onLoad={() =>
+                              setLoadedImages((prev) => {
+                                if (prev.has(imgKey)) return prev;
+                                const next = new Set(prev);
+                                next.add(imgKey);
+                                return next;
+                              })
+                            }
                             onError={() =>
                               setFailedImages((prev) => {
                                 if (prev.has(imgKey)) return prev;
@@ -228,6 +240,17 @@ export default function GalleryView({
                               ✓
                             </span>
                           )}
+                        </div>
+                        <div className="gv-card-strip">
+                          <span className="gv-card-title">{label}</span>
+                          {note && <span className="gv-card-note">{note}</span>}
+                        </div>
+                      </>
+                    ) : node.imageUrl && failedImages.has(imgKey) ? (
+                      <>
+                        <div className="gv-card-media gv-card-media-broken">
+                          <span className="gv-broken-icon" aria-hidden>◧</span>
+                          <span className="gv-broken-label">Image unavailable</span>
                         </div>
                         <div className="gv-card-strip">
                           <span className="gv-card-title">{label}</span>
@@ -293,8 +316,8 @@ export default function GalleryView({
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 18px;
-          padding: 14px 22px;
+          gap: 14px;
+          padding: 10px 14px;
           border-bottom: 1px solid var(--border);
           background: rgba(10, 11, 22, 0.6);
           backdrop-filter: blur(14px);
@@ -367,6 +390,7 @@ export default function GalleryView({
           display: flex;
           align-items: center;
           gap: 10px;
+          flex-wrap: wrap;
         }
         .gv-filter {
           display: inline-flex;
@@ -444,7 +468,7 @@ export default function GalleryView({
           flex: 1;
           min-height: 0;
           overflow: auto;
-          padding: 22px;
+          padding: 14px;
           background-image:
             linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
             linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
@@ -460,6 +484,12 @@ export default function GalleryView({
           justify-content: center;
           padding: 80px 24px;
           text-align: center;
+          background:
+            radial-gradient(
+              300px 200px at 50% 40%,
+              rgba(236, 72, 153, 0.06) 0%,
+              transparent 70%
+            );
         }
         .gv-empty-icon {
           font-size: 48px;
@@ -470,13 +500,17 @@ export default function GalleryView({
           font-size: 15px;
           font-weight: 600;
           margin: 0 0 6px;
+          background: linear-gradient(135deg, #f9a8d4, #c4b5fd);
+          background-clip: text;
+          -webkit-background-clip: text;
+          color: transparent;
         }
         .gv-empty p {
           font-size: 12px;
           color: var(--text-dim);
           margin: 0;
           max-width: 360px;
-          line-height: 1.5;
+          line-height: 1.6;
         }
         .gv-inline-btn {
           background: transparent;
@@ -495,8 +529,26 @@ export default function GalleryView({
           margin: 0;
           padding: 0;
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-          gap: 18px;
+          grid-template-columns: 1fr;
+          gap: 14px;
+        }
+        @media (min-width: 480px) {
+          .gv-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+          }
+        }
+        @media (min-width: 768px) {
+          .gv-grid {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+          }
+        }
+        @media (min-width: 1024px) {
+          .gv-grid {
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 18px;
+          }
         }
         .gv-cell {
           display: flex;
@@ -538,11 +590,12 @@ export default function GalleryView({
           z-index: 2;
         }
         .gv-card:hover {
-          transform: translateY(-3px);
-          border-color: color-mix(in srgb, var(--gv-accent) 45%, var(--border));
+          transform: translateY(-4px);
+          border-color: color-mix(in srgb, var(--gv-accent) 55%, var(--border));
           box-shadow:
-            0 12px 28px rgba(0, 0, 0, 0.45),
-            0 0 0 1px color-mix(in srgb, var(--gv-accent) 25%, transparent);
+            0 14px 32px rgba(0, 0, 0, 0.5),
+            0 0 0 1px color-mix(in srgb, var(--gv-accent) 35%, transparent),
+            0 0 28px color-mix(in srgb, var(--gv-accent) 16%, transparent);
         }
         .gv-card:focus-visible {
           outline: none;
@@ -557,12 +610,29 @@ export default function GalleryView({
           position: relative;
           width: 100%;
           height: 150px;
-          /* Frame the image the way the canvas image node does: an ~8px reveal
-             on the top + sides lets the card surface peek around the artwork,
-             and the image rounds its top corners (the strip rounds the bottom). */
           padding: 8px 8px 0;
           background: transparent;
           overflow: hidden;
+        }
+
+        /* Shimmer skeleton */
+        .gv-card-shimmer {
+          position: absolute;
+          inset: 8px 8px 0;
+          border-radius: 8px 8px 0 0;
+          background: linear-gradient(
+            110deg,
+            rgba(255, 255, 255, 0.03) 30%,
+            rgba(255, 255, 255, 0.07) 50%,
+            rgba(255, 255, 255, 0.03) 70%
+          );
+          background-size: 200% 100%;
+          animation: gv-shimmer 1.4s ease-in-out infinite;
+          z-index: 1;
+        }
+        @keyframes gv-shimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
         }
         .gv-card-img {
           width: 100%;
@@ -570,6 +640,36 @@ export default function GalleryView({
           object-fit: cover;
           display: block;
           border-radius: 8px 8px 0 0;
+          opacity: 0;
+          transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .gv-card-img.is-loaded {
+          opacity: 1;
+        }
+
+        /* Broken image fallback */
+        .gv-card-media-broken {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px dashed rgba(255, 255, 255, 0.08);
+          border-radius: 8px 8px 0 0;
+          margin: 8px 8px 0;
+          height: 134px;
+        }
+        .gv-broken-icon {
+          font-size: 28px;
+          opacity: 0.3;
+          color: var(--text-dim);
+        }
+        .gv-broken-label {
+          font-size: 11px;
+          color: var(--text-dim);
+          font-weight: 500;
+          opacity: 0.6;
         }
         .gv-card-strip {
           display: flex;

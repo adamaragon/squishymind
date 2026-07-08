@@ -3,13 +3,21 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { competitors } from '@/lib/compare-data';
 
+const SITE = 'https://www.squishymind.com';
+
 export const metadata = {
   title: 'SquishyMind vs Other Mind Mapping Tools — Honest Comparison',
   description:
     'How does SquishyMind compare to MindMeister, Miro, Mural, and Obsidian? Free to start, voice AI, real-time collaboration, and no lock-in. Free during beta.',
+  alternates: { canonical: `${SITE}/compare` },
+  openGraph: {
+    title: 'SquishyMind vs Other Mind Mapping Tools — Honest Comparison',
+    description:
+      'How does SquishyMind compare to MindMeister, Miro, Mural, and Obsidian? Free to start, voice AI, real-time collaboration, and no lock-in. Free during beta.',
+    url: `${SITE}/compare`,
+    type: 'website',
+  },
 };
-
-const SITE = 'https://www.squishymind.com';
 
 const compareJsonLd = {
   '@context': 'https://schema.org',

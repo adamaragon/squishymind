@@ -12,7 +12,7 @@ export default function SignOutButton() {
         clearConversationId();
       }}
     >
-      <button type="submit" className="btn btn-ghost">
+      <button type="submit" className="btn btn-ghost min-h-[44px]">
         Sign out
       </button>
     </form>

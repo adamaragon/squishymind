@@ -4,13 +4,21 @@ import Footer from '@/components/Footer';
 import ShareButtons from '@/components/ShareButtons';
 import PageViewTracker from '@/components/PageViewTracker';
 
+const SITE = 'https://www.squishymind.com';
+
 export const metadata = {
   title: 'Pricing — SquishyMind Mind Mapping App',
   description:
     'SquishyMind is free during beta. Sign up now and lock in Founder Access — $2.99/month forever when paid tiers launch. Unlimited maps, voice AI, and real-time collaboration.',
+  alternates: { canonical: `${SITE}/pricing` },
+  openGraph: {
+    title: 'Pricing — SquishyMind',
+    description:
+      'SquishyMind is free during beta. Sign up now and lock in Founder Access — $2.99/month forever when paid tiers launch.',
+    url: `${SITE}/pricing`,
+    type: 'website',
+  },
 };
-
-const SITE = 'https://www.squishymind.com';
 
 const pricingJsonLd = [
   {
@@ -155,9 +163,9 @@ export default function PricingPage() {
       ))}
       <PageViewTracker event="pricing_visited" />
       <Header />
-      <main className="px-6">
+      <main className="px-4 sm:px-6">
         {/* Hero */}
-        <section className="max-w-4xl mx-auto pt-16 pb-10 text-center">
+        <section className="max-w-4xl mx-auto pt-12 sm:pt-16 pb-8 sm:pb-10 text-center">
           <h1 className="text-display font-bold tracking-display mb-4">
             <span className="gradient-text">Simple pricing.</span> We say what we mean.
           </h1>
@@ -168,7 +176,7 @@ export default function PricingPage() {
         </section>
 
         {/* Tiers */}
-        <section className="max-w-6xl mx-auto pb-12 grid md:grid-cols-[1fr_1.35fr_1fr] gap-5 items-start">
+        <section className="max-w-6xl mx-auto pb-12 grid md:grid-cols-[1fr_1.35fr_1fr] gap-6 sm:gap-5 items-start">
           {TIERS.map((tier) => {
             const isFounder = tier.name === 'Founder Access';
             return (
@@ -220,7 +228,7 @@ export default function PricingPage() {
         </section>
 
         {/* Footnote */}
-        <section className="max-w-3xl mx-auto pb-16 px-6 text-center">
+        <section className="max-w-3xl mx-auto pb-12 sm:pb-16 px-4 sm:px-6 text-center">
           <p className="text-xs text-[--text-dim] leading-relaxed">
             Voice minute allowances reflect what we can sustainably offer given the cost
             of running our voice agent. Heavy use beyond the limit pauses voice until next

@@ -1443,11 +1443,17 @@ export default function TreeView({
           line-height: 1;
           border-radius: 5px;
           cursor: pointer;
-          transition: all 0.12s;
+          transition:
+            background 0.12s cubic-bezier(0.16, 1, 0.3, 1),
+            color 0.12s cubic-bezier(0.16, 1, 0.3, 1),
+            transform 0.12s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .tr-zoom-btn:hover {
           color: var(--text);
-          background: rgba(255, 255, 255, 0.06);
+          background: rgba(255, 255, 255, 0.08);
+        }
+        .tr-zoom-btn:active {
+          transform: scale(0.92);
         }
         .tr-zoom-fit {
           width: auto;
@@ -2042,10 +2048,15 @@ function TreeNodeCard({
             0 8px 24px rgba(0, 0, 0, 0.45),
             0 0 0 1px rgba(0, 0, 0, 0.2);
           transition:
-            transform 0.16s ease,
-            box-shadow 0.18s ease,
-            border-color 0.18s ease;
+            transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+            box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+            border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+          animation: tr-card-enter 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
           overflow: visible;
+        }
+        @keyframes tr-card-enter {
+          from { opacity: 0; transform: translateY(8px) scale(0.96); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
         }
         .tr-card:hover {
           transform: translateY(-2px);

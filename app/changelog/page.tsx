@@ -8,13 +8,21 @@ import {
   type RoadmapEntry,
 } from '@/lib/changelog-data';
 
+const SITE = 'https://www.squishymind.com';
+
 export const metadata = {
   title: 'Changelog & Roadmap — SquishyMind Mind Mapping App',
   description:
     'Every feature SquishyMind has shipped, plus what\'s coming next. Voice AI, real-time collaboration, multiple views, templates — see the full history.',
+  alternates: { canonical: `${SITE}/changelog` },
+  openGraph: {
+    title: 'Changelog & Roadmap — SquishyMind',
+    description:
+      'Every feature SquishyMind has shipped, plus what\'s coming next. Voice AI, real-time collaboration, multiple views, templates — see the full history.',
+    url: `${SITE}/changelog`,
+    type: 'website',
+  },
 };
-
-const SITE = 'https://www.squishymind.com';
 
 const changelogJsonLd = {
   '@context': 'https://schema.org',

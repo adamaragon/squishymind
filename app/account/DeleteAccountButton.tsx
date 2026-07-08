@@ -27,7 +27,7 @@ export default function DeleteAccountButton({ action }: Props) {
         }
       }}
     >
-      <button type="submit" className="btn btn-danger" disabled={busy}>
+        <button type="submit" className="btn btn-danger min-h-[44px]" disabled={busy}>
         {busy ? <><span className="spin" /> Deleting…</> : 'Delete my account'}
       </button>
     </form>

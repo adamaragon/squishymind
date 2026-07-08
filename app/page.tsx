@@ -67,13 +67,13 @@ export default function HomePage() {
       />
       <Header />
 
-      <main className="px-6">
+      <main className="px-4 sm:px-6">
         {/* HERO */}
-        <section className="max-w-5xl mx-auto pt-12 md:pt-20 pb-20 text-center">
+        <section className="max-w-5xl mx-auto pt-8 sm:pt-12 md:pt-20 pb-20 text-center">
           <BetaBanner />
-          <div className="flex justify-center mt-10 mb-8">
-            <div className="brain-enter animate-[wobble_3.6s_ease-in-out_infinite] origin-bottom" style={{ animationDelay: '0s, 0.8s' }}>
-              <img src="/brain.svg" alt="" width={240} height={200} />
+          <div className="flex justify-center mt-8 sm:mt-10 mb-6 sm:mb-8">
+            <div className="brain-enter animate-[wobble_3.6s_ease-in-out_infinite] origin-bottom w-[120px] h-[100px] sm:w-[240px] sm:h-[200px]" style={{ animationDelay: '0s, 0.8s' }}>
+              <img src="/brain.svg" alt="" width={240} height={200} className="w-full h-full" />
             </div>
           </div>
           <h1 className="text-display font-bold tracking-display mb-8 leading-tight md:leading-[1.02]">
@@ -107,7 +107,7 @@ export default function HomePage() {
         {/* Feature grid */}
         <section
           id="features"
-          className="max-w-6xl mx-auto px-6 py-20 grid md:grid-cols-3 gap-5"
+          className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20 grid md:grid-cols-3 gap-4 sm:gap-5"
         >
           <div className="glass rounded-2xl p-8 feature-card md:col-span-2 grid md:grid-cols-[auto,1fr] gap-7 items-center">
             <div
@@ -200,7 +200,7 @@ export default function HomePage() {
         </section>
 
         {/* More good things — rotated-out feature cards live here */}
-        <details className="more-good-things max-w-6xl mx-auto px-6 pb-16 group">
+        <details className="more-good-things max-w-6xl mx-auto px-4 sm:px-6 pb-12 sm:pb-16 group">
           <summary className="cursor-pointer text-center text-sm text-[--text-dim] hover:text-white transition-colors py-3 select-none list-none">
             <span className="inline-flex items-center gap-2">
               <span>More good things</span>
@@ -266,8 +266,8 @@ export default function HomePage() {
         <FAQ />
 
         {/* Final CTA */}
-        <section className="max-w-3xl mx-auto px-6 py-24 text-center">
-          <h2 className="text-4xl md:text-5xl font-bold mb-5 leading-tight">
+        <section className="max-w-3xl mx-auto px-4 sm:px-6 py-16 sm:py-24 text-center">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-5 leading-tight">
             There&apos;s a brain in the corner waiting to meet you.
           </h2>
           <p className="text-[--text-dim] mb-9 text-lg leading-relaxed">

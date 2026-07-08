@@ -4,13 +4,21 @@ import Footer from '@/components/Footer';
 import ShareButtons from '@/components/ShareButtons';
 import PageViewTracker from '@/components/PageViewTracker';
 
+const SITE = 'https://www.squishymind.com';
+
 export const metadata = {
   title: 'Founder Access — SquishyMind Mind Mapping App',
   description:
     'Sign up during beta and lock in $2.99/month forever — 40% off Squishy Premium for life, plus a more generous free tier you keep even if you never upgrade.',
+  alternates: { canonical: `${SITE}/founder-access` },
+  openGraph: {
+    title: 'Founder Access — SquishyMind',
+    description:
+      'Sign up during beta and lock in $2.99/month forever — 40% off Squishy Premium for life, plus a more generous free tier you keep even if you never upgrade.',
+    url: `${SITE}/founder-access`,
+    type: 'website',
+  },
 };
-
-const SITE = 'https://www.squishymind.com';
 
 const founderJsonLd = {
   '@context': 'https://schema.org',

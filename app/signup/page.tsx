@@ -64,7 +64,7 @@ export default function SignupPage() {
 
         {error && <p className="text-sm text-red-300 mb-3">{error}</p>}
 
-        <button type="submit" className="btn btn-primary w-full mt-2" disabled={busy || confirmed}>
+        <button type="submit" className="btn btn-primary w-full mt-2 min-h-[44px]" disabled={busy || confirmed}>
           {busy ? 'Creating…' : confirmed ? (
             <span className="flex items-center justify-center gap-2">
               <svg className="check-icon" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

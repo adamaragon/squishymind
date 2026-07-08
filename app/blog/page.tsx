@@ -4,19 +4,26 @@ import Footer from '@/components/Footer';
 import ShareButtons from '@/components/ShareButtons';
 import { publishedPosts, postImage } from '@/lib/blog-data';
 
+const SITE = 'https://www.squishymind.com';
+
 export const metadata = {
   title: 'Blog — Mind Mapping, Focus & Thinking Tools | SquishyMind',
   description:
     'Guides on mind mapping, ADHD-friendly focus, studying, team collaboration, and the SquishyMind voice AI. Think clearer, map faster — free during beta.',
   alternates: {
-    canonical: 'https://www.squishymind.com/blog',
+    canonical: `${SITE}/blog`,
     types: {
-      'application/rss+xml': 'https://www.squishymind.com/blog/feed.xml',
+      'application/rss+xml': `${SITE}/blog/feed.xml`,
     },
   },
+  openGraph: {
+    title: 'Blog — SquishyMind',
+    description:
+      'Guides on mind mapping, ADHD-friendly focus, studying, team collaboration, and the SquishyMind voice AI. Think clearer, map faster — free during beta.',
+    url: `${SITE}/blog`,
+    type: 'website',
+  },
 };
-
-const SITE = 'https://www.squishymind.com';
 
 const CATEGORY_TONE: Record<string, string> = {
   'Mind mapping': 'text-violet-300 border-violet-500/30 bg-violet-500/10',
@@ -135,6 +142,8 @@ export default function BlogIndexPage() {
                 alt={p.coverAlt || p.title}
                 width={1200}
                 height={800}
+                loading="lazy"
+                decoding="async"
                 className="w-full aspect-[3/2] object-cover border-b border-white/10"
               />
               <div className="p-6 flex flex-col flex-1">

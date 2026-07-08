@@ -927,7 +927,7 @@ export default function OutlineView({
           gap: 8px;
           padding: 6px 10px 6px 6px;
           border-radius: 8px;
-          transition: background 0.12s;
+          transition: background 0.12s cubic-bezier(0.16, 1, 0.3, 1);
           min-height: 32px;
         }
         .ol-row:hover {
@@ -941,8 +941,8 @@ export default function OutlineView({
         .ol-row.is-focused {
           background: linear-gradient(
             90deg,
-            color-mix(in srgb, var(--ol-accent) 14%, transparent) 0%,
-            rgba(255, 255, 255, 0.02) 70%
+            color-mix(in srgb, var(--ol-accent) 18%, transparent) 0%,
+            rgba(255, 255, 255, 0.03) 70%
           );
           box-shadow: inset 2px 0 0 var(--ol-accent);
         }
@@ -973,7 +973,7 @@ export default function OutlineView({
           top: 0;
           bottom: 0;
           width: 1px;
-          background: rgba(255, 255, 255, 0.06);
+          background: rgba(255, 255, 255, 0.1);
         }
 
         /* Connector elbow from guide to row */
@@ -1014,7 +1014,7 @@ export default function OutlineView({
         }
         .ol-chev-icon {
           display: block;
-          transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+          transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .ol-chev.is-open .ol-chev-icon {
           transform: rotate(90deg);

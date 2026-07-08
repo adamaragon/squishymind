@@ -613,6 +613,7 @@ export default function TableView({
       <style jsx>{`
         .table-view {
           color: var(--text);
+          min-width: 0;
           background:
             radial-gradient(
               1200px 600px at 0% -10%,
@@ -631,8 +632,8 @@ export default function TableView({
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 18px;
-          padding: 14px 22px;
+          gap: 12px;
+          padding: 10px 14px;
           border-bottom: 1px solid var(--border);
           background: rgba(10, 11, 22, 0.6);
           backdrop-filter: blur(14px);
@@ -874,6 +875,12 @@ export default function TableView({
           justify-content: center;
           padding: 80px 24px;
           text-align: center;
+          background:
+            radial-gradient(
+              300px 200px at 50% 40%,
+              rgba(139, 92, 246, 0.06) 0%,
+              transparent 70%
+            );
         }
         .tv-empty-icon {
           font-size: 48px;
@@ -884,17 +891,23 @@ export default function TableView({
           font-size: 15px;
           font-weight: 600;
           margin: 0 0 6px;
+          background: linear-gradient(135deg, #c4b5fd, #67e8f9);
+          background-clip: text;
+          -webkit-background-clip: text;
+          color: transparent;
         }
         .tv-empty p {
           font-size: 12px;
           color: var(--text-dim);
           margin: 0;
+          max-width: 320px;
+          line-height: 1.6;
         }
 
         /* ---- Footer bar ---- */
         .tv-foot-bar {
           flex-shrink: 0;
-          padding: 9px 18px;
+          padding: 8px 14px;
           font-size: 11px;
           color: var(--text-dim);
           background: rgba(10, 11, 22, 0.55);
@@ -1527,9 +1540,14 @@ const tableStyles = `
   }
   .tv-th-sortable {
     padding: 0;
+    transition: background 0.12s ease;
+  }
+  .tv-th-sortable:hover {
+    background: rgba(139, 92, 246, 0.08);
   }
   .tv-th-sortable.is-sorted {
     color: var(--text);
+    background: rgba(139, 92, 246, 0.05);
   }
   .tv-sort-btn {
     display: inline-flex;
@@ -1546,7 +1564,8 @@ const tableStyles = `
     font-weight: 600;
     padding: 11px 14px;
     cursor: pointer;
-    transition: color 0.12s;
+    transition: color 0.12s ease;
+    border-radius: 0;
   }
   .tv-sort-btn:hover {
     color: var(--text);
@@ -1554,10 +1573,18 @@ const tableStyles = `
   .tv-sort-arrow {
     font-size: 8px;
     opacity: 0.7;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    display: inline-block;
   }
   .is-sorted .tv-sort-arrow {
     opacity: 1;
     color: #c4b5fd;
+  }
+  .tv-th-sortable[aria-sort="ascending"] .tv-sort-arrow {
+    transform: rotate(0deg);
+  }
+  .tv-th-sortable[aria-sort="descending"] .tv-sort-arrow {
+    transform: rotate(180deg);
   }
 
   .tv-th-tag {
@@ -1595,13 +1622,14 @@ const tableStyles = `
 
   /* Rows — zebra striping + hover + done state */
   .tv-row {
-    transition: background 0.1s;
+    transition: background 0.12s cubic-bezier(0.16, 1, 0.3, 1);
   }
   .tv-row:nth-child(even) {
     background: rgba(255, 255, 255, 0.014);
   }
   .tv-row:hover {
-    background: rgba(139, 92, 246, 0.06);
+    background: rgba(139, 92, 246, 0.07);
+    box-shadow: inset 3px 0 0 rgba(139, 92, 246, 0.25);
   }
   .tv-row.is-root {
     background: linear-gradient(
@@ -1713,7 +1741,9 @@ const tableStyles = `
     padding: 3px 8px;
     border-radius: 6px;
     cursor: pointer;
-    transition: all 0.12s;
+    transition:
+      background 0.12s cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 0.12s cubic-bezier(0.16, 1, 0.3, 1);
   }
   .tv-name-btn:hover {
     background: rgba(139, 92, 246, 0.1);
@@ -1721,8 +1751,9 @@ const tableStyles = `
   }
   .tv-name-btn:focus-visible {
     outline: none;
-    background: rgba(139, 92, 246, 0.1);
-    border-color: rgba(139, 92, 246, 0.5);
+    background: rgba(139, 92, 246, 0.08);
+    border-color: rgba(139, 92, 246, 0.55);
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.18);
   }
   .tv-name-label {
     display: block;

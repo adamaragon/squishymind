@@ -2,13 +2,21 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
+const SITE = 'https://www.squishymind.com';
+
 export const metadata = {
   title: 'Features — SquishyMind Mind Mapping App',
   description:
     'Voice AI, real-time collaboration, infinite canvas, multiple view modes, templates, and import/export. Everything you need to map your ideas — free during beta.',
+  alternates: { canonical: `${SITE}/features` },
+  openGraph: {
+    title: 'Features — SquishyMind',
+    description:
+      'Voice AI, real-time collaboration, infinite canvas, multiple view modes, templates, and import/export. Everything you need to map your ideas — free during beta.',
+    url: `${SITE}/features`,
+    type: 'website',
+  },
 };
-
-const SITE = 'https://www.squishymind.com';
 
 const featuresJsonLd = [
   {

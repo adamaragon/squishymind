@@ -9,11 +9,11 @@ import { createClient } from '@/lib/supabase/client';
 // read). Renders the logged-out actions for the initial/static paint, then
 // swaps to the account actions once Supabase confirms a session.
 const PILL_GHOST =
-  'px-4 py-1.5 rounded-full text-sm border border-white/10 text-[--text-dim] hover:text-white hover:border-white/25 transition-colors';
+  'px-4 py-1.5 min-h-[44px] flex items-center rounded-full text-sm border border-white/10 text-[--text-dim] hover:text-white hover:border-white/25 transition-colors';
 const PILL_ACCENT =
-  'px-4 py-1.5 rounded-full text-sm font-medium border border-violet-500/40 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20 transition-colors';
+  'px-4 py-1.5 min-h-[44px] flex items-center rounded-full text-sm font-medium border border-violet-500/40 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20 transition-colors';
 const PILL_PRIMARY =
-  'px-5 py-1.5 rounded-full text-sm font-medium text-white border border-transparent transition-all hover:-translate-y-px';
+  'px-5 py-1.5 min-h-[44px] flex items-center rounded-full text-sm font-medium text-white border border-transparent transition-all hover:-translate-y-px';
 
 export default function HeaderAuth() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);

@@ -49,7 +49,7 @@ export default async function AccountPage() {
   return (
     <>
       <Header />
-      <main className="max-w-xl mx-auto px-6 py-10">
+      <main className="max-w-xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         <h1 className="text-3xl font-semibold mb-6">Account</h1>
 
         <section className="glass rounded-2xl p-6 mb-5">

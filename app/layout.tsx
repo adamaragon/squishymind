@@ -1,7 +1,12 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import SquishyWidget from '@/components/SquishyWidget';
 import SquishyToolBridge from '@/components/SquishyToolBridge';
+
+export const viewport: Viewport = {
+  themeColor: '#0a0b16',
+  colorScheme: 'dark',
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(
@@ -17,24 +22,15 @@ export const metadata: Metadata = {
     url: '/',
     siteName: 'SquishyMind',
     type: 'website',
-    // images intentionally omitted — Next auto-picks up
-    // app/opengraph-image.tsx (and per-route overrides) and serves a
-    // proper PNG. The previous SVG OG link rendered badly on Slack +
-    // Twitter and didn't validate on LinkedIn at all.
   },
   twitter: {
     card: 'summary_large_image',
     title: 'SquishyMind — Your brain, but squishier.',
     description:
       'A wobbly, lovely, infinite mind-mapping canvas with a sentient pink brain in the corner.',
-    // Same — Next auto-detects app/twitter-image.tsx OR falls back to
-    // opengraph-image.tsx, so we don't need to point at anything here.
   },
 };
 
-// Intentionally NOT async and does NOT read auth: keeping the root layout free
-// of any server-side cookie read lets the public marketing/blog pages render
-// statically / ISR. SquishyWidget resolves login state client-side.
 export default function RootLayout({
   children,
 }: {
@@ -42,6 +38,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="preload" as="image" href="/brain.svg" />
+      </head>
       <body>
         {children}
         <SquishyWidget />
