@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import * as Sentry from '@sentry/nextjs';
 
 // Last-resort error boundary. Catches errors thrown in the root layout itself,
 // which segment-level error.tsx files can't reach. Renders its own <html>/<body>
@@ -13,6 +14,7 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
+    Sentry.captureException(error);
     console.error('Global error', error, error?.digest);
   }, [error]);
 

@@ -13,6 +13,7 @@
     "sfx:brain": "node --env-file=.env.local scripts/generate-brain-sounds.mjs"
   },
   "dependencies": {
+    "@sentry/nextjs": "^10.69.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.45.0",
     "html-to-image": "^1.11.13",

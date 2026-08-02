@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
+import * as Sentry from '@sentry/nextjs';
 
 // App-level error boundary. Catches errors in any route that doesn't have its
 // own error.tsx. Distinct from global-error.tsx (which catches root-layout
@@ -14,6 +15,7 @@ export default function AppError({
   reset: () => void;
 }) {
   useEffect(() => {
+    Sentry.captureException(error);
     console.error('App error', error, error?.digest);
   }, [error]);
 
